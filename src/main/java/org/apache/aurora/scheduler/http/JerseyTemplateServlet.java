@@ -18,10 +18,10 @@ import java.io.StringWriter;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
-import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.util.templating.StringTemplateHelper;
 import org.apache.aurora.common.util.templating.StringTemplateHelper.TemplateException;
+import org.stringtemplate.v4.ST;
 
 /**
  * Base class for common functions needed in a jersey stringtemplate servlet.
@@ -36,7 +36,7 @@ class JerseyTemplateServlet {
     templateHelper = new StringTemplateHelper(getClass(), templatePath, true);
   }
 
-  protected final Response fillTemplate(Closure<StringTemplate> populator) {
+  protected final Response fillTemplate(Closure<ST> populator) {
     StringWriter output = new StringWriter();
     try {
       templateHelper.writeTemplate(output, populator);

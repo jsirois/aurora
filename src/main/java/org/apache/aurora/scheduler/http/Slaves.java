@@ -26,18 +26,17 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
 
-import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.entities.IAttribute;
 import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.stringtemplate.v4.ST;
 
 import static java.util.Objects.requireNonNull;
 
 import static org.apache.aurora.common.base.MorePreconditions.checkNotBlank;
-
 import static org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import static org.apache.aurora.scheduler.storage.Storage.Work;
 
@@ -87,12 +86,12 @@ public class Slaves extends JerseyTemplateServlet {
   @GET
   @Produces(MediaType.TEXT_HTML)
   public Response get() {
-    return fillTemplate(new Closure<StringTemplate>() {
+    return fillTemplate(new Closure<ST>() {
       @Override
-      public void execute(StringTemplate template) {
-        template.setAttribute("cluster_name", clusterName);
+      public void execute(ST template) {
+        template.add("cluster_name", clusterName);
 
-        template.setAttribute("slaves",
+        template.add("slaves",
             FluentIterable.from(getHostAttributes()).transform(TO_SLAVE).toList());
       }
     });

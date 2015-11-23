@@ -33,7 +33,6 @@ import javax.ws.rs.core.Response.Status;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 
-import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.common.util.templating.StringTemplateHelper;
@@ -45,6 +44,7 @@ import org.apache.aurora.scheduler.stats.ResourceCounter.Metric;
 import org.apache.aurora.scheduler.stats.ResourceCounter.MetricType;
 import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.stringtemplate.v4.ST;
 
 /**
  * A servlet to give an aggregate view of cluster resources consumed, grouped by category.
@@ -77,11 +77,11 @@ public class Utilization {
   private String fillTemplate(final Iterable<DisplayMetric> metrics) {
     StringWriter output = new StringWriter();
     try {
-      templateHelper.writeTemplate(output, new Closure<StringTemplate>() {
+      templateHelper.writeTemplate(output, new Closure<ST>() {
         @Override
-        public void execute(StringTemplate template) {
-          template.setAttribute("cluster_name", clusterName);
-          template.setAttribute("metrics", metrics);
+        public void execute(ST template) {
+          template.add("cluster_name", clusterName);
+          template.add("metrics", metrics);
         }
       });
     } catch (TemplateException e) {

@@ -15,3 +15,30 @@
 if (gradle.gradleVersion != GRADLE_VERSION) {
   throw new GradleException("Building is only supported with gradle version: $GRADLE_VERSION .")
 }
+
+def minJavaVersion = JavaVersion.VERSION_1_8;
+
+compileJava {
+  sourceCompatibility = minJavaVersion
+  targetCompatibility = minJavaVersion
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // TODO(John Sirois): Should not need this dep - its implicit; however the java code in buildSrc
+  // is getting re-compiled in later - non bootstrap - phases that don;t apply the implicits like
+  // the gradle core does.  Track down and squash this second compile... maybe.  It may be the only
+  // way to add tests of the custom task?.
+  compile gradleApi()
+
+  compile "com.facebook.swift:swift-annotations:0.16.0"
+  compile "com.facebook.swift:swift-codec:0.16.0"
+  compile "com.facebook.swift:swift-idl-parser:0.16.0"
+  compile "com.google.guava:guava:18.0"
+  compile "com.google.code.findbugs:jsr305:2.0.1"
+  compile "com.squareup:javapoet:1.4.0"
+  compile "org.immutables:value:2.1.0"
+}

@@ -31,6 +31,11 @@ class ThriftPlugin implements Plugin<Project> {
       afterEvaluate {
         dependencies {
           thriftCompile "org.apache.thrift:libthrift:${thrift.version}"
+          // TODO(John Sirois): Scope the new gen as seperate from the old thrift c gen.
+          thriftCompile "com.facebook.swift:swift-annotations:0.16.0"
+          thriftCompile "com.facebook.swift:swift-codec:0.16.0"
+          thriftCompile "com.google.guava:guava:18.0"
+          thriftCompile "org.immutables:value:2.1.0"
         }
       }
 
@@ -67,8 +72,16 @@ class ThriftPlugin implements Plugin<Project> {
         }
       }
 
+      // TODO(John Sirois): We'll only want this plugin to apply to specific thrift files; namely
+      // api.thrift - right now it applies to all thrift - FIX.
+      project.task(type: ThriftRestGenTask, "generateThriftRest") {
+        inputs.files {thrift.inputFiles}
+        outputs.dir {thrift.genRestDir}
+        packageName "org.apache.aurora.rest.gen"
+      }
+
       task('classesThrift', type: JavaCompile) {
-        source files(generateThriftJava)
+        source files(generateThriftJava) + files(generateThriftRest)
         classpath = configurations.thriftCompile
         destinationDir = file(thrift.genClassesDir)
         options.warnings = false
@@ -93,6 +106,7 @@ class ThriftPluginExtension {
   def wrapperPath
   File genResourcesDir
   File genJavaDir
+  File genRestDir
   File genClassesDir
   FileTree inputFiles
 
@@ -120,6 +134,7 @@ class ThriftPluginExtension {
     wrapperPath = "${project.rootDir}/build-support/thrift/thriftw"
     genResourcesDir = project.file("${project.buildDir}/thrift/gen-resources")
     genJavaDir = project.file("${project.buildDir}/thrift/gen-java")
+    genRestDir = project.file("${project.buildDir}/thrift/gen-rest")
     genClassesDir = project.file("${project.buildDir}/thrift/classes")
     inputFiles = project.fileTree("src/main/thrift").matching {
       include "**/*.thrift"

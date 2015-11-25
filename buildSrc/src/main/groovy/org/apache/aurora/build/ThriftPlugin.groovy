@@ -77,7 +77,7 @@ class ThriftPlugin implements Plugin<Project> {
       project.task(type: ThriftRestGenTask, "generateThriftRest") {
         inputs.files {thrift.inputFiles}
         outputs.dir {thrift.genRestDir}
-        packageName "org.apache.aurora.rest.gen"
+        packageSuffix ".rest"
       }
 
       task('classesThrift', type: JavaCompile) {

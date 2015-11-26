@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
@@ -498,22 +499,22 @@ public class ThriftRestGenTask extends DefaultTask {
         MapType mapType = (MapType) thriftType;
         ThriftType keyType = mapType.getKeyType();
         ThriftType valueType = mapType.getValueType();
-        return ParameterizedTypeName.get(
-            ClassName.get(ImmutableMap.class),
-            typeName(keyType).box(),
-            typeName(valueType).box());
+        return parameterizedTypeName(ImmutableMap.class, keyType, valueType);
       } else if (thriftType instanceof ListType) {
         ThriftType elementType = ((ListType) thriftType).getElementType();
-        return ParameterizedTypeName.get(
-            ClassName.get(ImmutableList.class),
-            typeName(elementType).box());
+        return parameterizedTypeName(ImmutableList.class, elementType);
       } else if (thriftType instanceof SetType) {
         ThriftType elementType = ((SetType) thriftType).getElementType();
-        return ParameterizedTypeName.get(
-            ClassName.get(ImmutableSet.class),
-            typeName(elementType).box());
+        return parameterizedTypeName(ImmutableSet.class, elementType);
       }
       throw new UnexpectedTypeException("Unknown thrift type: " + thriftType);
+    }
+
+    protected final ParameterizedTypeName parameterizedTypeName(
+        Class<?> type,
+        ThriftType... parameters) {
+      return ParameterizedTypeName.get(ClassName.get(type),
+          Stream.of(parameters).map(p -> typeName(p).box()).toArray(TypeName[]::new));
     }
 
     protected final String getterName(ThriftField field) {
@@ -828,10 +829,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addMember("oneway", "$L", method.isOneway())
                       .build())
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-              .returns(
-                  ParameterizedTypeName.get(
-                      ClassName.get(ListenableFuture.class),
-                      typeName(method.getReturnType())));
+              .returns(parameterizedTypeName(ListenableFuture.class, method.getReturnType()));
 
       for (ThriftField field : method.getArguments()) {
         methodBuilder.addParameter(
@@ -912,17 +910,40 @@ public class ThriftRestGenTask extends DefaultTask {
               .addSuperinterface(builderBuilderName)
               .addField(builderBuilderName, "builder", Modifier.PRIVATE, Modifier.FINAL);
 
+      wrapperBuilder.addMethod(
+          MethodSpec.constructorBuilder()
+              .addParameter(builderBuilderName, "builder")
+              .addStatement("this.builder = builder")
+              .build());
+
       CodeBlock.Builder wrapperConstructorBuilder =
           CodeBlock.builder()
               .add("$[")
-              .add("this.builder = new $T()", autoValueBuilderName);
+              .add("this(new $T()", autoValueBuilderName);
 
       // A convenience builder factory method for coding against; the Builder is defined below.
+      ClassName wrapperBuilderName = ClassName.get(getPackageName(), struct.getName(), "Builder");
       typeBuilder.addMethod(
           MethodSpec.methodBuilder("builder")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .returns(ClassName.get(getPackageName(), struct.getName(), "Builder"))
+              .returns(wrapperBuilderName)
               .addStatement("return new Builder()")
+              .build());
+
+      // A convenience builder factory that can be used to produce a modified copy of a struct.
+      // NB: AutoValue fills in the implementation.
+      MethodSpec toBuilder =
+          MethodSpec.methodBuilder("_toBuilder")
+              .addModifiers(Modifier.ABSTRACT)
+              .returns(builderBuilderName)
+              .build();
+      typeBuilder.addMethod(toBuilder);
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("toBuilder")
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .returns(wrapperBuilderName)
+              .addStatement("return new $T($N())", wrapperBuilderName, toBuilder)
               .build());
 
       // Make the constructor package private for the Immutable implementations to access.
@@ -1001,7 +1022,7 @@ public class ThriftRestGenTask extends DefaultTask {
                 .addAnnotations(annotations.build())
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(parameterSpec)
-                .returns(ClassName.get(getPackageName(), struct.getName(), "Builder"))
+                .returns(wrapperBuilderName)
                 .addStatement("this.builder.$N($N)", methodSpec, parameterSpec)
                 .addStatement("return this")
                 .build();
@@ -1011,10 +1032,7 @@ public class ThriftRestGenTask extends DefaultTask {
         if (type instanceof ListType) {
           ThriftType elementType = ((ListType) type).getElementType();
           ParameterSpec param =
-              ParameterSpec.builder(
-                  ParameterizedTypeName.get(
-                      ClassName.get(List.class), typeName(elementType).box()),
-                  field.getName())
+              ParameterSpec.builder(parameterizedTypeName(List.class, elementType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
               MethodSpec.methodBuilder(wrapperMethodSpec.name)
@@ -1028,10 +1046,7 @@ public class ThriftRestGenTask extends DefaultTask {
         } else if (type instanceof SetType) {
           ThriftType elementType = ((SetType) type).getElementType();
           ParameterSpec param =
-              ParameterSpec.builder(
-                  ParameterizedTypeName.get(
-                      ClassName.get(Set.class), typeName(elementType).box()),
-                  field.getName())
+              ParameterSpec.builder(parameterizedTypeName(Set.class, elementType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
               MethodSpec.methodBuilder(wrapperMethodSpec.name)
@@ -1048,9 +1063,7 @@ public class ThriftRestGenTask extends DefaultTask {
           ThriftType valueType = mapType.getValueType();
           ParameterSpec param =
               ParameterSpec.builder(
-                  ParameterizedTypeName.get(
-                      ClassName.get(Map.class), typeName(keyType).box(), typeName(valueType).box()),
-                  field.getName())
+                  parameterizedTypeName(Map.class, keyType, valueType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
               MethodSpec.methodBuilder(wrapperMethodSpec.name)
@@ -1089,7 +1102,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .addModifiers(Modifier.PUBLIC)
               .addCode(
                   wrapperConstructorBuilder
-                      .add(";\n$]")
+                      .add(");\n$]")
                       .build())
               .build());
 

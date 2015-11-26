@@ -15,6 +15,8 @@ package org.apache.aurora.scheduler.api.rest;
 
 import java.nio.ByteBuffer;
 
+import com.facebook.nifty.client.FramedClientChannel;
+import com.facebook.nifty.client.FramedClientConnector;
 import com.facebook.swift.codec.ThriftCodec;
 import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
@@ -22,8 +24,17 @@ import com.facebook.swift.codec.metadata.MetadataErrorException;
 import com.facebook.swift.codec.metadata.MetadataErrors;
 import com.facebook.swift.codec.metadata.MetadataWarningException;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
+import com.facebook.swift.service.ThriftClientEventHandler;
+import com.facebook.swift.service.ThriftClientManager;
+import com.facebook.swift.service.ThriftEventHandler;
+import com.facebook.swift.service.ThriftServer;
+import com.facebook.swift.service.ThriftServiceProcessor;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.Futures;
 
+import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.rest.APIVersion;
 import org.apache.aurora.gen.rest.AcquireLockResult;
 import org.apache.aurora.gen.rest.AddInstancesConfig;
@@ -91,6 +102,7 @@ import org.apache.aurora.gen.rest.PopulateJobResult;
 import org.apache.aurora.gen.rest.PulseJobUpdateResult;
 import org.apache.aurora.gen.rest.QueryRecoveryResult;
 import org.apache.aurora.gen.rest.Range;
+import org.apache.aurora.gen.rest.ReadOnlyScheduler;
 import org.apache.aurora.gen.rest.ResourceAggregate;
 import org.apache.aurora.gen.rest.Response;
 import org.apache.aurora.gen.rest.ResponseCode;
@@ -144,10 +156,11 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TMemoryBuffer;
 import org.junit.Test;
 
+import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class RestGenTest {
+public class RestGenTest extends EasyMockTest {
   private ThriftCodecManager createManager() {
     CompilerThriftCodecFactory codecFactory = new CompilerThriftCodecFactory(/* debug */ false);
     MetadataErrors.Monitor errorMonitor = new MetadataErrors.Monitor() {
@@ -179,6 +192,8 @@ public class RestGenTest {
 
   @Test
   public void testTimings() {
+    control.replay();
+
     timeCodecCreation(
         APIVersion.class,
         AcquireLockResult.class,
@@ -300,6 +315,8 @@ public class RestGenTest {
 
   @Test
   public void testStruct() throws Exception {
+    control.replay();
+
     Metadata metadata = Metadata.builder().key("bob").value("42").build();
 
     ThriftCodecManager codecManager = createManager();
@@ -316,6 +333,8 @@ public class RestGenTest {
 
   @Test
   public void testUnion() throws Exception {
+    control.replay();
+
     JobKey jobKey = JobKey.builder().environment("dev").role("aurora").name("cleaner").build();
     LockKey lockKey = new LockKey(jobKey);
 
@@ -338,6 +357,8 @@ public class RestGenTest {
 
   @Test
   public void testByteBuffer() throws Exception {
+    control.replay();
+
     byte[] bytes = {0xC, 0xA, 0xF, 0xE, 0xB, 0xA, 0xB, 0xE};
     ByteBuffer deflatedEntry = ByteBuffer.wrap(bytes);
     LogEntry logEntry = new LogEntry(deflatedEntry);
@@ -354,5 +375,55 @@ public class RestGenTest {
     assertEquals(logEntry.isSetDeflatedEntry(), traditionalLogEntry.isSetDeflatedEntry());
     assertArrayEquals(bytes, traditionalLogEntry.getDeflatedEntry());
     assertEquals(logEntry.getDeflatedEntry(), traditionalLogEntry.bufferForDeflatedEntry());
+  }
+
+  @Test
+  public void testService() throws Exception {
+    ReadOnlyScheduler readOnlyScheduler = createMock(ReadOnlyScheduler.class);
+    Response getLocksResponse = Response.builder().responseCode(ResponseCode.OK).build();
+    expect(readOnlyScheduler.getLocks()).andReturn(Futures.immediateFuture(getLocksResponse));
+    control.replay();
+
+    ThriftEventHandler serverDebugger = new ThriftEventHandler() {
+      @Override public void preWrite(Object context, String methodName, Object result) {
+        System.out.printf("Writing response for %s: %s%n", methodName, result);
+      }
+      @Override public void postWrite(Object context, String methodName, Object result) {
+        System.out.printf("Wrote response for %s: %s%n", methodName, result);
+      }
+    };
+    ImmutableList<ThriftEventHandler> listeners = ImmutableList.of(serverDebugger);
+
+    ThriftServiceProcessor processor =
+        new ThriftServiceProcessor(createManager(), listeners, readOnlyScheduler);
+    try(ThriftServer server = new ThriftServer(processor).start();
+        ThriftClientManager clientManager = new ThriftClientManager()) {
+
+      FramedClientConnector connector =
+          new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
+
+      ThriftClientEventHandler clientDebugger = new ThriftClientEventHandler() {
+        @Override public void preRead(Object context, String methodName) {
+          System.out.printf("Reading response for %s from context %s%n", methodName, context);
+        }
+        @Override public void postRead(Object context, String methodName, Object result) {
+          System.out.printf("Read response for %s: %s%n", methodName, result);
+        }
+      };
+      ImmutableList<ThriftClientEventHandler> clientListeners = ImmutableList.of(clientDebugger);
+
+      Response response =
+          Futures.transform(
+              Futures.transform(
+                  clientManager.createChannel(connector),
+                  (FramedClientChannel channel) ->
+                      clientManager.createClient(
+                          channel,
+                          ReadOnlyScheduler.class,
+                          clientListeners)),
+              ReadOnlyScheduler::getLocks).get();
+
+      assertEquals(getLocksResponse, response);
+    }
   }
 }

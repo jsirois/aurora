@@ -34,8 +34,8 @@ class ThriftPlugin implements Plugin<Project> {
           // TODO(John Sirois): Scope the new gen as seperate from the old thrift c gen.
           thriftCompile "com.facebook.swift:swift-annotations:0.16.0"
           thriftCompile "com.facebook.swift:swift-codec:0.16.0"
+          thriftCompile "com.google.auto.value:auto-value:1.1"
           thriftCompile "com.google.guava:guava:18.0"
-          thriftCompile "org.immutables:value:2.1.0"
         }
       }
 

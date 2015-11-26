@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
@@ -37,17 +38,20 @@ import com.facebook.swift.parser.model.ConstList;
 import com.facebook.swift.parser.model.ConstMap;
 import com.facebook.swift.parser.model.ConstString;
 import com.facebook.swift.parser.model.ConstValue;
+import com.facebook.swift.parser.model.ContainerType;
 import com.facebook.swift.parser.model.Document;
 import com.facebook.swift.parser.model.IdentifierType;
 import com.facebook.swift.parser.model.IntegerEnum;
 import com.facebook.swift.parser.model.IntegerEnumField;
 import com.facebook.swift.parser.model.ListType;
 import com.facebook.swift.parser.model.MapType;
+import com.facebook.swift.parser.model.Service;
 import com.facebook.swift.parser.model.SetType;
 import com.facebook.swift.parser.model.StringEnum;
 import com.facebook.swift.parser.model.Struct;
 import com.facebook.swift.parser.model.ThriftException;
 import com.facebook.swift.parser.model.ThriftField;
+import com.facebook.swift.parser.model.ThriftMethod;
 import com.facebook.swift.parser.model.ThriftType;
 import com.facebook.swift.parser.model.Typedef;
 import com.facebook.swift.parser.model.Union;
@@ -65,12 +69,14 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.io.CharSource;
 import com.google.common.io.Files;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
@@ -207,6 +213,8 @@ public class ThriftRestGenTask extends DefaultTask {
                   new ConstVisitor(logger, outdir, packageNameByImportPrefix, packageName))
               .put(IntegerEnum.class,
                   new IntegerEnumVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+              .put(Service.class,
+                  new ServiceVisior(logger, outdir, packageNameByImportPrefix, packageName))
               // Not needed by Aurora and of questionable value to ever add support for.
               .put(StringEnum.class,
                   Visitor.failing("The Senum type is deprecated and removed in thrift 1.0.0, " +
@@ -451,7 +459,7 @@ public class ThriftRestGenTask extends DefaultTask {
       return getClassName(identifierValue.value()).packageName();
     }
 
-    private final ClassName getClassName(String identifier) {
+    protected final ClassName getClassName(String identifier) {
       List<String> parts = Splitter.on('.').limit(2).splitToList(identifier);
       if (parts.size() == 1) {
         return ClassName.get(getPackageName(), identifier);
@@ -469,17 +477,6 @@ public class ThriftRestGenTask extends DefaultTask {
 
     protected final String getPackageName() {
       return packageName;
-    }
-
-    protected final void writeType(TypeSpec type) throws IOException {
-      JavaFile javaFile =
-          JavaFile.builder(getPackageName(), type)
-              .addFileComment(APACHE_LICENSE)
-              .indent("  ")
-              .skipJavaLangImports(true)
-              .build();
-      javaFile.writeTo(getOutdir());
-      getLogger().info("Wrote {} to {}", type.name, getOutdir());
     }
 
     protected final TypeName typeName(ThriftType thriftType) {
@@ -519,7 +516,24 @@ public class ThriftRestGenTask extends DefaultTask {
       throw new UnexpectedTypeException("Unknown thrift type: " + thriftType);
     }
 
-    public CodeBlock createLiteral(
+    protected final String getterName(ThriftField field) {
+      String upperCamelCaseFieldName = toUpperCamelCaseName(field);
+      if (typeName(field.getType()).equals(TypeName.BOOLEAN)) {
+        return "is" + upperCamelCaseFieldName;
+      } else {
+        return "get" + upperCamelCaseFieldName;
+      }
+    }
+
+    protected final String isSetName(ThriftField field) {
+      return "isSet" + toUpperCamelCaseName(field);
+    }
+
+    private String toUpperCamelCaseName(ThriftField field) {
+      return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
+    }
+
+    protected final CodeBlock renderLiteral(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         ThriftType type,
         ConstValue value) {
@@ -553,6 +567,31 @@ public class ThriftRestGenTask extends DefaultTask {
       return codeBuilder.build();
     }
 
+    protected final CodeBlock renderCode(String literal, Object... args) {
+      return CodeBlock.builder().add(literal, args).build();
+    }
+
+    protected final AnnotationSpec renderThriftFieldAnnotation(ThriftField field) {
+      return AnnotationSpec.builder(com.facebook.swift.codec.ThriftField.class)
+          .addMember("value", "$L", extractId(field))
+          .addMember("name", "$S", field.getName())
+          .addMember("requiredness", "$T.$L",
+              com.facebook.swift.codec.ThriftField.Requiredness.class,
+              field.getRequiredness().name())
+          .build();
+    }
+
+    protected final void writeType(TypeSpec type) throws IOException {
+      JavaFile javaFile =
+          JavaFile.builder(getPackageName(), type)
+              .addFileComment(APACHE_LICENSE)
+              .indent("  ")
+              .skipJavaLangImports(true)
+              .build();
+      javaFile.writeTo(getOutdir());
+      getLogger().info("Wrote {} to {}", type.name, getOutdir());
+    }
+
     private void createListLiteral(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         ThriftType type,
@@ -579,7 +618,7 @@ public class ThriftRestGenTask extends DefaultTask {
         codeBuilder.add("$T.<$T>builder()", containerType, typeName(elementType).box());
         for (ConstValue elementValue : value.value()) {
           codeBuilder.add("\n.add(");
-          codeBuilder.add(createLiteral(structRenderers, elementType, elementValue));
+          codeBuilder.add(renderLiteral(structRenderers, elementType, elementValue));
           codeBuilder.add(")");
         }
         codeBuilder.add("\n.build()");
@@ -599,9 +638,9 @@ public class ThriftRestGenTask extends DefaultTask {
             typeName(valueType).box());
         for (Map.Entry<ConstValue, ConstValue> entry : map.value().entrySet()) {
           codeBuilder.add("\n.put(");
-          codeBuilder.add(createLiteral(structRenderers, keyType, entry.getKey()));
+          codeBuilder.add(renderLiteral(structRenderers, keyType, entry.getKey()));
           codeBuilder.add(", ");
-          codeBuilder.add(createLiteral(structRenderers, valueType, entry.getValue()));
+          codeBuilder.add(renderLiteral(structRenderers, valueType, entry.getValue()));
           codeBuilder.add(")");
         }
         codeBuilder.add("\n.build()");
@@ -639,8 +678,8 @@ public class ThriftRestGenTask extends DefaultTask {
       }
       ImmutableMap<String, ConstValue> parameters = parameterMap.build();
 
-      // `createLiteral` is almost what we need, but with structRenderers curried.
-      LiteralFactory literalFactory = (_1, _2) -> createLiteral(structRenderers, _1, _2);
+      // `renderCode` is almost what we need, but with structRenderers curried.
+      LiteralFactory literalFactory = (_1, _2) -> renderLiteral(structRenderers, _1, _2);
 
       codeBuilder.add(structRenderer.createLiteral(parameters, literalFactory));
     }
@@ -670,118 +709,10 @@ public class ThriftRestGenTask extends DefaultTask {
   }
 
   @NotThreadSafe
-  static class StructVisitor extends BaseVisitor<Struct> {
-    private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
-    private final Class<?> superClass;
+  static class ConstVisitor extends BaseVisitor<Const> {
+    private final ImmutableList.Builder<Const> consts = ImmutableList.builder();
 
-    public StructVisitor(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName,
-        Class<?> superClass) {
-
-      super(logger, outdir, packageNameByImportPrefix, packageName);
-      this.superClass = superClass;
-    }
-
-    @Override
-    public void visit(Struct struct) throws IOException {
-      structs.add(struct);
-    }
-
-    @Override
-    public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
-        throws IOException {
-
-      for (Struct struct: structs.build()) {
-        writeStruct(structRenderers, struct);
-      }
-    }
-
-    private void writeStruct(
-        ImmutableMap<String, AbstractStructRenderer> structRenderers,
-        Struct struct)
-        throws IOException {
-
-      // NB: An abstract class is used here instead of an interface for the sake of a bug in the
-      // swift code bytecode compiler.  Swift just relaxed the constraints on from types to not
-      // be mandatory final in 1.16.0 - allowing abstract class and interface types, but the
-      // bytecode generator expects classes and not interfaces when generating its bytecode.
-      // Issue filed here: https://github.com/facebook/swift/issues/279
-      // PR sent with a fix https://github.com/facebook/swift/pull/280
-      TypeSpec.Builder typeBuilder =
-          TypeSpec.classBuilder(struct.getName())
-              .addAnnotation(
-                  AnnotationSpec.builder(com.facebook.swift.codec.ThriftStruct.class)
-                      .addMember("value", "$S", struct.getName())
-                      .addMember("builder", "$L.Builder.class", struct.getName())
-                      .build())
-              .addAnnotation(org.immutables.value.Value.Immutable.class)
-              .addAnnotation(
-                  AnnotationSpec.builder(org.immutables.value.Value.Style.class)
-                      .addMember("visibility", "$T.PACKAGE",
-                          org.immutables.value.Value.Style.ImplementationVisibility.class)
-                      .addMember("build", "$S", "_build")
-                      .build())
-              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-              .superclass(superClass);
-
-      // A convenience builder factory method for coding against; the Builder is defined below.
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("builder")
-              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .returns(ClassName.get(getPackageName(), struct.getName(), "Builder"))
-              .addStatement("return new Builder()")
-              .build());
-
-      // Make the constructor package private for the Immutable implementations to access.
-      typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
-
-      for (ThriftField field : struct.getFields()) {
-        MethodSpec.Builder accessorBuilder =
-            MethodSpec.methodBuilder(field.getName())
-                .addAnnotation(
-                    AnnotationSpec.builder(com.facebook.swift.codec.ThriftField.class)
-                        .addMember("value", "$L", extractId(field))
-                        .addMember("name", "$S", field.getName())
-                        .addMember("requiredness", "$T.$L",
-                            com.facebook.swift.codec.ThriftField.Requiredness.class,
-                            field.getRequiredness().name())
-                        .build())
-                .addModifiers(Modifier.PUBLIC)
-                .returns(typeName(field.getType()));
-        Optional<ConstValue> defaultValue = field.getValue();
-        if (defaultValue.isPresent()) {
-          CodeBlock literal = createLiteral(structRenderers, field.getType(), defaultValue.get());
-          accessorBuilder.addStatement("return $L", literal);
-        } else {
-          accessorBuilder.addModifiers(Modifier.ABSTRACT);
-        }
-        typeBuilder.addMethod(accessorBuilder.build());
-      }
-
-      // This public nested Builder class with no-arg constructor is needed by ThriftCodec.
-      ClassName builderName =
-          ClassName.get(getPackageName(), String.format("Immutable%s.Builder", struct.getName()));
-      typeBuilder.addType(
-          TypeSpec.classBuilder("Builder")
-              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .superclass(builderName)
-              .addMethod(
-                  MethodSpec.methodBuilder("build")
-                      .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
-                      .returns(ClassName.get(getPackageName(), struct.getName()))
-                      .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                      .addStatement("return _build()")
-                      .build())
-              .build());
-      writeType(typeBuilder.build());
-    }
-  }
-
-  static class UnionVisitor extends BaseVisitor<Union> {
-    public UnionVisitor(
+    public ConstVisitor(
         Logger logger,
         File outdir,
         ImmutableMap<String, String> packageNameByImportPrefix,
@@ -791,72 +722,29 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     @Override
-    public void visit(Union union) throws IOException {
+    public void visit(Const constant) {
+      consts.add(constant);
+    }
+
+    @Override
+    public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
+        throws IOException {
+
       TypeSpec.Builder typeBuilder =
-          TypeSpec.classBuilder(union.getName())
-              .addAnnotation(
-                  AnnotationSpec.builder(com.facebook.swift.codec.ThriftUnion.class)
-                      .addMember("value", "$S", union.getName())
-                      .build())
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+          TypeSpec.classBuilder("Constants")
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
-      typeBuilder.addField(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL);
-      typeBuilder.addField(short.class, "id", Modifier.PRIVATE, Modifier.FINAL);
-
-      for (ThriftField field : union.getFields()) {
-        TypeName fieldTypeName = typeName(field.getType());
-        String upperCamelCaseFieldName =
-            CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
-
-        short id = extractId(field);
-
-        typeBuilder.addMethod(
-            MethodSpec.constructorBuilder()
-                .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(fieldTypeName, field.getName())
-                .addStatement("this.value = $L", field.getName())
-                .addStatement("this.id = $L", id)
-                .build());
-
-        MethodSpec isSetMethod =
-            MethodSpec.methodBuilder("isSet" + upperCamelCaseFieldName)
-                .addModifiers(Modifier.PUBLIC)
-                .returns(boolean.class)
-                .addStatement("return id == $L", id)
-                .build();
-        typeBuilder.addMethod(isSetMethod);
-
-        typeBuilder.addMethod(
-            MethodSpec.methodBuilder("get" + upperCamelCaseFieldName)
-                .addAnnotation(
-                    AnnotationSpec.builder(com.facebook.swift.codec.ThriftField.class)
-                        .addMember("value", "$L", id)
-                        .addMember("name", "$S", field.getName())
-                        .addMember("requiredness", "$T.$L",
-                            com.facebook.swift.codec.ThriftField.Requiredness.class,
-                            field.getRequiredness().name())
-                        .build())
-                .addModifiers(Modifier.PUBLIC)
-                .returns(fieldTypeName)
-                .addCode(
-                    CodeBlock.builder()
-                        .beginControlFlow("if (!$N())", isSetMethod)
-                        .addStatement("throw new $T()", IllegalStateException.class)
-                        .endControlFlow()
-                        .addStatement("return ($T) value", fieldTypeName)
-                        .build())
+      for (Const constant : consts.build()) {
+        ThriftType fieldType = constant.getType();
+        typeBuilder.addField(
+            FieldSpec.builder(
+                typeName(fieldType),
+                constant.getName(),
+                Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .initializer(renderLiteral(structRenderers, fieldType, constant.getValue()))
                 .build());
       }
-
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("getSetId")
-              .addAnnotation(com.facebook.swift.codec.ThriftUnionId.class)
-              .addModifiers(Modifier.PUBLIC)
-              .returns(short.class)
-              .addStatement("return id")
-              .build());
-
       writeType(typeBuilder.build());
     }
   }
@@ -900,11 +788,8 @@ public class ThriftRestGenTask extends DefaultTask {
     }
   }
 
-  @NotThreadSafe
-  static class ConstVisitor extends BaseVisitor<Const> {
-    private final ImmutableList.Builder<Const> consts = ImmutableList.builder();
-
-    public ConstVisitor(
+  static class ServiceVisior extends BaseVisitor<Service> {
+    ServiceVisior(
         Logger logger,
         File outdir,
         ImmutableMap<String, String> packageNameByImportPrefix,
@@ -914,29 +799,380 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     @Override
-    public void visit(Const constant) {
-      consts.add(constant);
+    public void visit(Service service) throws IOException {
+      TypeSpec.Builder serviceBuilder =
+          TypeSpec.interfaceBuilder(service.getName())
+              .addAnnotation(
+                  AnnotationSpec.builder(com.facebook.swift.service.ThriftService.class)
+                      .addMember("value", "$S", service.getName())
+                      .build())
+              .addModifiers(Modifier.PUBLIC);
+
+      Optional<String> parent = service.getParent();
+      if (parent.isPresent()) {
+        serviceBuilder.addSuperinterface(getClassName(parent.get()));
+      }
+
+      for (ThriftMethod method : service.getMethods()) {
+        serviceBuilder.addMethod(renderMethod(method));
+      }
+      writeType(serviceBuilder.build());
+    }
+
+    private MethodSpec renderMethod(ThriftMethod method) {
+      MethodSpec.Builder methodBuilder =
+          MethodSpec.methodBuilder(method.getName())
+              .addAnnotation(
+                  AnnotationSpec.builder(com.facebook.swift.service.ThriftMethod.class)
+                      .addMember("value", "$S", method.getName())
+                      .addMember("oneway", "$L", method.isOneway())
+                      .build())
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+              .returns(
+                  ParameterizedTypeName.get(
+                      ClassName.get(ListenableFuture.class),
+                      typeName(method.getReturnType())));
+
+      for (ThriftField field : method.getArguments()) {
+        methodBuilder.addParameter(
+            ParameterSpec.builder(typeName(field.getType()), field.getName())
+                .addAnnotation(renderThriftFieldAnnotation(field))
+                .build());
+      }
+
+      return methodBuilder.build();
+    }
+  }
+
+  @NotThreadSafe
+  static class StructVisitor extends BaseVisitor<Struct> {
+    private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
+    private final Class<?> superClass;
+
+    public StructVisitor(
+        Logger logger,
+        File outdir,
+        ImmutableMap<String, String> packageNameByImportPrefix,
+        String packageName,
+        Class<?> superClass) {
+
+      super(logger, outdir, packageNameByImportPrefix, packageName);
+      this.superClass = superClass;
+    }
+
+    @Override
+    public void visit(Struct struct) throws IOException {
+      structs.add(struct);
     }
 
     @Override
     public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
         throws IOException {
 
-      TypeSpec.Builder typeBuilder =
-          TypeSpec.classBuilder("Constants")
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+      for (Struct struct : structs.build()) {
+        writeStruct(structRenderers, struct);
+      }
+    }
 
-      for (Const constant : consts.build()) {
-        ThriftType fieldType = constant.getType();
-        typeBuilder.addField(
-            FieldSpec.builder(
-                typeName(fieldType),
-                constant.getName(),
-                Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                .initializer(createLiteral(structRenderers, fieldType, constant.getValue()))
+
+    private void writeStruct(
+        ImmutableMap<String, AbstractStructRenderer> structRenderers,
+        Struct struct)
+        throws IOException {
+
+      // NB: An abstract class is used here instead of an interface for the sake of a bug in the
+      // swift code bytecode compiler.  Swift just relaxed the constraints on from types to not
+      // be mandatory final in 1.16.0 - allowing abstract class and interface types, but the
+      // bytecode generator expects classes and not interfaces when generating its bytecode.
+      // Issue filed here: https://github.com/facebook/swift/issues/279
+      // PR sent with a fix https://github.com/facebook/swift/pull/280
+      TypeSpec.Builder typeBuilder =
+          TypeSpec.classBuilder(struct.getName())
+              .addAnnotation(
+                  AnnotationSpec.builder(com.facebook.swift.codec.ThriftStruct.class)
+                      .addMember("value", "$S", struct.getName())
+                      .addMember("builder", "$L.Builder.class", struct.getName())
+                      .build())
+              .addAnnotation(com.google.auto.value.AutoValue.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+              .superclass(superClass);
+
+      TypeSpec.Builder builderBuilder =
+          TypeSpec.interfaceBuilder("_Builder")
+              .addAnnotation(com.google.auto.value.AutoValue.Builder.class);
+
+      // This public nested Builder class with no-arg constructor is needed by ThriftCodec.
+      ClassName builderBuilderName = ClassName.get(getPackageName(), struct.getName(), "_Builder");
+      ClassName autoValueBuilderName =
+          ClassName.get(getPackageName(), "AutoValue_" + struct.getName(), "Builder");
+
+      TypeSpec.Builder wrapperBuilder =
+          TypeSpec.classBuilder("Builder")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addSuperinterface(builderBuilderName)
+              .addField(builderBuilderName, "builder", Modifier.PRIVATE, Modifier.FINAL);
+
+      CodeBlock.Builder wrapperConstructorBuilder =
+          CodeBlock.builder()
+              .add("$[")
+              .add("this.builder = new $T()", autoValueBuilderName);
+
+      // A convenience builder factory method for coding against; the Builder is defined below.
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("builder")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .returns(ClassName.get(getPackageName(), struct.getName(), "Builder"))
+              .addStatement("return new Builder()")
+              .build());
+
+      // Make the constructor package private for the Immutable implementations to access.
+      typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
+
+      for (ThriftField field : struct.getFields()) {
+        ThriftType type = field.getType();
+        boolean nullable =
+            (field.getRequiredness() != ThriftField.Requiredness.REQUIRED)
+            && !field.getValue().isPresent()
+            && !(type instanceof ContainerType);
+
+        CodeBlock unsetLiteral = null;
+        if (type instanceof BaseType) {
+          // NB: $L literal formatting does not work for 0L; so all literals below are rendered
+          // directly for consistency.
+          switch (((BaseType) type).getType()) {
+            case BOOL:
+              unsetLiteral = renderCode("false");
+              break;
+            case BYTE:
+              unsetLiteral = renderCode("0x0");
+              break;
+            case DOUBLE:
+              unsetLiteral = renderCode("0.0");
+              break;
+            case I16:
+              unsetLiteral = renderCode("(short) 0");
+              break;
+            case I32:
+              unsetLiteral = renderCode("0");
+              break;
+            case I64:
+              unsetLiteral = renderCode("0L");
+              break;
+          }
+        } else if (type instanceof ListType) {
+          unsetLiteral = renderCode("$T.of()", ImmutableList.class);
+        } else if (type instanceof SetType) {
+          unsetLiteral = renderCode("$T.of()", ImmutableSet.class);
+        } else if (type instanceof MapType) {
+          unsetLiteral = renderCode("$T.of()", ImmutableMap.class);
+        }
+
+        MethodSpec.Builder accessorBuilder =
+            MethodSpec.methodBuilder(field.getName())
+                .addAnnotation(renderThriftFieldAnnotation(field))
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .returns(typeName(type));
+        if (nullable && (unsetLiteral == null)) {
+          accessorBuilder.addAnnotation(Nullable.class);
+        }
+        typeBuilder.addMethod(accessorBuilder.build());
+
+        ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
+        if (nullable && (unsetLiteral == null)) {
+          paramBuilder.addAnnotation(Nullable.class);
+        }
+        ParameterSpec parameterSpec = paramBuilder.build();
+
+        MethodSpec methodSpec =
+            MethodSpec.methodBuilder(field.getName())
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter(parameterSpec)
+                .returns(builderBuilderName)
+                .build();
+        builderBuilder.addMethod(methodSpec);
+
+        ImmutableList.Builder<AnnotationSpec> annotations = ImmutableList.builder();
+        annotations.add(AnnotationSpec.builder(Override.class).build());
+        if (!(type instanceof ContainerType)) {
+          annotations.add(renderThriftFieldAnnotation(field));
+        }
+        MethodSpec wrapperMethodSpec =
+            MethodSpec.methodBuilder(field.getName())
+                .addAnnotations(annotations.build())
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(parameterSpec)
+                .returns(ClassName.get(getPackageName(), struct.getName(), "Builder"))
+                .addStatement("this.builder.$N($N)", methodSpec, parameterSpec)
+                .addStatement("return this")
+                .build();
+        wrapperBuilder.addMethod(wrapperMethodSpec);
+
+        // These builder overloads are added specifically for the SwiftCodec.
+        if (type instanceof ListType) {
+          ThriftType elementType = ((ListType) type).getElementType();
+          ParameterSpec param =
+              ParameterSpec.builder(
+                  ParameterizedTypeName.get(
+                      ClassName.get(List.class), typeName(elementType).box()),
+                  field.getName())
+                  .build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addAnnotation(renderThriftFieldAnnotation(field))
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(param)
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
+                      param)
+                  .build());
+        } else if (type instanceof SetType) {
+          ThriftType elementType = ((SetType) type).getElementType();
+          ParameterSpec param =
+              ParameterSpec.builder(
+                  ParameterizedTypeName.get(
+                      ClassName.get(Set.class), typeName(elementType).box()),
+                  field.getName())
+                  .build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addAnnotation(renderThriftFieldAnnotation(field))
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(param)
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
+                      param)
+                  .build());
+        } else if (type instanceof MapType) {
+          MapType mapType = (MapType) type;
+          ThriftType keyType = mapType.getKeyType();
+          ThriftType valueType = mapType.getValueType();
+          ParameterSpec param =
+              ParameterSpec.builder(
+                  ParameterizedTypeName.get(
+                      ClassName.get(Map.class), typeName(keyType).box(), typeName(valueType).box()),
+                  field.getName())
+                  .build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addAnnotation(renderThriftFieldAnnotation(field))
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(param)
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableMap.class,
+                      param)
+                  .build());
+        }
+
+        if (field.getValue().isPresent()) {
+          CodeBlock defaultValue = renderLiteral(structRenderers, type, field.getValue().get());
+          wrapperConstructorBuilder
+              .add("\n.$N(", wrapperMethodSpec)
+              .add(defaultValue)
+              .add(")");
+        } else if (unsetLiteral != null) {
+          wrapperConstructorBuilder
+              .add("\n.$N(", wrapperMethodSpec)
+              .add(unsetLiteral)
+              .add(")");
+        }
+      }
+
+      builderBuilder.addMethod(
+          MethodSpec.methodBuilder("build")
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+              .returns(ClassName.get(getPackageName(), struct.getName()))
+              .build());
+      typeBuilder.addType(builderBuilder.build());
+
+      wrapperBuilder.addMethod(
+          MethodSpec.constructorBuilder()
+              .addModifiers(Modifier.PUBLIC)
+              .addCode(
+                  wrapperConstructorBuilder
+                      .add(";\n$]")
+                      .build())
+              .build());
+
+      wrapperBuilder.addMethod(
+          MethodSpec.methodBuilder("build")
+              .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
+              .returns(ClassName.get(getPackageName(), struct.getName()))
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addStatement("return this.builder.build()")
+              .build());
+      typeBuilder.addType(wrapperBuilder.build());
+
+      writeType(typeBuilder.build());
+    }
+  }
+
+  static class UnionVisitor extends BaseVisitor<Union> {
+    public UnionVisitor(
+        Logger logger,
+        File outdir,
+        ImmutableMap<String, String> packageNameByImportPrefix,
+        String packageName) {
+
+      super(logger, outdir, packageNameByImportPrefix, packageName);
+    }
+
+    @Override
+    public void visit(Union union) throws IOException {
+      TypeSpec.Builder typeBuilder =
+          TypeSpec.classBuilder(union.getName())
+              .addAnnotation(
+                  AnnotationSpec.builder(com.facebook.swift.codec.ThriftUnion.class)
+                      .addMember("value", "$S", union.getName())
+                      .build())
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
+      typeBuilder.addField(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL);
+      typeBuilder.addField(short.class, "id", Modifier.PRIVATE, Modifier.FINAL);
+
+      for (ThriftField field : union.getFields()) {
+        TypeName fieldTypeName = typeName(field.getType());
+        short id = extractId(field);
+
+        typeBuilder.addMethod(
+            MethodSpec.constructorBuilder()
+                .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(fieldTypeName, field.getName())
+                .addStatement("this.value = $L", field.getName())
+                .addStatement("this.id = $L", id)
+                .build());
+
+        MethodSpec isSetMethod =
+            MethodSpec.methodBuilder(isSetName(field))
+                .addModifiers(Modifier.PUBLIC)
+                .returns(boolean.class)
+                .addStatement("return id == $L", id)
+                .build();
+        typeBuilder.addMethod(isSetMethod);
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder(getterName(field))
+                .addAnnotation(renderThriftFieldAnnotation(field))
+                .addModifiers(Modifier.PUBLIC)
+                .returns(fieldTypeName)
+                .addCode(
+                    CodeBlock.builder()
+                        .beginControlFlow("if (!$N())", isSetMethod)
+                        .addStatement("throw new $T()", IllegalStateException.class)
+                        .endControlFlow()
+                        .addStatement("return ($T) value", fieldTypeName)
+                        .build())
                 .build());
       }
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("getSetId")
+              .addAnnotation(com.facebook.swift.codec.ThriftUnionId.class)
+              .addModifiers(Modifier.PUBLIC)
+              .returns(short.class)
+              .addStatement("return id")
+              .build());
+
       writeType(typeBuilder.build());
     }
   }

@@ -364,7 +364,7 @@ dependencies {
   compile "com.fasterxml.jackson.core:jackson-databind:${jacksonRev}"
   compile "com.facebook.swift:swift-annotations:${swiftRev}"
   compile "com.facebook.swift:swift-codec:${swiftRev}"
-  compile "com.facebook.swift:swift-idl-parser:${swiftRev}"
+  compile "com.facebook.swift:swift-service:${swiftRev}"
   compile "com.sun.jersey:jersey-core:${jerseyRev}"
   compile "com.sun.jersey:jersey-json:${jerseyRev}"
   compile "com.sun.jersey:jersey-server:${jerseyRev}"

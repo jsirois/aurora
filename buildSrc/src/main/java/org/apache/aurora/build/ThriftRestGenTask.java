@@ -72,6 +72,7 @@ import com.google.common.io.CharSource;
 import com.google.common.io.Files;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
@@ -1028,34 +1029,86 @@ public class ThriftRestGenTask extends DefaultTask {
                 .build();
         wrapperBuilder.addMethod(wrapperMethodSpec);
 
-        // These builder overloads are added specifically for the SwiftCodec.
+        // The List|Set|Map builder overloads are added specifically for the SwiftCodec.
         if (type instanceof ListType) {
           ThriftType elementType = ((ListType) type).getElementType();
-          ParameterSpec param =
+          ParameterSpec listParam =
               ParameterSpec.builder(parameterizedTypeName(List.class, elementType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
               MethodSpec.methodBuilder(wrapperMethodSpec.name)
                   .addAnnotation(renderThriftFieldAnnotation(field))
                   .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(param)
+                  .addParameter(listParam)
                   .returns(wrapperMethodSpec.returnType)
                   .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
-                      param)
+                      listParam)
+                  .build());
+
+          ParameterSpec iterableParam =
+              ParameterSpec.builder(
+                  parameterizedTypeName(Iterable.class, elementType),
+                  field.getName()).build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(iterableParam)
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
+                      iterableParam)
+                  .build());
+
+          ParameterSpec varargsParam =
+              ParameterSpec.builder(ArrayTypeName.of(typeName(elementType).box()), field.getName())
+                  .build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(varargsParam)
+                  .varargs()
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
+                      varargsParam)
                   .build());
         } else if (type instanceof SetType) {
           ThriftType elementType = ((SetType) type).getElementType();
-          ParameterSpec param =
+          ParameterSpec setParam =
               ParameterSpec.builder(parameterizedTypeName(Set.class, elementType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
               MethodSpec.methodBuilder(wrapperMethodSpec.name)
                   .addAnnotation(renderThriftFieldAnnotation(field))
                   .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(param)
+                  .addParameter(setParam)
                   .returns(wrapperMethodSpec.returnType)
                   .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
-                      param)
+                      setParam)
+                  .build());
+
+          ParameterSpec iterableParam =
+              ParameterSpec.builder(
+                  parameterizedTypeName(Iterable.class, elementType),
+                  field.getName()).build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(iterableParam)
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
+                      iterableParam)
+                  .build());
+
+          ParameterSpec varargsParam =
+              ParameterSpec.builder(ArrayTypeName.of(typeName(elementType).box()), field.getName())
+                  .build();
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(wrapperMethodSpec.name)
+                  .addModifiers(wrapperMethodSpec.modifiers)
+                  .addParameter(varargsParam)
+                  .varargs()
+                  .returns(wrapperMethodSpec.returnType)
+                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
+                      varargsParam)
                   .build());
         } else if (type instanceof MapType) {
           MapType mapType = (MapType) type;

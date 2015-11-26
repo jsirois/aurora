@@ -380,7 +380,11 @@ public class RestGenTest extends EasyMockTest {
   @Test
   public void testService() throws Exception {
     ReadOnlyScheduler readOnlyScheduler = createMock(ReadOnlyScheduler.class);
-    Response getLocksResponse = Response.builder().responseCode(ResponseCode.OK).build();
+    Response getLocksResponse =
+        Response.builder()
+            .responseCode(ResponseCode.OK)
+            .details(ResponseDetail.builder().message("A-OK").build())
+            .build();
     expect(readOnlyScheduler.getLocks()).andReturn(Futures.immediateFuture(getLocksResponse));
     control.replay();
 

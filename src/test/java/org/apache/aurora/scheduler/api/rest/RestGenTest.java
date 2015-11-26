@@ -14,6 +14,7 @@
 package org.apache.aurora.scheduler.api.rest;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import com.facebook.nifty.client.FramedClientChannel;
 import com.facebook.nifty.client.FramedClientConnector;
@@ -165,10 +166,10 @@ public class RestGenTest extends EasyMockTest {
     CompilerThriftCodecFactory codecFactory = new CompilerThriftCodecFactory(/* debug */ false);
     MetadataErrors.Monitor errorMonitor = new MetadataErrors.Monitor() {
       @Override public void onError(MetadataErrorException errorMessage) {
-        System.out.printf(">>> error: %s%n", errorMessage);
+        System.err.printf("error: %s%n", errorMessage);
       }
       @Override public void onWarning(MetadataWarningException warningMessage) {
-        System.out.printf(">>> warning: %s%n", warningMessage);
+        System.err.printf("warning: %s%n", warningMessage);
       }
     };
     ThriftCatalog catalog = new ThriftCatalog(errorMonitor);
@@ -388,16 +389,7 @@ public class RestGenTest extends EasyMockTest {
     expect(readOnlyScheduler.getLocks()).andReturn(Futures.immediateFuture(getLocksResponse));
     control.replay();
 
-    ThriftEventHandler serverDebugger = new ThriftEventHandler() {
-      @Override public void preWrite(Object context, String methodName, Object result) {
-        System.out.printf("Writing response for %s: %s%n", methodName, result);
-      }
-      @Override public void postWrite(Object context, String methodName, Object result) {
-        System.out.printf("Wrote response for %s: %s%n", methodName, result);
-      }
-    };
-    ImmutableList<ThriftEventHandler> listeners = ImmutableList.of(serverDebugger);
-
+    LinkedList<ThriftEventHandler> listeners = new LinkedList<>();
     ThriftServiceProcessor processor =
         new ThriftServiceProcessor(createManager(), listeners, readOnlyScheduler);
     try(ThriftServer server = new ThriftServer(processor).start();
@@ -406,25 +398,9 @@ public class RestGenTest extends EasyMockTest {
       FramedClientConnector connector =
           new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
 
-      ThriftClientEventHandler clientDebugger = new ThriftClientEventHandler() {
-        @Override public void preRead(Object context, String methodName) {
-          System.out.printf("Reading response for %s from context %s%n", methodName, context);
-        }
-        @Override public void postRead(Object context, String methodName, Object result) {
-          System.out.printf("Read response for %s: %s%n", methodName, result);
-        }
-      };
-      ImmutableList<ThriftClientEventHandler> clientListeners = ImmutableList.of(clientDebugger);
-
       Response response =
           Futures.transform(
-              Futures.transform(
-                  clientManager.createChannel(connector),
-                  (FramedClientChannel channel) ->
-                      clientManager.createClient(
-                          channel,
-                          ReadOnlyScheduler.class,
-                          clientListeners)),
+              clientManager.createClient(connector, ReadOnlyScheduler.class),
               ReadOnlyScheduler::getLocks).get();
 
       assertEquals(getLocksResponse, response);

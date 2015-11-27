@@ -325,8 +325,8 @@ public class RestGenTest extends EasyMockTest {
     org.apache.aurora.gen.Metadata traditionalMetadata = new org.apache.aurora.gen.Metadata();
     traditionalMetadata.read(new TBinaryProtocol(buffer));
 
-    assertEquals(metadata.key(), traditionalMetadata.getKey());
-    assertEquals(metadata.value(), traditionalMetadata.getValue());
+    assertEquals(metadata.getKey(), traditionalMetadata.getKey());
+    assertEquals(metadata.getValue(), traditionalMetadata.getValue());
   }
 
   @Test
@@ -348,9 +348,9 @@ public class RestGenTest extends EasyMockTest {
     assertEquals(lockKey.getSetId(), traditionalLockKey.getSetField().getThriftFieldId());
 
     org.apache.aurora.gen.JobKey traditionalJob = traditionalLockKey.getJob();
-    assertEquals(jobKey.environment(), traditionalJob.getEnvironment());
-    assertEquals(jobKey.role(), traditionalJob.getRole());
-    assertEquals(jobKey.name(), traditionalJob.getName());
+    assertEquals(jobKey.getEnvironment(), traditionalJob.getEnvironment());
+    assertEquals(jobKey.getRole(), traditionalJob.getRole());
+    assertEquals(jobKey.getName(), traditionalJob.getName());
   }
 
   @Test

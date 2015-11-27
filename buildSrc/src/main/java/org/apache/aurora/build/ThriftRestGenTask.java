@@ -1000,8 +1000,6 @@ public class ThriftRestGenTask extends DefaultTask {
       // Make the constructor package private for the Immutable implementations to access.
       typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
 
-      // TODO(John Sirois): Consider re-naming accessors to match legacy (is|get) for ease of
-      // transition.
       for (ThriftField field : struct.getFields()) {
         ThriftType type = field.getType();
         Optional<CodeBlock> unsetValue = renderZero(type);
@@ -1011,7 +1009,7 @@ public class ThriftRestGenTask extends DefaultTask {
             && !(type instanceof ContainerType);
 
         MethodSpec.Builder accessorBuilder =
-            MethodSpec.methodBuilder(field.getName())
+            MethodSpec.methodBuilder(getterName(field))
                 .addAnnotation(renderThriftFieldAnnotation(field))
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(typeName(type));

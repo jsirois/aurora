@@ -16,6 +16,7 @@ package org.apache.aurora.build;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -535,7 +536,7 @@ public class ThriftRestGenTask extends DefaultTask {
       return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
     }
 
-    protected final CodeBlock renderLiteral(
+    protected final CodeBlock renderValue(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         ThriftType type,
         ConstValue value) {
@@ -546,13 +547,13 @@ public class ThriftRestGenTask extends DefaultTask {
       } else if (value instanceof ConstString) {
         codeBuilder.add("$S", value.value());
       } else if (value instanceof ConstList) {
-        createListLiteral(structRenderers, type, (ConstList) value, codeBuilder);
+        renderListValue(structRenderers, type, (ConstList) value, codeBuilder);
       } else if (value instanceof ConstMap) {
         ConstMap map = (ConstMap) value;
         if (type instanceof MapType) {
-          createMapLiteral(structRenderers, (MapType) type, codeBuilder, map);
+          renderMapValue(structRenderers, (MapType) type, codeBuilder, map);
         } else if (type instanceof IdentifierType) {
-          createStructLiteral(structRenderers, (IdentifierType) type, codeBuilder, map);
+          renderStructValue(structRenderers, (IdentifierType) type, codeBuilder, map);
         } else {
           throw new UnexpectedTypeException(
               String.format(
@@ -562,7 +563,7 @@ public class ThriftRestGenTask extends DefaultTask {
                   type));
         }
       } else if (value instanceof ConstIdentifier) {
-        createIdentifierLiteral(type, (ConstIdentifier) value, codeBuilder);
+        renderIdentifierValue(type, (ConstIdentifier) value, codeBuilder);
       } else {
         throw new UnexpectedTypeException("Unknown const value type: " + value);
       }
@@ -573,28 +574,41 @@ public class ThriftRestGenTask extends DefaultTask {
       return CodeBlock.builder().add(literal, args).build();
     }
 
-    protected final AnnotationSpec renderThriftFieldAnnotation(ThriftField field) {
-      return AnnotationSpec.builder(com.facebook.swift.codec.ThriftField.class)
-          .addMember("value", "$L", extractId(field))
-          .addMember("name", "$S", field.getName())
-          .addMember("requiredness", "$T.$L",
-              com.facebook.swift.codec.ThriftField.Requiredness.class,
-              field.getRequiredness().name())
-          .build();
+    /**
+     * Renders the zero-value for the given thrift type if there is one different from {@code null}.
+     *
+     * @param type The type whose zero-value to render.
+     * @return An optional code block representing the zero-value.
+     */
+    protected final Optional<CodeBlock> renderZero(ThriftType type) {
+      if (type instanceof BaseType) {
+        // NB: $L literal formatting does not work for 0L; so all literals below are rendered
+        // directly for consistency.
+        switch (((BaseType) type).getType()) {
+          case BOOL:
+            return Optional.of(renderCode("false"));
+          case BYTE:
+            return Optional.of(renderCode("0x0"));
+          case DOUBLE:
+            return Optional.of(renderCode("0.0"));
+          case I16:
+            return Optional.of(renderCode("(short) 0"));
+          case I32:
+            return Optional.of(renderCode("0"));
+          case I64:
+            return Optional.of(renderCode("0L"));
+        }
+      } else if (type instanceof ListType) {
+        return Optional.of(renderCode("$T.of()", ImmutableList.class));
+      } else if (type instanceof SetType) {
+        return Optional.of(renderCode("$T.of()", ImmutableSet.class));
+      } else if (type instanceof MapType) {
+        return Optional.of(renderCode("$T.of()", ImmutableMap.class));
+      }
+      return Optional.absent();
     }
 
-    protected final void writeType(TypeSpec type) throws IOException {
-      JavaFile javaFile =
-          JavaFile.builder(getPackageName(), type)
-              .addFileComment(APACHE_LICENSE)
-              .indent("  ")
-              .skipJavaLangImports(true)
-              .build();
-      javaFile.writeTo(getOutdir());
-      getLogger().info("Wrote {} to {}", type.name, getOutdir());
-    }
-
-    private void createListLiteral(
+    private void renderListValue(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         ThriftType type,
         ConstList value,
@@ -620,14 +634,14 @@ public class ThriftRestGenTask extends DefaultTask {
         codeBuilder.add("$T.<$T>builder()", containerType, typeName(elementType).box());
         for (ConstValue elementValue : value.value()) {
           codeBuilder.add("\n.add(");
-          codeBuilder.add(renderLiteral(structRenderers, elementType, elementValue));
+          codeBuilder.add(renderValue(structRenderers, elementType, elementValue));
           codeBuilder.add(")");
         }
         codeBuilder.add("\n.build()");
       });
     }
 
-    private void createMapLiteral(
+    private void renderMapValue(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         MapType mapType,
         CodeBlock.Builder codeBuilder,
@@ -640,16 +654,16 @@ public class ThriftRestGenTask extends DefaultTask {
             typeName(valueType).box());
         for (Map.Entry<ConstValue, ConstValue> entry : map.value().entrySet()) {
           codeBuilder.add("\n.put(");
-          codeBuilder.add(renderLiteral(structRenderers, keyType, entry.getKey()));
+          codeBuilder.add(renderValue(structRenderers, keyType, entry.getKey()));
           codeBuilder.add(", ");
-          codeBuilder.add(renderLiteral(structRenderers, valueType, entry.getValue()));
+          codeBuilder.add(renderValue(structRenderers, valueType, entry.getValue()));
           codeBuilder.add(")");
         }
         codeBuilder.add("\n.build()");
       });
     }
 
-    private void createStructLiteral(
+    private void renderStructValue(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         IdentifierType type,
         CodeBlock.Builder codeBuilder,
@@ -681,12 +695,12 @@ public class ThriftRestGenTask extends DefaultTask {
       ImmutableMap<String, ConstValue> parameters = parameterMap.build();
 
       // `renderCode` is almost what we need, but with structRenderers curried.
-      LiteralFactory literalFactory = (_1, _2) -> renderLiteral(structRenderers, _1, _2);
+      LiteralFactory literalFactory = (_1, _2) -> renderValue(structRenderers, _1, _2);
 
       codeBuilder.add(structRenderer.createLiteral(parameters, literalFactory));
     }
 
-    private void createIdentifierLiteral(
+    private void renderIdentifierValue(
         ThriftType type,
         ConstIdentifier value,
         CodeBlock.Builder codeBuilder) {
@@ -707,6 +721,27 @@ public class ThriftRestGenTask extends DefaultTask {
         String name = Iterables.getLast(Splitter.on('.').limit(2).splitToList(identifier));
         codeBuilder.add("$T.$L", className, name);
       }
+    }
+
+    protected final AnnotationSpec renderThriftFieldAnnotation(ThriftField field) {
+      return AnnotationSpec.builder(com.facebook.swift.codec.ThriftField.class)
+          .addMember("value", "$L", extractId(field))
+          .addMember("name", "$S", field.getName())
+          .addMember("requiredness", "$T.$L",
+              com.facebook.swift.codec.ThriftField.Requiredness.class,
+              field.getRequiredness().name())
+          .build();
+    }
+
+    protected final void writeType(TypeSpec type) throws IOException {
+      JavaFile javaFile =
+          JavaFile.builder(getPackageName(), type)
+              .addFileComment(APACHE_LICENSE)
+              .indent("  ")
+              .skipJavaLangImports(true)
+              .build();
+      javaFile.writeTo(getOutdir());
+      getLogger().info("Wrote {} to {}", type.name, getOutdir());
     }
   }
 
@@ -744,7 +779,7 @@ public class ThriftRestGenTask extends DefaultTask {
                 typeName(fieldType),
                 constant.getName(),
                 Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                .initializer(renderLiteral(structRenderers, fieldType, constant.getValue()))
+                .initializer(renderValue(structRenderers, fieldType, constant.getValue()))
                 .build());
       }
       writeType(typeBuilder.build());
@@ -790,6 +825,7 @@ public class ThriftRestGenTask extends DefaultTask {
     }
   }
 
+  // TODO(John Sirois): Generate a sync service interface in addition to async.
   static class ServiceVisior extends BaseVisitor<Service> {
     ServiceVisior(
         Logger logger,
@@ -873,18 +909,11 @@ public class ThriftRestGenTask extends DefaultTask {
       }
     }
 
-
     private void writeStruct(
         ImmutableMap<String, AbstractStructRenderer> structRenderers,
         Struct struct)
         throws IOException {
 
-      // NB: An abstract class is used here instead of an interface for the sake of a bug in the
-      // swift code bytecode compiler.  Swift just relaxed the constraints on from types to not
-      // be mandatory final in 1.16.0 - allowing abstract class and interface types, but the
-      // bytecode generator expects classes and not interfaces when generating its bytecode.
-      // Issue filed here: https://github.com/facebook/swift/issues/279
-      // PR sent with a fix https://github.com/facebook/swift/pull/280
       TypeSpec.Builder typeBuilder =
           TypeSpec.classBuilder(struct.getName())
               .addAnnotation(
@@ -952,55 +981,24 @@ public class ThriftRestGenTask extends DefaultTask {
 
       for (ThriftField field : struct.getFields()) {
         ThriftType type = field.getType();
+        Optional<CodeBlock> unsetValue = renderZero(type);
         boolean nullable =
             (field.getRequiredness() != ThriftField.Requiredness.REQUIRED)
             && !field.getValue().isPresent()
             && !(type instanceof ContainerType);
-
-        CodeBlock unsetLiteral = null;
-        if (type instanceof BaseType) {
-          // NB: $L literal formatting does not work for 0L; so all literals below are rendered
-          // directly for consistency.
-          switch (((BaseType) type).getType()) {
-            case BOOL:
-              unsetLiteral = renderCode("false");
-              break;
-            case BYTE:
-              unsetLiteral = renderCode("0x0");
-              break;
-            case DOUBLE:
-              unsetLiteral = renderCode("0.0");
-              break;
-            case I16:
-              unsetLiteral = renderCode("(short) 0");
-              break;
-            case I32:
-              unsetLiteral = renderCode("0");
-              break;
-            case I64:
-              unsetLiteral = renderCode("0L");
-              break;
-          }
-        } else if (type instanceof ListType) {
-          unsetLiteral = renderCode("$T.of()", ImmutableList.class);
-        } else if (type instanceof SetType) {
-          unsetLiteral = renderCode("$T.of()", ImmutableSet.class);
-        } else if (type instanceof MapType) {
-          unsetLiteral = renderCode("$T.of()", ImmutableMap.class);
-        }
 
         MethodSpec.Builder accessorBuilder =
             MethodSpec.methodBuilder(field.getName())
                 .addAnnotation(renderThriftFieldAnnotation(field))
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(typeName(type));
-        if (nullable && (unsetLiteral == null)) {
+        if (nullable && !unsetValue.isPresent()) {
           accessorBuilder.addAnnotation(Nullable.class);
         }
         typeBuilder.addMethod(accessorBuilder.build());
 
         ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
-        if (nullable && (unsetLiteral == null)) {
+        if (nullable && !unsetValue.isPresent()) {
           paramBuilder.addAnnotation(Nullable.class);
         }
         ParameterSpec parameterSpec = paramBuilder.build();
@@ -1029,116 +1027,41 @@ public class ThriftRestGenTask extends DefaultTask {
                 .build();
         wrapperBuilder.addMethod(wrapperMethodSpec);
 
-        // The List|Set|Map builder overloads are added specifically for the SwiftCodec.
+        // The {List,Set,Map} builder overloads are added specifically for the SwiftCodec, the rest
+        // are for convenience.
         if (type instanceof ListType) {
           ThriftType elementType = ((ListType) type).getElementType();
-          ParameterSpec listParam =
-              ParameterSpec.builder(parameterizedTypeName(List.class, elementType), field.getName())
-                  .build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addAnnotation(renderThriftFieldAnnotation(field))
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(listParam)
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
-                      listParam)
-                  .build());
-
-          ParameterSpec iterableParam =
-              ParameterSpec.builder(
-                  parameterizedTypeName(Iterable.class, elementType),
-                  field.getName()).build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(iterableParam)
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
-                      iterableParam)
-                  .build());
-
-          ParameterSpec varargsParam =
-              ParameterSpec.builder(ArrayTypeName.of(typeName(elementType).box()), field.getName())
-                  .build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(varargsParam)
-                  .varargs()
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableList.class,
-                      varargsParam)
-                  .build());
+          Iterable<MethodSpec> overloads =
+              createCollectionBuilderOverloads(field, wrapperMethodSpec, List.class, elementType);
+          wrapperBuilder.addMethods(overloads);
         } else if (type instanceof SetType) {
           ThriftType elementType = ((SetType) type).getElementType();
-          ParameterSpec setParam =
-              ParameterSpec.builder(parameterizedTypeName(Set.class, elementType), field.getName())
-                  .build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addAnnotation(renderThriftFieldAnnotation(field))
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(setParam)
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
-                      setParam)
-                  .build());
-
-          ParameterSpec iterableParam =
-              ParameterSpec.builder(
-                  parameterizedTypeName(Iterable.class, elementType),
-                  field.getName()).build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(iterableParam)
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
-                      iterableParam)
-                  .build());
-
-          ParameterSpec varargsParam =
-              ParameterSpec.builder(ArrayTypeName.of(typeName(elementType).box()), field.getName())
-                  .build();
-          wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(varargsParam)
-                  .varargs()
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableSet.class,
-                      varargsParam)
-                  .build());
+          Iterable<MethodSpec> overloads =
+              createCollectionBuilderOverloads(field, wrapperMethodSpec, Set.class, elementType);
+          wrapperBuilder.addMethods(overloads);
         } else if (type instanceof MapType) {
           MapType mapType = (MapType) type;
           ThriftType keyType = mapType.getKeyType();
           ThriftType valueType = mapType.getValueType();
           ParameterSpec param =
               ParameterSpec.builder(
-                  parameterizedTypeName(Map.class, keyType, valueType), field.getName())
+                   parameterizedTypeName(Map.class, keyType, valueType), field.getName())
                   .build();
           wrapperBuilder.addMethod(
-              MethodSpec.methodBuilder(wrapperMethodSpec.name)
-                  .addAnnotation(renderThriftFieldAnnotation(field))
-                  .addModifiers(wrapperMethodSpec.modifiers)
-                  .addParameter(param)
-                  .returns(wrapperMethodSpec.returnType)
-                  .addStatement("return $N($T.copyOf($N))", wrapperMethodSpec, ImmutableMap.class,
-                      param)
-                  .build());
+              createBuilderOverload(
+                  field, wrapperMethodSpec, param, /* annotate */ true, /* varargs */ false));
         }
 
         if (field.getValue().isPresent()) {
-          CodeBlock defaultValue = renderLiteral(structRenderers, type, field.getValue().get());
+          CodeBlock defaultValue = renderValue(structRenderers, type, field.getValue().get());
           wrapperConstructorBuilder
               .add("\n.$N(", wrapperMethodSpec)
               .add(defaultValue)
               .add(")");
-        } else if (unsetLiteral != null) {
+        } else if (unsetValue.isPresent()) {
           wrapperConstructorBuilder
               .add("\n.$N(", wrapperMethodSpec)
-              .add(unsetLiteral)
+              .add(unsetValue.get())
               .add(")");
         }
       }
@@ -1169,6 +1092,63 @@ public class ThriftRestGenTask extends DefaultTask {
       typeBuilder.addType(wrapperBuilder.build());
 
       writeType(typeBuilder.build());
+    }
+
+    private Iterable<MethodSpec> createCollectionBuilderOverloads(
+        ThriftField field,
+        MethodSpec primaryMethod,
+        Class<? extends Collection> containerType,
+        ThriftType elementType) {
+
+      ImmutableList.Builder<MethodSpec> overloads = ImmutableList.builder();
+      String fieldName = field.getName();
+
+      ParameterSpec setParam =
+          ParameterSpec.builder(parameterizedTypeName(containerType, elementType), fieldName)
+              .build();
+      overloads.add(
+          createBuilderOverload(
+              field, primaryMethod, setParam, /* annotate */ true, /* varargs */ false));
+
+      ParameterSpec iterableParam =
+          ParameterSpec.builder(parameterizedTypeName(Iterable.class, elementType), fieldName)
+              .build();
+      overloads.add(
+          createBuilderOverload(
+              field, primaryMethod, iterableParam, /* annotate */ false, /* varargs */ false));
+
+      ParameterSpec varargsParam =
+          ParameterSpec.builder(ArrayTypeName.of(typeName(elementType).box()), fieldName)
+              .build();
+      overloads.add(
+          createBuilderOverload(
+              field, primaryMethod, varargsParam, /* annotate */ false, /* varargs */ true));
+
+      return overloads.build();
+    }
+
+    private MethodSpec createBuilderOverload(
+        ThriftField field,
+        MethodSpec primaryMethod,
+        ParameterSpec parameterSpec,
+        boolean annotate,
+        boolean varargs) {
+
+      ParameterizedTypeName primaryType = (ParameterizedTypeName) typeName(field.getType());
+      ClassName immutableFactoryType = primaryType.rawType;
+
+      MethodSpec.Builder overloadBuilder = MethodSpec.methodBuilder(primaryMethod.name);
+      if (annotate) {
+        overloadBuilder.addAnnotation(renderThriftFieldAnnotation(field));
+      }
+      return overloadBuilder
+          .addModifiers(primaryMethod.modifiers)
+          .addParameter(parameterSpec)
+          .varargs(varargs)
+          .returns(primaryMethod.returnType)
+          .addStatement(
+              "return $N($T.copyOf($N))", primaryMethod, immutableFactoryType, parameterSpec)
+          .build();
     }
   }
 

@@ -209,7 +209,6 @@ public class ThriftRestGenTask extends DefaultTask {
         ImmutableMap<String, String> packageNameByImportPrefix,
         String packageName) {
 
-      // service -> <<
       visitors =
           ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
               .put(Const.class,
@@ -454,18 +453,18 @@ public class ThriftRestGenTask extends DefaultTask {
       return outdir;
     }
 
-    protected final ClassName getClassName(IdentifierType identifierType) {
-      return getClassName(identifierType.getName());
+    protected final ClassName getClassName(IdentifierType identifierType, String... simpleNames) {
+      return getClassName(identifierType.getName(), simpleNames);
     }
 
     protected final String getPackageName(ConstIdentifier identifierValue) {
       return getClassName(identifierValue.value()).packageName();
     }
 
-    protected final ClassName getClassName(String identifier) {
+    protected final ClassName getClassName(String identifier, String... simpleNames) {
       List<String> parts = Splitter.on('.').limit(2).splitToList(identifier);
       if (parts.size() == 1) {
-        return ClassName.get(getPackageName(), identifier);
+        return ClassName.get(getPackageName(), identifier, simpleNames);
       } else {
         String importPrefix = parts.get(0);
         String typeName = parts.get(1);
@@ -474,7 +473,7 @@ public class ThriftRestGenTask extends DefaultTask {
           throw new ParseError(
               String.format("Could not map identifier %s to a parsed type", identifier));
         }
-        return ClassName.get(packageName, typeName);
+        return ClassName.get(packageName, typeName, simpleNames);
       }
     }
 
@@ -825,7 +824,6 @@ public class ThriftRestGenTask extends DefaultTask {
     }
   }
 
-  // TODO(John Sirois): Generate a sync service interface in addition to async.
   static class ServiceVisior extends BaseVisitor<Service> {
     ServiceVisior(
         Logger logger,
@@ -838,26 +836,41 @@ public class ThriftRestGenTask extends DefaultTask {
 
     @Override
     public void visit(Service service) throws IOException {
-      TypeSpec.Builder serviceBuilder =
+      TypeSpec.Builder serviceContainerBuilder =
           TypeSpec.interfaceBuilder(service.getName())
-              .addAnnotation(
-                  AnnotationSpec.builder(com.facebook.swift.service.ThriftService.class)
-                      .addMember("value", "$S", service.getName())
-                      .build())
               .addModifiers(Modifier.PUBLIC);
+
+      TypeSpec.Builder asyncServiceBuilder = createServiceBuilder(service, "Async");
+      TypeSpec.Builder syncServiceBuilder = createServiceBuilder(service, "Sync");
 
       Optional<String> parent = service.getParent();
       if (parent.isPresent()) {
-        serviceBuilder.addSuperinterface(getClassName(parent.get()));
+        asyncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Async"));
+        syncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Sync"));
       }
 
       for (ThriftMethod method : service.getMethods()) {
-        serviceBuilder.addMethod(renderMethod(method));
+        asyncServiceBuilder.addMethod(
+            renderMethod(
+                method, parameterizedTypeName(ListenableFuture.class, method.getReturnType())));
+        syncServiceBuilder.addMethod(renderMethod(method, typeName(method.getReturnType())));
       }
-      writeType(serviceBuilder.build());
+
+      serviceContainerBuilder.addType(asyncServiceBuilder.build());
+      serviceContainerBuilder.addType(syncServiceBuilder.build());
+      writeType(serviceContainerBuilder.build());
     }
 
-    private MethodSpec renderMethod(ThriftMethod method) {
+    private TypeSpec.Builder createServiceBuilder(Service service, String typeName) {
+      return TypeSpec.interfaceBuilder(typeName)
+          .addAnnotation(
+              AnnotationSpec.builder(com.facebook.swift.service.ThriftService.class)
+                  .addMember("value", "$S", service.getName())
+                  .build())
+          .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+    }
+
+    private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {
       MethodSpec.Builder methodBuilder =
           MethodSpec.methodBuilder(method.getName())
               .addAnnotation(
@@ -866,7 +879,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addMember("oneway", "$L", method.isOneway())
                       .build())
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-              .returns(parameterizedTypeName(ListenableFuture.class, method.getReturnType()));
+              .returns(returnType);
 
       for (ThriftField field : method.getArguments()) {
         methodBuilder.addParameter(

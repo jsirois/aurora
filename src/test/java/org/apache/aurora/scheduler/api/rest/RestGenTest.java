@@ -376,8 +376,8 @@ public class RestGenTest extends EasyMockTest {
   }
 
   @Test
-  public void testService() throws Exception {
-    ReadOnlyScheduler readOnlyScheduler = createMock(ReadOnlyScheduler.class);
+  public void testAsyncService() throws Exception {
+    ReadOnlyScheduler.Async readOnlyScheduler = createMock(ReadOnlyScheduler.Async.class);
     Response getLocksResponse =
         Response.builder()
             .responseCode(ResponseCode.OK)
@@ -386,20 +386,50 @@ public class RestGenTest extends EasyMockTest {
     expect(readOnlyScheduler.getLocks()).andReturn(Futures.immediateFuture(getLocksResponse));
     control.replay();
 
+    ThriftCodecManager codecManager = createManager();
     LinkedList<ThriftEventHandler> listeners = new LinkedList<>();
     ThriftServiceProcessor processor =
-        new ThriftServiceProcessor(createManager(), listeners, readOnlyScheduler);
+        new ThriftServiceProcessor(codecManager, listeners, readOnlyScheduler);
     try(ThriftServer server = new ThriftServer(processor).start();
-        ThriftClientManager clientManager = new ThriftClientManager()) {
+        ThriftClientManager clientManager = new ThriftClientManager(codecManager)) {
 
       FramedClientConnector connector =
           new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
 
       Response response =
           Futures.transform(
-              clientManager.createClient(connector, ReadOnlyScheduler.class),
-              ReadOnlyScheduler::getLocks).get();
+              clientManager.createClient(connector, ReadOnlyScheduler.Async.class),
+              ReadOnlyScheduler.Async::getLocks).get();
 
+      assertEquals(getLocksResponse, response);
+    }
+  }
+
+  @Test
+  public void testSyncService() throws Exception {
+    ReadOnlyScheduler.Sync readOnlyScheduler = createMock(ReadOnlyScheduler.Sync.class);
+    Response getLocksResponse =
+        Response.builder()
+            .responseCode(ResponseCode.OK)
+            .details(ResponseDetail.builder().message("A-OK").build())
+            .build();
+    expect(readOnlyScheduler.getLocks()).andReturn(getLocksResponse);
+    control.replay();
+
+    ThriftCodecManager codecManager = createManager();
+    LinkedList<ThriftEventHandler> listeners = new LinkedList<>();
+    ThriftServiceProcessor processor =
+        new ThriftServiceProcessor(codecManager, listeners, readOnlyScheduler);
+    try(ThriftServer server = new ThriftServer(processor).start();
+        ThriftClientManager clientManager = new ThriftClientManager(codecManager)) {
+
+      FramedClientConnector connector =
+          new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
+
+      ReadOnlyScheduler.Sync syncClient =
+          clientManager.createClient(connector, ReadOnlyScheduler.Sync.class).get();
+
+      Response response = syncClient.getLocks();
       assertEquals(getLocksResponse, response);
     }
   }

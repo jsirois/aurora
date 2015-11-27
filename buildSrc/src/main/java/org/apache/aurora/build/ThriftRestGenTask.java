@@ -97,13 +97,22 @@ import static java.util.Objects.requireNonNull;
 public class ThriftRestGenTask extends DefaultTask {
 
   /**
+   * Indicates a thrift IDL feature was encountered that is not supported.
+   */
+  public static class UnsupportedFeatureException extends RuntimeException {
+    public UnsupportedFeatureException(String message) {
+      super(message);
+    }
+  }
+
+  /**
    * Indicates an unexpected semantic parsing error.
    *
    * If thrown, the thrift IDL was itself was valid, but it expressed relationships not supported
    * by the thrift spec.
    */
-  public static class ParseError extends RuntimeException {
-    public ParseError(String message) {
+  public static class ParseException extends RuntimeException {
+    public ParseException(String message) {
       super(message);
     }
   }
@@ -112,7 +121,7 @@ public class ThriftRestGenTask extends DefaultTask {
    * Indicates a combination of parsed thrift IDL value and type that is unexpected according to
    * the thrift spec.
    */
-  public static class UnexpectedTypeException extends ParseError {
+  public static class UnexpectedTypeException extends ParseException {
     public UnexpectedTypeException(String message) {
       super(message);
     }
@@ -222,12 +231,9 @@ public class ThriftRestGenTask extends DefaultTask {
                   Visitor.failing("The Senum type is deprecated and removed in thrift 1.0.0, " +
                       "see: https://issues.apache.org/jira/browse/THRIFT-2003"))
               .put(Struct.class,
-                  new StructVisitor(logger, outdir, packageNameByImportPrefix, packageName,
-                      Object.class))
+                  new StructVisitor(logger, outdir, packageNameByImportPrefix, packageName))
               // Currently not used by Aurora, but trivial to support.
-              .put(ThriftException.class,
-                  new StructVisitor(logger, outdir, packageNameByImportPrefix, packageName,
-                      Exception.class))
+              .put(ThriftException.class, Visitor.failing())
               // TODO(John Sirois): Implement as the need arises.
               // Currently not needed by Aurora; requires deferring all generation to `finish` and
               // collecting a full symbol table + adding a resolve method to resolve through
@@ -333,7 +339,7 @@ public class ThriftRestGenTask extends DefaultTask {
         ThriftField elementField =
             Maps.uniqueIndex(fields, ThriftField::getName).get(elementName);
         if (elementField == null) {
-          throw new ParseError(
+          throw new ParseException(
               String.format(
                   "Encountered a union literal that selects a non-existent member '%s'.\n" +
                       "Only the following members are known:\n\t%s",
@@ -388,7 +394,7 @@ public class ThriftRestGenTask extends DefaultTask {
         if (reason.isPresent()) {
           msg = String.format("%s%n%s", msg, reason.get());
         }
-        throw new IllegalArgumentException(msg);
+        throw new UnsupportedFeatureException(msg);
       };
     }
 
@@ -418,12 +424,12 @@ public class ThriftRestGenTask extends DefaultTask {
     protected static short extractId(ThriftField field) {
       Optional<Long> identifier = field.getIdentifier();
       if (!identifier.isPresent()) {
-        throw new ParseError("All thrift fields must have an id, given field without id: " + field);
+        throw new ParseException("All thrift fields must have an id, given field without id: " + field);
       }
       Long id = identifier.get();
       short value = id.shortValue();
       if (id != value) {
-        throw new ParseError("All ids are expected to be shorts, given " + id);
+        throw new ParseException("All ids are expected to be shorts, given " + id);
       }
       return value;
     }
@@ -470,7 +476,7 @@ public class ThriftRestGenTask extends DefaultTask {
         String typeName = parts.get(1);
         String packageName = packageNameByImportPrefix.get(importPrefix);
         if (packageName == null) {
-          throw new ParseError(
+          throw new ParseException(
               String.format("Could not map identifier %s to a parsed type", identifier));
         }
         return ClassName.get(packageName, typeName, simpleNames);
@@ -671,7 +677,7 @@ public class ThriftRestGenTask extends DefaultTask {
       // TODO(John Sirois): XXX structRenderers need to handle type resolution across includes.
       AbstractStructRenderer structRenderer = structRenderers.get(type.getName());
       if (structRenderer == null) {
-        throw new ParseError(
+        throw new ParseException(
             String.format(
                 "Cannot create struct literal value using map literal %s, found no struct, " +
                     "union or thrift exception type named '%s'",
@@ -872,6 +878,11 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {
+      if (!method.getThrowsFields().isEmpty()) {
+        throw new UnsupportedFeatureException("Service methods that declare throw exceptions are " +
+            "not supported, given " + method);
+      }
+
       MethodSpec.Builder methodBuilder =
           MethodSpec.methodBuilder(method.getName())
               .addAnnotation(
@@ -896,17 +907,14 @@ public class ThriftRestGenTask extends DefaultTask {
   @NotThreadSafe
   static class StructVisitor extends BaseVisitor<Struct> {
     private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
-    private final Class<?> superClass;
 
     public StructVisitor(
         Logger logger,
         File outdir,
         ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName,
-        Class<?> superClass) {
+        String packageName) {
 
       super(logger, outdir, packageNameByImportPrefix, packageName);
-      this.superClass = superClass;
     }
 
     @Override
@@ -936,8 +944,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addMember("builder", "$L.Builder.class", struct.getName())
                       .build())
               .addAnnotation(com.google.auto.value.AutoValue.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-              .superclass(superClass);
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
       TypeSpec.Builder builderBuilder =
           TypeSpec.interfaceBuilder("_Builder")

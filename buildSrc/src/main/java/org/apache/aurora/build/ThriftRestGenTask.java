@@ -867,7 +867,8 @@ public class ThriftRestGenTask extends DefaultTask {
               AnnotationSpec.builder(com.facebook.swift.service.ThriftService.class)
                   .addMember("value", "$S", service.getName())
                   .build())
-          .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+          .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+          .addSuperinterface(AutoCloseable.class);
     }
 
     private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {

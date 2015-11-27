@@ -426,11 +426,12 @@ public class RestGenTest extends EasyMockTest {
       FramedClientConnector connector =
           new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
 
-      ReadOnlyScheduler.Sync syncClient =
-          clientManager.createClient(connector, ReadOnlyScheduler.Sync.class).get();
+      try(ReadOnlyScheduler.Sync syncClient =
+              clientManager.createClient(connector, ReadOnlyScheduler.Sync.class).get()) {
 
-      Response response = syncClient.getLocks();
-      assertEquals(getLocksResponse, response);
+        Response response = syncClient.getLocks();
+        assertEquals(getLocksResponse, response);
+      }
     }
   }
 }

@@ -992,6 +992,8 @@ public class ThriftRestGenTask extends DefaultTask {
       // Make the constructor package private for the Immutable implementations to access.
       typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
 
+      // TODO(John Sirois): Consider re-naming accessors to match legacy (is|get) for ease of
+      // transition.
       for (ThriftField field : struct.getFields()) {
         ThriftType type = field.getType();
         Optional<CodeBlock> unsetValue = renderZero(type);
@@ -1188,9 +1190,19 @@ public class ThriftRestGenTask extends DefaultTask {
       typeBuilder.addField(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL);
       typeBuilder.addField(short.class, "id", Modifier.PRIVATE, Modifier.FINAL);
 
+      ClassName unionClassName = getClassName(union.getName());
       for (ThriftField field : union.getFields()) {
         TypeName fieldTypeName = typeName(field.getType());
         short id = extractId(field);
+
+        // A convenience factory that eases transition from apache thrift union types.
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder(field.getName())
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter(fieldTypeName, field.getName())
+                .returns(unionClassName)
+                .addStatement("return new $T($L)", unionClassName, field.getName())
+                .build());
 
         typeBuilder.addMethod(
             MethodSpec.constructorBuilder()

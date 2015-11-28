@@ -15,6 +15,10 @@ package org.apache.aurora.build;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashMap;
@@ -55,6 +59,7 @@ import com.facebook.swift.parser.model.ThriftException;
 import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.ThriftMethod;
 import com.facebook.swift.parser.model.ThriftType;
+import com.facebook.swift.parser.model.TypeAnnotation;
 import com.facebook.swift.parser.model.Typedef;
 import com.facebook.swift.parser.model.Union;
 import com.facebook.swift.parser.visitor.DocumentVisitor;
@@ -234,6 +239,8 @@ public class ThriftRestGenTask extends DefaultTask {
                   new StructVisitor(logger, outdir, packageNameByImportPrefix, packageName))
               // Currently not used by Aurora, but trivial to support.
               .put(ThriftException.class, Visitor.failing())
+              .put(TypeAnnotation.class,
+                  new TypeAnnotationVisitor(logger, outdir, packageNameByImportPrefix, packageName))
               // TODO(John Sirois): Implement as the need arises.
               // Currently not needed by Aurora; requires deferring all generation to `finish` and
               // collecting a full symbol table + adding a resolve method to resolve through
@@ -287,9 +294,9 @@ public class ThriftRestGenTask extends DefaultTask {
   }
 
   static void indented(CodeBlock.Builder codeBlockBuilder, Runnable codeBuilder) {
-    codeBlockBuilder.add("$>$>");
+    codeBlockBuilder.indent();
     codeBuilder.run();
-    codeBlockBuilder.add("$<$<");
+    codeBlockBuilder.unindent();
   }
 
   interface LiteralFactory {
@@ -389,16 +396,20 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     static Visitor<?> failing(Optional<String> reason) {
-      return visitable -> {
-        String msg = String.format("Unsupported thrift IDL type: %s", visitable);
-        if (reason.isPresent()) {
-          msg = String.format("%s%n%s", msg, reason.get());
+      return new Visitor<Visitable>() {
+        @Override public void visit(Visitable visitable) throws IOException {
+          String msg = String.format("Unsupported thrift IDL type: %s", visitable);
+          if (reason.isPresent()) {
+            msg = String.format("%s%n%s", msg, reason.get());
+          }
+          throw new UnsupportedFeatureException(msg);
         }
-        throw new UnsupportedFeatureException(msg);
       };
     }
 
-    void visit(T visitable) throws IOException;
+    default void visit(T visitable) throws IOException {
+      // noop
+    }
 
     default void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
         throws IOException {
@@ -739,8 +750,12 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     protected final void writeType(TypeSpec type) throws IOException {
+      writeType(getPackageName(), type);
+    }
+
+    protected final void writeType(String packageName, TypeSpec type) throws IOException {
       JavaFile javaFile =
-          JavaFile.builder(getPackageName(), type)
+          JavaFile.builder(packageName, type)
               .addFileComment(APACHE_LICENSE)
               .indent("  ")
               .skipJavaLangImports(true)
@@ -897,6 +912,10 @@ public class ThriftRestGenTask extends DefaultTask {
         ParameterSpec.Builder paramBuilder =
             ParameterSpec.builder(typeName(field.getType()), field.getName())
                 .addAnnotation(renderThriftFieldAnnotation(field));
+        if (!field.getAnnotations().isEmpty()) {
+          paramBuilder.addAnnotation(
+              TypeAnnotationVisitor.createAnnotation(field.getAnnotations()));
+        }
         if (field.getRequiredness() != ThriftField.Requiredness.REQUIRED) {
           paramBuilder.addAnnotation(Nullable.class);
         }
@@ -1173,6 +1192,73 @@ public class ThriftRestGenTask extends DefaultTask {
           .addStatement(
               "return $N($T.copyOf($N))", primaryMethod, immutableFactoryType, parameterSpec)
           .build();
+    }
+  }
+
+  static class TypeAnnotationVisitor extends BaseVisitor<TypeAnnotation> {
+    private static final ClassName ANNOTATION_CLASS =
+        ClassName.get("org.apache.aurora.thrift", "Annotation");
+
+    private static final ClassName PARAMETER_CLASS =
+        ClassName.get("org.apache.aurora.thrift", "Annotation", "Parameter");
+
+    static AnnotationSpec createAnnotation(List<TypeAnnotation> typeAnnotations) {
+      AnnotationSpec.Builder annotationBuilder = AnnotationSpec.builder(ANNOTATION_CLASS);
+      for (TypeAnnotation typeAnnotation : typeAnnotations) {
+        annotationBuilder.addMember(
+            "value",
+            "$L",
+            AnnotationSpec.builder(PARAMETER_CLASS)
+                .addMember("name", "$S", typeAnnotation.getName())
+                .addMember("value", "$S", typeAnnotation.getValue())
+                .build());
+      }
+      return annotationBuilder.build();
+    }
+
+    public TypeAnnotationVisitor(
+        Logger logger,
+        File outdir,
+        ImmutableMap<String, String> packageNameByImportPrefix,
+        String packageName) {
+
+      super(logger, outdir, packageNameByImportPrefix, packageName);
+    }
+
+    @Override
+    public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
+        throws IOException {
+
+      AnnotationSpec runtimeRetention =
+          AnnotationSpec.builder(Retention.class)
+              .addMember("value", "$T.$L", RetentionPolicy.class, RetentionPolicy.RUNTIME)
+              .build();
+      writeType(
+          ANNOTATION_CLASS.packageName(),
+          TypeSpec.annotationBuilder(ANNOTATION_CLASS.simpleName())
+              .addAnnotation(runtimeRetention)
+              .addModifiers(Modifier.PUBLIC)
+              .addType(
+                  TypeSpec.annotationBuilder(PARAMETER_CLASS.simpleName())
+                      .addAnnotation(runtimeRetention)
+                      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                      .addMethod(
+                          MethodSpec.methodBuilder("name")
+                              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                              .returns(String.class)
+                              .build())
+                      .addMethod(
+                          MethodSpec.methodBuilder("value")
+                              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                              .returns(String.class)
+                              .build())
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("value")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(ArrayTypeName.of(PARAMETER_CLASS))
+                      .build())
+              .build());
     }
   }
 

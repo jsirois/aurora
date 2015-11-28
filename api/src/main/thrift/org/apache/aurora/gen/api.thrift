@@ -1017,59 +1017,77 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    * Creates a new job.  The request will be denied if a job with the provided name already exists
    * in the cluster.
    */
-  Response createJob(1: JobConfiguration description, 3: Lock lock)
+  Response createJob(
+      1: JobConfiguration description (authorizing="true"),
+      3: Lock lock)
 
   /**
    * Enters a job into the cron schedule, without actually starting the job.
    * If the job is already present in the schedule, this will update the schedule entry with the new
    * configuration.
    */
-  Response scheduleCronJob(1: JobConfiguration description, 3: Lock lock)
+  Response scheduleCronJob(
+      1: JobConfiguration description (authorizing="true"),
+      3: Lock lock)
 
   /**
    * Removes a job from the cron schedule. The request will be denied if the job was not previously
    * scheduled with scheduleCronJob.
    */
-  Response descheduleCronJob(4: JobKey job, 3: Lock lock)
+  Response descheduleCronJob(
+      4: JobKey job (authorizing="true"),
+      3: Lock lock)
 
   /**
    * Starts a cron job immediately.  The request will be denied if the specified job does not
    * exist for the role account, or the job is not a cron job.
    */
-  Response startCronJob(4: JobKey job)
+  Response startCronJob(
+      4: JobKey job (authorizing="true"))
 
   /** Restarts a batch of shards. */
-  Response restartShards(5: JobKey job, 3: set<i32> shardIds, 6: Lock lock)
+  Response restartShards(
+      5: JobKey job (authorizing="true"),
+      3: set<i32> shardIds)
 
   /** Initiates a kill on tasks. */
-  Response killTasks(1: TaskQuery query, 3: Lock lock)
+  Response killTasks(
+      1: TaskQuery query (authorizing="true"),
+      3: Lock lock)
 
   /**
    * Adds new instances specified by the AddInstancesConfig. A job represented by the JobKey must be
    * protected by Lock.
    */
-  Response addInstances(1: AddInstancesConfig config, 2: Lock lock)
+  Response addInstances(
+      1: AddInstancesConfig config (authorizing="true"),
+      2: Lock lock)
 
   /**
    * Creates and saves a new Lock instance guarding against multiple mutating operations within the
    * context defined by LockKey.
    */
-  Response acquireLock(1: LockKey lockKey)
+  Response acquireLock(
+      1: LockKey lockKey (authorizing="true"))
 
   /** Releases the lock acquired earlier in acquireLock call. */
-  Response releaseLock(1: Lock lock, 2: LockValidation validation)
+  Response releaseLock(
+      1: Lock lock (authorizing="true"),
+      2: LockValidation validation)
 
   // TODO(maxim): reevaluate if it's still needed when client updater is gone (AURORA-785).
   /**
    * Replaces the template (configuration) for the existing cron job.
    * The cron job template (configuration) must exist for the call to succeed.
    */
-  Response replaceCronTemplate(1: JobConfiguration config, 2: Lock lock)
+  Response replaceCronTemplate(
+      1: JobConfiguration config (authorizing="true"),
+      2: Lock lock)
 
   /** Starts update of the existing service job. */
   Response startJobUpdate(
       /** A description of how to change the job. */
-      1: JobUpdateRequest request,
+      1: JobUpdateRequest request (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
       3: string message)
 
@@ -1078,21 +1096,21 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response pauseJobUpdate(
       /** The update to pause. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
       3: string message)
 
   /** Resumes progress of a previously paused job update. */
   Response resumeJobUpdate(
       /** The update to resume. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
       3: string message)
 
   /** Permanently aborts the job update. Does not remove the update history. */
   Response abortJobUpdate(
       /** The update to abort. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
       3: string message)
 
@@ -1101,7 +1119,8 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    * JobUpdateSettings. Unblocks progress if the update was previously blocked.
    * Responds with ResponseCode.INVALID_REQUEST in case an unknown update key is specified.
    */
-  Response pulseJobUpdate(1: JobUpdateKey key)
+  Response pulseJobUpdate(
+      1: JobUpdateKey key (authorizing="true"))
 }
 
 struct InstanceConfigRewrite {

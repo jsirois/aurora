@@ -1229,6 +1229,8 @@ public class ThriftRestGenTask extends DefaultTask {
     public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
         throws IOException {
 
+      AnnotationSpec immutable =
+          AnnotationSpec.builder(org.immutables.value.Value.Immutable.class).build();
       AnnotationSpec runtimeRetention =
           AnnotationSpec.builder(Retention.class)
               .addMember("value", "$T.$L", RetentionPolicy.class, RetentionPolicy.RUNTIME)
@@ -1236,10 +1238,12 @@ public class ThriftRestGenTask extends DefaultTask {
       writeType(
           ANNOTATION_CLASS.packageName(),
           TypeSpec.annotationBuilder(ANNOTATION_CLASS.simpleName())
+              .addAnnotation(immutable)
               .addAnnotation(runtimeRetention)
               .addModifiers(Modifier.PUBLIC)
               .addType(
                   TypeSpec.annotationBuilder(PARAMETER_CLASS.simpleName())
+                      .addAnnotation(immutable)
                       .addAnnotation(runtimeRetention)
                       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                       .addMethod(

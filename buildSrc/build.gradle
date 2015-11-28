@@ -41,4 +41,5 @@ dependencies {
   compile "com.google.code.findbugs:jsr305:2.0.1"
   compile "com.google.guava:guava:18.0"
   compile "com.squareup:javapoet:1.4.0"
+  compile "org.immutables:value:2.1.0"
 }

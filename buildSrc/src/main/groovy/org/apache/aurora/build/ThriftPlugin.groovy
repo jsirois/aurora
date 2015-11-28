@@ -36,6 +36,7 @@ class ThriftPlugin implements Plugin<Project> {
           thriftCompile "com.facebook.swift:swift-codec:0.16.0"
           thriftCompile "com.google.auto.value:auto-value:1.1"
           thriftCompile "com.google.guava:guava:18.0"
+          thriftCompile "org.immutables:value:2.1.0"
         }
       }
 

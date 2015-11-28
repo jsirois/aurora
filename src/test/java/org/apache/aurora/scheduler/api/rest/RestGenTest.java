@@ -150,6 +150,8 @@ import org.apache.aurora.gen.storage.rest.Snapshot;
 import org.apache.aurora.gen.storage.rest.StoredCronJob;
 import org.apache.aurora.gen.storage.rest.StoredJobUpdateDetails;
 import org.apache.aurora.gen.storage.rest.Transaction;
+import org.apache.aurora.thrift.ImmutableAnnotation;
+import org.apache.aurora.thrift.ImmutableParameter;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TMemoryBuffer;
 import org.junit.Test;

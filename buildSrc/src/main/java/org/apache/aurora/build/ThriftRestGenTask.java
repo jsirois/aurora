@@ -894,10 +894,13 @@ public class ThriftRestGenTask extends DefaultTask {
               .returns(returnType);
 
       for (ThriftField field : method.getArguments()) {
-        methodBuilder.addParameter(
+        ParameterSpec.Builder paramBuilder =
             ParameterSpec.builder(typeName(field.getType()), field.getName())
-                .addAnnotation(renderThriftFieldAnnotation(field))
-                .build());
+                .addAnnotation(renderThriftFieldAnnotation(field));
+        if (field.getRequiredness() != ThriftField.Requiredness.REQUIRED) {
+          paramBuilder.addAnnotation(Nullable.class);
+        }
+        methodBuilder.addParameter(paramBuilder.build());
       }
 
       return methodBuilder.build();

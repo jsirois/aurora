@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
@@ -913,7 +912,7 @@ public class ThriftRestGenTask extends DefaultTask {
               TypeAnnotationVisitor.createAnnotation(field.getAnnotations()));
         }
         if (field.getRequiredness() != ThriftField.Requiredness.REQUIRED) {
-          paramBuilder.addAnnotation(Nullable.class);
+          paramBuilder.addAnnotation(javax.annotation.Nullable.class);
         }
         methodBuilder.addParameter(paramBuilder.build());
       }
@@ -1032,13 +1031,13 @@ public class ThriftRestGenTask extends DefaultTask {
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(typeName(type));
         if (nullable && !unsetValue.isPresent()) {
-          accessorBuilder.addAnnotation(Nullable.class);
+          accessorBuilder.addAnnotation(javax.annotation.Nullable.class);
         }
         typeBuilder.addMethod(accessorBuilder.build());
 
         ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
         if (nullable && !unsetValue.isPresent()) {
-          paramBuilder.addAnnotation(Nullable.class);
+          paramBuilder.addAnnotation(javax.annotation.Nullable.class);
         }
         ParameterSpec parameterSpec = paramBuilder.build();
 

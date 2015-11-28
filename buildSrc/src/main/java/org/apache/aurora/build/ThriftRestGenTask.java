@@ -15,10 +15,6 @@ package org.apache.aurora.build;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashMap;
@@ -1232,8 +1228,9 @@ public class ThriftRestGenTask extends DefaultTask {
       AnnotationSpec immutable =
           AnnotationSpec.builder(org.immutables.value.Value.Immutable.class).build();
       AnnotationSpec runtimeRetention =
-          AnnotationSpec.builder(Retention.class)
-              .addMember("value", "$T.$L", RetentionPolicy.class, RetentionPolicy.RUNTIME)
+          AnnotationSpec.builder(java.lang.annotation.Retention.class)
+              .addMember("value", "$T.$L", java.lang.annotation.RetentionPolicy.class,
+                  java.lang.annotation.RetentionPolicy.RUNTIME)
               .build();
       writeType(
           ANNOTATION_CLASS.packageName(),

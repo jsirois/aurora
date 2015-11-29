@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1303,7 +1304,7 @@ public class ThriftRestGenTask extends DefaultTask {
                 .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(fieldTypeName, field.getName())
-                .addStatement("this.value = $L", field.getName())
+                .addStatement("this.value = $T.requireNonNull($L)", Objects.class, field.getName())
                 .addStatement("this.id = $L", id)
                 .build());
 

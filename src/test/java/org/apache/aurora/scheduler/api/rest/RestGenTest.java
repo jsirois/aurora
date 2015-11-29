@@ -355,6 +355,13 @@ public class RestGenTest extends EasyMockTest {
     assertEquals(jobKey.getName(), traditionalJob.getName());
   }
 
+  @Test(expected = NullPointerException.class)
+  public void testUnionNonNull() {
+    control.replay();
+
+    LockKey.job(null);
+  }
+
   @Test
   public void testByteBuffer() throws Exception {
     control.replay();

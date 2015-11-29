@@ -317,7 +317,7 @@ public class RestGenTest extends EasyMockTest {
   public void testStruct() throws Exception {
     control.replay();
 
-    Metadata metadata = Metadata.builder().key("bob").value("42").build();
+    Metadata metadata = Metadata.builder().setKey("bob").setValue("42").build();
 
     ThriftCodecManager codecManager = createManager();
     ThriftCodec<Metadata> metadataCodec = codecManager.getCodec(Metadata.class);
@@ -335,7 +335,12 @@ public class RestGenTest extends EasyMockTest {
   public void testUnion() throws Exception {
     control.replay();
 
-    JobKey jobKey = JobKey.builder().environment("dev").role("aurora").name("cleaner").build();
+    JobKey jobKey =
+        JobKey.builder()
+            .setEnvironment("dev")
+            .setRole("aurora")
+            .setName("cleaner")
+            .build();
     LockKey lockKey = new LockKey(jobKey);
 
     ThriftCodecManager codecManager = createManager();
@@ -389,8 +394,8 @@ public class RestGenTest extends EasyMockTest {
     ReadOnlyScheduler.Async readOnlyScheduler = createMock(ReadOnlyScheduler.Async.class);
     Response getLocksResponse =
         Response.builder()
-            .responseCode(ResponseCode.OK)
-            .details(ResponseDetail.builder().message("A-OK").build())
+            .setResponseCode(ResponseCode.OK)
+            .setDetails(ResponseDetail.builder().setMessage("A-OK").build())
             .build();
     expect(readOnlyScheduler.getLocks()).andReturn(Futures.immediateFuture(getLocksResponse));
     control.replay();
@@ -419,8 +424,8 @@ public class RestGenTest extends EasyMockTest {
     ReadOnlyScheduler.Sync readOnlyScheduler = createMock(ReadOnlyScheduler.Sync.class);
     Response getLocksResponse =
         Response.builder()
-            .responseCode(ResponseCode.OK)
-            .details(ResponseDetail.builder().message("A-OK").build())
+            .setResponseCode(ResponseCode.OK)
+            .setDetails(ResponseDetail.builder().setMessage("A-OK").build())
             .build();
     expect(readOnlyScheduler.getLocks()).andReturn(getLocksResponse);
     control.replay();

@@ -299,6 +299,28 @@ public class ThriftRestGenTask extends DefaultTask {
     CodeBlock create(ThriftType type, ConstValue value);
   }
 
+  private static String getterName(ThriftField field) {
+    String upperCamelCaseFieldName = toUpperCamelCaseName(field);
+    ThriftType type = field.getType();
+    if (type instanceof BaseType && ((BaseType) type).getType() == BaseType.Type.BOOL) {
+      return "is" + upperCamelCaseFieldName;
+    } else {
+      return "get" + upperCamelCaseFieldName;
+    }
+  }
+
+  private static String setterName(ThriftField field) {
+    return "set" + toUpperCamelCaseName(field);
+  }
+
+  private static String isSetName(ThriftField field) {
+    return "isSet" + toUpperCamelCaseName(field);
+  }
+
+  private static String toUpperCamelCaseName(ThriftField field) {
+    return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
+  }
+
   abstract static class AbstractStructRenderer {
     private static class StructRenderer extends AbstractStructRenderer {
       private StructRenderer(AbstractStruct struct) {
@@ -316,7 +338,7 @@ public class ThriftRestGenTask extends DefaultTask {
             String fieldName = field.getName();
             if (parameters.containsKey(fieldName)) {
               ConstValue fieldValue = parameters.get(fieldName);
-              codeBuilder.add("\n.$L(", fieldName);
+              codeBuilder.add("\n.$L(", setterName(field));
               codeBuilder.add(literalFactory.create(field.getType(), fieldValue));
               codeBuilder.add(")");
             }
@@ -529,23 +551,6 @@ public class ThriftRestGenTask extends DefaultTask {
         ThriftType... parameters) {
       return ParameterizedTypeName.get(ClassName.get(type),
           Stream.of(parameters).map(p -> typeName(p).box()).toArray(TypeName[]::new));
-    }
-
-    protected final String getterName(ThriftField field) {
-      String upperCamelCaseFieldName = toUpperCamelCaseName(field);
-      if (typeName(field.getType()).equals(TypeName.BOOLEAN)) {
-        return "is" + upperCamelCaseFieldName;
-      } else {
-        return "get" + upperCamelCaseFieldName;
-      }
-    }
-
-    protected final String isSetName(ThriftField field) {
-      return "isSet" + toUpperCamelCaseName(field);
-    }
-
-    private String toUpperCamelCaseName(ThriftField field) {
-      return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
     }
 
     protected final CodeBlock renderValue(
@@ -1042,8 +1047,9 @@ public class ThriftRestGenTask extends DefaultTask {
         }
         ParameterSpec parameterSpec = paramBuilder.build();
 
+        String setterName = setterName(field);
         MethodSpec methodSpec =
-            MethodSpec.methodBuilder(field.getName())
+            MethodSpec.methodBuilder(setterName)
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(parameterSpec)
                 .returns(builderBuilderName)
@@ -1056,7 +1062,7 @@ public class ThriftRestGenTask extends DefaultTask {
           annotations.add(renderThriftFieldAnnotation(field));
         }
         MethodSpec wrapperMethodSpec =
-            MethodSpec.methodBuilder(field.getName())
+            MethodSpec.methodBuilder(setterName)
                 .addAnnotations(annotations.build())
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(parameterSpec)

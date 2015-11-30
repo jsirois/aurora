@@ -53,8 +53,6 @@ org/apache/aurora/scheduler/http/Utilization$4
 org/apache/aurora/scheduler/http/Utilization$5
 org/apache/aurora/scheduler/http/Utilization$Display
 org/apache/aurora/scheduler/http/Utilization$DisplayMetric
-org/apache/aurora/scheduler/http/api/gen/Main
-org/apache/aurora/scheduler/http/api/resources/Job
 org/apache/aurora/scheduler/http/api/security/FieldGetter$IdentityFieldGetter
 org/apache/aurora/scheduler/http/api/security/Kerberos5Realm
 org/apache/aurora/scheduler/log/mesos/MesosLogStreamModule

@@ -135,7 +135,6 @@ public final class JobKeys {
       }
 
       if (taskQuery.isSetJobKeys()) {
-        builder.addAll(taskQuery.getJobKeys().stream().map(IJobKey::build).iterator());
         builder.addAll(IJobKey.setFromBuilders(taskQuery.getJobKeys()));
       }
       return Optional.of(assertValid(builder.build()));

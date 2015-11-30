@@ -16,8 +16,11 @@ package org.apache.aurora.common.util.templating;
 import java.io.StringWriter;
 import java.util.Arrays;
 
+import org.antlr.stringtemplate.StringTemplate;
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.aurora.common.base.Closure;
 
 import static org.junit.Assert.assertEquals;
 
@@ -51,22 +54,22 @@ public class StringTemplateHelperTest {
   @Test
   public void testFillTemplate() throws Exception {
     StringWriter output = new StringWriter();
-    templateHelper.writeTemplate(output, template -> {
-      template.add("header", "Prices");
-      template.add("items", Arrays.asList(
-          new Item("banana", 50),
-          new Item("car", 2),
-          new Item("jupiter", 200)
-      ));
-      template.add("footer", "The End");
+    templateHelper.writeTemplate(output, new Closure<StringTemplate>() {
+      @Override public void execute(StringTemplate template) {
+        template.setAttribute("header", "Prices");
+        template.setAttribute("items", Arrays.asList(
+            new Item("banana", 50),
+            new Item("car", 2),
+            new Item("jupiter", 200)
+        ));
+        template.setAttribute("footer", "The End");
+      }
     });
     String expected = "Prices\n"
         + "\n  The banana costs $50."
         + "\n  The car costs $2."
         + "\n  The jupiter costs $200.\n"
-        + "\n"
-        + "\nThe End"
-        + "\n";
+        + "\n\nThe End";
     assertEquals(expected, output.toString());
   }
 
@@ -80,8 +83,10 @@ public class StringTemplateHelperTest {
 
   @Test(expected = CustomException.class)
   public void testClosureError() throws Exception {
-    templateHelper.writeTemplate(new StringWriter(), template -> {
-      throw new CustomException();
+    templateHelper.writeTemplate(new StringWriter(), new Closure<StringTemplate>() {
+      @Override public void execute(StringTemplate template) {
+        throw new CustomException();
+      }
     });
   }
 }

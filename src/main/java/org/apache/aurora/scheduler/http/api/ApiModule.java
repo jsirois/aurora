@@ -19,11 +19,8 @@ import javax.ws.rs.HttpMethod;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Provides;
-import com.google.inject.Scopes;
 import com.google.inject.servlet.ServletModule;
-import com.sun.jersey.api.core.PackagesResourceConfig;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
-import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
@@ -37,8 +34,6 @@ import org.apache.thrift.server.TServlet;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlets.GzipFilter;
 import org.eclipse.jetty.util.resource.Resource;
-
-import io.swagger.jaxrs.config.BeanConfig;
 
 public class ApiModule extends ServletModule {
   public static final String API_PATH = "/api";
@@ -82,24 +77,6 @@ public class ApiModule extends ServletModule {
             .put("pathInfoOnly", "true")
             .put("dirAllowed", "false")
             .build());
-
-    bind(ServletContainer.class).in(Scopes.SINGLETON);
-    serve("/api/v1/*").with(ServletContainer.class,
-        ImmutableMap.of(PackagesResourceConfig.PROPERTY_PACKAGES,
-            Joiner.on(',').join(
-                "io.swagger.jaxrs.json",
-                "io.swagger.jaxrs.listing",
-                "org.apache.aurora.scheduler.http.api.resources")));
-
-    BeanConfig beanConfig = new BeanConfig();
-    beanConfig.setVersion("");
-    beanConfig.setSchemes(new String[]{"http"});
-    beanConfig.setHost("localhost:8081");
-    beanConfig.setBasePath("/api/v1");
-    beanConfig.setResourcePackage(Joiner.on(',').join(
-        "io.swagger.resources",
-        "org.apache.aurora.scheduler.http.api.resources"));
-    beanConfig.setScan(true);
   }
 
   @Provides

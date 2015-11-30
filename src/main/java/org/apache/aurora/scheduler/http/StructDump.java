@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response.Status;
 import com.google.common.base.Optional;
 import com.google.common.collect.Iterables;
 
+import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.thrift.Util;
 import org.apache.aurora.gen.JobConfiguration;
@@ -37,7 +38,6 @@ import org.apache.aurora.scheduler.storage.Storage.Work.Quiet;
 import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
 import org.apache.aurora.scheduler.storage.entities.IJobKey;
 import org.apache.thrift.TBase;
-import org.stringtemplate.v4.ST;
 
 import static java.util.Objects.requireNonNull;
 
@@ -115,16 +115,16 @@ public class StructDump extends JerseyTemplateServlet {
   }
 
   private Response dumpEntity(final String id, final Quiet<Optional<? extends TBase<?, ?>>> work) {
-    return fillTemplate(new Closure<ST>() {
+    return fillTemplate(new Closure<StringTemplate>() {
       @Override
-      public void execute(ST template) {
-        template.add("id", id);
+      public void execute(StringTemplate template) {
+        template.setAttribute("id", id);
         Optional<? extends TBase<?, ?>> struct = storage.read(work);
         if (struct.isPresent()) {
-          template.add("structPretty", Util.prettyPrint(struct.get()));
-          template.add("exception", null);
+          template.setAttribute("structPretty", Util.prettyPrint(struct.get()));
+          template.setAttribute("exception", null);
         } else {
-          template.add("exception", "Entity not found");
+          template.setAttribute("exception", "Entity not found");
         }
       }
     });

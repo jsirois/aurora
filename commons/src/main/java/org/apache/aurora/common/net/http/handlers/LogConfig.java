@@ -32,7 +32,7 @@ import javax.ws.rs.core.MediaType;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 
-import org.stringtemplate.v4.ST;
+import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.util.templating.StringTemplateHelper;
 import org.apache.aurora.common.util.templating.StringTemplateHelper.TemplateException;
@@ -89,12 +89,12 @@ public class LogConfig {
   protected String displayPage(Optional<String> configChange) throws TemplateException {
     StringWriter writer = new StringWriter();
 
-    template.writeTemplate(writer, new Closure<ST>() {
-      @Override public void execute(ST stringTemplate) {
+    template.writeTemplate(writer, new Closure<StringTemplate>() {
+      @Override public void execute(StringTemplate stringTemplate) {
         LoggingMXBean logBean = LogManager.getLoggingMXBean();
 
         if (configChange.isPresent()) {
-          stringTemplate.add("configChange", configChange.get());
+          stringTemplate.setAttribute("configChange", configChange.get());
         }
 
         List<LoggerConfig> loggerConfigs = Lists.newArrayList();
@@ -102,8 +102,8 @@ public class LogConfig {
           loggerConfigs.add(new LoggerConfig(logger, logBean.getLoggerLevel(logger)));
         }
 
-        stringTemplate.add("loggers", loggerConfigs);
-        stringTemplate.add("levels", LOG_LEVELS);
+        stringTemplate.setAttribute("loggers", loggerConfigs);
+        stringTemplate.setAttribute("levels", LOG_LEVELS);
       }
     });
 

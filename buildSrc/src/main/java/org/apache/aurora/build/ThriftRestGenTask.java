@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.annotation.Generated;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
@@ -750,7 +751,13 @@ public class ThriftRestGenTask extends DefaultTask {
           .build();
     }
 
-    protected final void writeType(TypeSpec type) throws IOException {
+    protected final void writeType(TypeSpec.Builder typeBuilder) throws IOException {
+      TypeSpec type =
+          typeBuilder.addAnnotation(
+              AnnotationSpec.builder(Generated.class)
+                  .addMember("value", "$S", getClass().getName())
+                  .build())
+              .build();
       writeType(getPackageName(), type);
     }
 
@@ -803,7 +810,7 @@ public class ThriftRestGenTask extends DefaultTask {
                 .initializer(renderValue(structRenderers, fieldType, constant.getValue()))
                 .build());
       }
-      writeType(typeBuilder.build());
+      writeType(typeBuilder);
     }
   }
 
@@ -842,7 +849,7 @@ public class ThriftRestGenTask extends DefaultTask {
             field.getName(),
             TypeSpec.anonymousClassBuilder("$L", field.getValue()).build());
       }
-      writeType(typeBuilder.build());
+      writeType(typeBuilder);
     }
   }
 
@@ -880,7 +887,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
       serviceContainerBuilder.addType(asyncServiceBuilder.build());
       serviceContainerBuilder.addType(syncServiceBuilder.build());
-      writeType(serviceContainerBuilder.build());
+      writeType(serviceContainerBuilder);
     }
 
     private TypeSpec.Builder createServiceBuilder(Service service, String typeName) {
@@ -1023,6 +1030,13 @@ public class ThriftRestGenTask extends DefaultTask {
       // Make the constructor package private for the Immutable implementations to access.
       typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
 
+      // Setup the psuedo-constructor.
+      ClassName structClassName = getClassName(struct.getName());
+      ImmutableList.Builder<ParameterSpec> constructorParameters = ImmutableList.builder();
+      CodeBlock.Builder constructorCode =
+          CodeBlock.builder()
+              .add("$[return $T.builder()", structClassName);
+
       for (ThriftField field : struct.getFields()) {
         ThriftType type = field.getType();
         Optional<CodeBlock> unsetValue = renderZero(type);
@@ -1109,7 +1123,25 @@ public class ThriftRestGenTask extends DefaultTask {
               .add(unsetValue.get())
               .add(")");
         }
+
+        ParameterSpec.Builder constructorParam =
+            ParameterSpec.builder(typeName(type), field.getName());
+        if (nullable && !unsetValue.isPresent()) {
+          constructorParam.addAnnotation(javax.annotation.Nullable.class);
+        }
+        ParameterSpec param = constructorParam.build();
+        constructorParameters.add(param);
+        constructorCode.add("\n.$N($N)", wrapperMethodSpec, param);
       }
+
+      constructorCode.add("\n.build();\n$]");
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("create")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .returns(structClassName)
+              .addParameters(constructorParameters.build())
+              .addCode(constructorCode.build())
+              .build());
 
       builderBuilder.addMethod(
           MethodSpec.methodBuilder("build")
@@ -1136,7 +1168,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .build());
       typeBuilder.addType(wrapperBuilder.build());
 
-      writeType(typeBuilder.build());
+      writeType(typeBuilder);
     }
 
     private Iterable<MethodSpec> createCollectionBuilderOverloads(
@@ -1345,7 +1377,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .addStatement("return id")
               .build());
 
-      writeType(typeBuilder.build());
+      writeType(typeBuilder);
     }
   }
 }

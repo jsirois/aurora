@@ -1053,7 +1053,17 @@ public class ThriftRestGenTask extends DefaultTask {
         if (nullable && !unsetValue.isPresent()) {
           accessorBuilder.addAnnotation(javax.annotation.Nullable.class);
         }
-        typeBuilder.addMethod(accessorBuilder.build());
+        MethodSpec accessor = accessorBuilder.build();
+        typeBuilder.addMethod(accessor);
+
+        if (nullable && !unsetValue.isPresent()) {
+          typeBuilder.addMethod(
+              MethodSpec.methodBuilder(isSetName(field))
+                  .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                  .returns(TypeName.BOOLEAN)
+                  .addStatement("return $N() != null", accessor)
+                  .build());
+        }
 
         ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
         if (nullable && !unsetValue.isPresent()) {

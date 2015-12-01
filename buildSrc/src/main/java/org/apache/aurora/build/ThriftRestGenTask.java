@@ -1267,14 +1267,28 @@ public class ThriftRestGenTask extends DefaultTask {
               .add(")");
         }
 
-        ParameterSpec.Builder constructorParam =
-            ParameterSpec.builder(typeName(type), field.getName());
-        if (nullable && !unsetValue.isPresent()) {
-          constructorParam.addAnnotation(javax.annotation.Nullable.class);
+        // TODO(John Sirois): This signature, skipping OPTIONALs, is tailored to match apache
+        // thrift: reconsider convenience factory methods after transition.
+        if (field.getRequiredness() != ThriftField.Requiredness.OPTIONAL) {
+          TypeName constructorParamType;
+          if (type instanceof ListType) {
+            constructorParamType = ClassName.get(List.class);
+          } else if (type instanceof SetType) {
+            constructorParamType = ClassName.get(Set.class);
+          } else if (type instanceof MapType) {
+            constructorParamType = ClassName.get(Map.class);
+          } else {
+            constructorParamType = typeName(type);
+          }
+          ParameterSpec.Builder constructorParam =
+              ParameterSpec.builder(constructorParamType, field.getName());
+          if (nullable && !unsetValue.isPresent()) {
+            constructorParam.addAnnotation(javax.annotation.Nullable.class);
+          }
+          ParameterSpec param = constructorParam.build();
+          constructorParameters.add(param);
+          constructorCode.add("\n.$N($N)", wrapperMethodSpec, param);
         }
-        ParameterSpec param = constructorParam.build();
-        constructorParameters.add(param);
-        constructorCode.add("\n.$N($N)", wrapperMethodSpec, param);
       }
 
       if (isSetMethod.isPresent()) {

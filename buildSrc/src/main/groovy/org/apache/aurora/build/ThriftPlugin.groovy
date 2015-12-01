@@ -42,20 +42,25 @@ class ThriftPlugin implements Plugin<Project> {
         }
       }
 
-      task('generateThriftJava') {
+//      task('generateThriftJava') {
+//        inputs.files {thrift.inputFiles}
+//        outputs.dir {thrift.genJavaDir}
+//        doLast {
+//          thrift.genJavaDir.exists() || thrift.genJavaDir.mkdirs()
+//          thrift.inputFiles.each { File file ->
+//            exec {
+//              commandLine thrift.wrapperPath, thrift.version,
+//                  '--gen', 'java:hashcode,private-members',
+//                  '-out', thrift.genJavaDir.path,
+//                  file.path
+//            }
+//          }
+//        }
+//      }
+
+      project.task(type: ThriftRestGenTask, "generateThriftJava") {
         inputs.files {thrift.inputFiles}
-        outputs.dir {thrift.genJavaDir}
-        doLast {
-          thrift.genJavaDir.exists() || thrift.genJavaDir.mkdirs()
-          thrift.inputFiles.each { File file ->
-            exec {
-              commandLine thrift.wrapperPath, thrift.version,
-                  '--gen', 'java:hashcode,private-members',
-                  '-out', thrift.genJavaDir.path,
-                  file.path
-            }
-          }
-        }
+        outputs.dir {thrift.genRestDir}
       }
 
       task('generateThriftResources') {
@@ -77,14 +82,15 @@ class ThriftPlugin implements Plugin<Project> {
 
       // TODO(John Sirois): We'll only want this plugin to apply to specific thrift files; namely
       // api.thrift - right now it applies to all thrift - FIX.
-      project.task(type: ThriftRestGenTask, "generateThriftRest") {
-        inputs.files {thrift.inputFiles}
-        outputs.dir {thrift.genRestDir}
-        packageSuffix ".rest"
-      }
+//      project.task(type: ThriftRestGenTask, "generateThriftRest") {
+//        inputs.files {thrift.inputFiles}
+//        outputs.dir {thrift.genRestDir}
+//        packageSuffix ".rest"
+//      }
 
       task('classesThrift', type: JavaCompile) {
-        source files(generateThriftJava) + files(generateThriftRest)
+//        source files(generateThriftJava) + files(generateThriftRest)
+        source files(generateThriftJava)
         classpath = configurations.thriftCompile
         destinationDir = file(thrift.genClassesDir)
         options.warnings = false

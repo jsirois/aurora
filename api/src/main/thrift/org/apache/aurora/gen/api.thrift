@@ -964,52 +964,52 @@ struct Response {
 // A service that provides all the read only calls to the Aurora scheduler.
 service ReadOnlyScheduler {
   /** Returns a summary of the jobs grouped by role. */
-  Response getRoleSummary()
+  Response getRoleSummary();
 
   /** Returns a summary of jobs, optionally only those owned by a specific role. */
-  Response getJobSummary(1: string role)
+  Response getJobSummary(1: string role);
 
   /** Fetches the status of tasks. */
-  Response getTasksStatus(1: TaskQuery query)
+  Response getTasksStatus(1: TaskQuery query);
 
   /**
    * Same as getTaskStatus but without the TaskConfig.ExecutorConfig data set.
    * This is an interim solution until we have a better way to query TaskConfigs (AURORA-541).
    */
-  Response getTasksWithoutConfigs(1: TaskQuery query)
+  Response getTasksWithoutConfigs(1: TaskQuery query);
 
   /** Returns user-friendly reasons (if available) for tasks retained in PENDING state. */
-  Response getPendingReason(1: TaskQuery query)
+  Response getPendingReason(1: TaskQuery query);
 
   /** Fetches the configuration summary of active tasks for the specified job. */
-  Response getConfigSummary(1: JobKey job)
+  Response getConfigSummary(1: JobKey job);
 
   /**
    * Fetches the status of jobs.
    * ownerRole is optional, in which case all jobs are returned.
    */
-  Response getJobs(1: string ownerRole)
+  Response getJobs(1: string ownerRole);
 
   /** Fetches the quota allocated for a user. */
-  Response getQuota(1: string ownerRole)
+  Response getQuota(1: string ownerRole);
 
   /**
    * Populates fields in a job configuration as though it were about to be run.
    * This can be used to diff a configuration running tasks.
    */
-  Response populateJobConfig(1: JobConfiguration description)
+  Response populateJobConfig(1: JobConfiguration description);
 
   /** Returns all stored context specific resource/operation locks. */
-  Response getLocks()
+  Response getLocks();
 
   /** Gets job update summaries. */
-  Response getJobUpdateSummaries(1: JobUpdateQuery jobUpdateQuery)
+  Response getJobUpdateSummaries(1: JobUpdateQuery jobUpdateQuery);
 
   /** Gets job update details. */
-  Response getJobUpdateDetails(1: JobUpdateKey key)
+  Response getJobUpdateDetails(1: JobUpdateKey key);
 
   /** Gets the diff between client (desired) and server (current) job states. */
-  Response getJobUpdateDiff(1: JobUpdateRequest request)
+  Response getJobUpdateDiff(1: JobUpdateRequest request);
 }
 
 service AuroraSchedulerManager extends ReadOnlyScheduler {
@@ -1019,7 +1019,7 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response createJob(
       1: JobConfiguration description (authorizing="true"),
-      3: Lock lock)
+      3: Lock lock);
 
   /**
    * Enters a job into the cron schedule, without actually starting the job.
@@ -1028,7 +1028,7 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response scheduleCronJob(
       1: JobConfiguration description (authorizing="true"),
-      3: Lock lock)
+      3: Lock lock);
 
   /**
    * Removes a job from the cron schedule. The request will be denied if the job was not previously
@@ -1036,24 +1036,24 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response descheduleCronJob(
       4: JobKey job (authorizing="true"),
-      3: Lock lock)
+      3: Lock lock);
 
   /**
    * Starts a cron job immediately.  The request will be denied if the specified job does not
    * exist for the role account, or the job is not a cron job.
    */
   Response startCronJob(
-      4: JobKey job (authorizing="true"))
+      4: JobKey job (authorizing="true"));
 
   /** Restarts a batch of shards. */
   Response restartShards(
       5: JobKey job (authorizing="true"),
-      3: set<i32> shardIds)
+      3: set<i32> shardIds);
 
   /** Initiates a kill on tasks. */
   Response killTasks(
       1: TaskQuery query (authorizing="true"),
-      3: Lock lock)
+      3: Lock lock);
 
   /**
    * Adds new instances specified by the AddInstancesConfig. A job represented by the JobKey must be
@@ -1061,19 +1061,19 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response addInstances(
       1: AddInstancesConfig config (authorizing="true"),
-      2: Lock lock)
+      2: Lock lock);
 
   /**
    * Creates and saves a new Lock instance guarding against multiple mutating operations within the
    * context defined by LockKey.
    */
   Response acquireLock(
-      1: LockKey lockKey (authorizing="true"))
+      1: LockKey lockKey (authorizing="true"));
 
   /** Releases the lock acquired earlier in acquireLock call. */
   Response releaseLock(
       1: Lock lock (authorizing="true"),
-      2: LockValidation validation)
+      2: LockValidation validation);
 
   // TODO(maxim): reevaluate if it's still needed when client updater is gone (AURORA-785).
   /**
@@ -1082,14 +1082,14 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    */
   Response replaceCronTemplate(
       1: JobConfiguration config (authorizing="true"),
-      2: Lock lock)
+      2: Lock lock);
 
   /** Starts update of the existing service job. */
   Response startJobUpdate(
       /** A description of how to change the job. */
       1: JobUpdateRequest request (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /**
    * Pauses the specified job update. Can be resumed by resumeUpdate call.
@@ -1098,21 +1098,21 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
       /** The update to pause. */
       1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /** Resumes progress of a previously paused job update. */
   Response resumeJobUpdate(
       /** The update to resume. */
       1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /** Permanently aborts the job update. Does not remove the update history. */
   Response abortJobUpdate(
       /** The update to abort. */
       1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /**
    * Allows progress of the job update in case blockIfNoPulsesAfterMs is specified in
@@ -1120,7 +1120,7 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    * Responds with ResponseCode.INVALID_REQUEST in case an unknown update key is specified.
    */
   Response pulseJobUpdate(
-      1: JobUpdateKey key (authorizing="true"))
+      1: JobUpdateKey key (authorizing="true"));
 }
 
 struct InstanceConfigRewrite {
@@ -1152,7 +1152,7 @@ struct RewriteConfigsRequest {
 // https://issues.apache.org/jira/browse/THRIFT-66 is resolved.
 service AuroraAdmin extends AuroraSchedulerManager {
   /** Assign quota to a user.  This will overwrite any pre-existing quota for the user. */
-  Response setQuota(1: string ownerRole, 2: ResourceAggregate quota)
+  Response setQuota(1: string ownerRole, 2: ResourceAggregate quota);
 
   /**
    * Forces a task into a specific state.  This does not guarantee the task will enter the given
@@ -1161,43 +1161,43 @@ service AuroraAdmin extends AuroraSchedulerManager {
    */
   Response forceTaskState(
       1: string taskId,
-      2: ScheduleStatus status)
+      2: ScheduleStatus status);
 
   /** Immediately writes a storage snapshot to disk. */
-  Response performBackup()
+  Response performBackup();
 
   /** Lists backups that are available for recovery. */
-  Response listBackups()
+  Response listBackups();
 
   /** Loads a backup to an in-memory storage.  This must precede all other recovery operations. */
-  Response stageRecovery(1: string backupId)
+  Response stageRecovery(1: string backupId);
 
   /** Queries for tasks in a staged recovery. */
-  Response queryRecovery(1: TaskQuery query)
+  Response queryRecovery(1: TaskQuery query);
 
   /** Deletes tasks from a staged recovery. */
-  Response deleteRecoveryTasks(1: TaskQuery query)
+  Response deleteRecoveryTasks(1: TaskQuery query);
 
   /** Commits a staged recovery, completely replacing the previous storage state. */
-  Response commitRecovery()
+  Response commitRecovery();
 
   /** Unloads (aborts) a staged recovery. */
-  Response unloadRecovery()
+  Response unloadRecovery();
 
   /** Put the given hosts into maintenance mode. */
-  Response startMaintenance(1: Hosts hosts)
+  Response startMaintenance(1: Hosts hosts);
 
   /** Ask scheduler to begin moving tasks scheduled on given hosts. */
-  Response drainHosts(1: Hosts hosts)
+  Response drainHosts(1: Hosts hosts);
 
   /** Retrieve the current maintenance states for a group of hosts. */
-  Response maintenanceStatus(1: Hosts hosts)
+  Response maintenanceStatus(1: Hosts hosts);
 
   /** Set the given hosts back into serving mode. */
-  Response endMaintenance(1: Hosts hosts)
+  Response endMaintenance(1: Hosts hosts);
 
   /** Start a storage snapshot and block until it completes. */
-  Response snapshot()
+  Response snapshot();
 
   /**
    * Forcibly rewrites the stored definition of user configurations.  This is intended to be used
@@ -1206,5 +1206,5 @@ service AuroraAdmin extends AuroraSchedulerManager {
    * The scheduler may do some validation of the rewritten configurations, but it is important
    * that the caller take care to provide valid input and alter only necessary fields.
    */
-  Response rewriteConfigs(1: RewriteConfigsRequest request)
+  Response rewriteConfigs(1: RewriteConfigsRequest request);
 }

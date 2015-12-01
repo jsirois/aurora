@@ -389,7 +389,7 @@ public final class %(name)sMetadata {
 
 SERVICE_RE = 'service (?P<name>\w+)\s+(extends\s+(?P<super>\w+)\s+)?{(?P<body>[^}]+)}'
 
-METHOD_RE = '\s*(?P<return>\w+)\s+(?P<name>\w+)\((?P<params>[^\)]*)\)'
+METHOD_RE = '\s*(?P<return>\w+)\s+(?P<name>\w+)\((?P<params>.*?)(?=\);)\);'
 
 PARAM_RE = '\d+\:\s+%s\s+(?P<name>\w+)' % TYPE_PATTERN
 
@@ -461,7 +461,7 @@ def parse_services(service_defs):
 
   for s in re.finditer(SERVICE_RE, service_defs, flags=re.MULTILINE):
     methods = []
-    for method in re.finditer(METHOD_RE, s.group('body'), flags=re.MULTILINE):
+    for method in re.finditer(METHOD_RE, s.group('body'), flags=re.MULTILINE | re.DOTALL):
       params = []
       for param in re.finditer(PARAM_RE, method.group('params'), flags=re.MULTILINE):
         if param.group('params'):

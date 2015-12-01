@@ -150,8 +150,6 @@ import org.apache.aurora.gen.storage.rest.Snapshot;
 import org.apache.aurora.gen.storage.rest.StoredCronJob;
 import org.apache.aurora.gen.storage.rest.StoredJobUpdateDetails;
 import org.apache.aurora.gen.storage.rest.Transaction;
-import org.apache.aurora.thrift.ImmutableAnnotation;
-import org.apache.aurora.thrift.ImmutableParameter;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TMemoryBuffer;
 import org.junit.Test;
@@ -404,7 +402,7 @@ public class RestGenTest extends EasyMockTest {
     LinkedList<ThriftEventHandler> listeners = new LinkedList<>();
     ThriftServiceProcessor processor =
         new ThriftServiceProcessor(codecManager, listeners, readOnlyScheduler);
-    try(ThriftServer server = new ThriftServer(processor).start();
+    try (ThriftServer server = new ThriftServer(processor).start();
         ThriftClientManager clientManager = new ThriftClientManager(codecManager)) {
 
       FramedClientConnector connector =
@@ -434,13 +432,13 @@ public class RestGenTest extends EasyMockTest {
     LinkedList<ThriftEventHandler> listeners = new LinkedList<>();
     ThriftServiceProcessor processor =
         new ThriftServiceProcessor(codecManager, listeners, readOnlyScheduler);
-    try(ThriftServer server = new ThriftServer(processor).start();
+    try (ThriftServer server = new ThriftServer(processor).start();
         ThriftClientManager clientManager = new ThriftClientManager(codecManager)) {
 
       FramedClientConnector connector =
           new FramedClientConnector(HostAndPort.fromParts("localhost", server.getPort()));
 
-      try(ReadOnlyScheduler.Sync syncClient =
+      try (ReadOnlyScheduler.Sync syncClient =
               clientManager.createClient(connector, ReadOnlyScheduler.Sync.class).get()) {
 
         Response response = syncClient.getLocks();

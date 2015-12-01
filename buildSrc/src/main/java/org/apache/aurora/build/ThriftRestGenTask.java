@@ -30,6 +30,7 @@ import javax.annotation.Generated;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
+import com.facebook.swift.codec.ThriftUnionId;
 import com.facebook.swift.parser.ThriftIdlParser;
 import com.facebook.swift.parser.model.AbstractStruct;
 import com.facebook.swift.parser.model.BaseType;
@@ -320,6 +321,10 @@ public class ThriftRestGenTask extends DefaultTask {
 
   private static String toUpperCamelCaseName(ThriftField field) {
     return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, field.getName());
+  }
+
+  private static String toUpperSnakeCaseName(ThriftField field) {
+    return CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, field.getName());
   }
 
   abstract static class AbstractStructRenderer {
@@ -751,6 +756,86 @@ public class ThriftRestGenTask extends DefaultTask {
           .build();
     }
 
+    protected final Optional<ClassName> maybeAddFieldsEnum(
+        TypeSpec.Builder typeBuilder,
+        AbstractStruct struct) {
+
+      // Enum types must have at least one enum constant, so skip adding the type for empty structs.
+      if (struct.getFields().isEmpty()) {
+        return Optional.absent();
+      }
+
+      ClassName fieldsClassName = getClassName(struct.getName(), "_Fields");
+      TypeSpec.Builder thriftFieldsEnumBuilder =
+          // TODO(John Sirois): Rename this (striking _) after transitioning to new thrift gen.
+          TypeSpec.enumBuilder("_Fields")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addSuperinterface(org.apache.thrift.TFieldIdEnum.class)
+              .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
+              .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
+              .addMethod(
+                  MethodSpec.constructorBuilder()
+                      .addParameter(short.class, "thriftId")
+                      .addParameter(String.class, "fieldName")
+                      .addStatement("this.thriftId = thriftId")
+                      .addStatement("this.fieldName = fieldName")
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getThriftFieldId")
+                      .addModifiers(Modifier.PUBLIC)
+                      .returns(short.class)
+                      .addStatement("return thriftId")
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldName")
+                      .addModifiers(Modifier.PUBLIC)
+                      .returns(String.class)
+                      .addStatement("return fieldName")
+                      .build());
+
+      ParameterSpec fieldIdParam = ParameterSpec.builder(short.class, "fieldId").build();
+      MethodSpec.Builder findByThriftIdMethod =
+          MethodSpec.methodBuilder("findByThriftId")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addParameter(fieldIdParam)
+              .returns(fieldsClassName);
+
+      CodeBlock.Builder findByThriftIdCode =
+          CodeBlock.builder()
+              .beginControlFlow("switch ($N)", fieldIdParam);
+
+      for (ThriftField field : struct.getFields()) {
+        short fieldId = extractId(field);
+        String enumValueName = toUpperSnakeCaseName(field);
+
+        thriftFieldsEnumBuilder.addEnumConstant(
+            enumValueName,
+            TypeSpec.anonymousClassBuilder("(short) $L, $S", fieldId, field.getName()).build());
+
+        findByThriftIdCode.addStatement(
+            "case $L: return $T.$L", fieldId, fieldsClassName, enumValueName);
+      }
+
+      findByThriftIdCode
+          .addStatement(
+              "default: throw new $T($T.format($S, $N))",
+              IllegalArgumentException.class,
+              String.class,
+              "%d is not a known field id.",
+              fieldIdParam)
+          .endControlFlow();
+
+      thriftFieldsEnumBuilder
+          .addMethod(
+              findByThriftIdMethod
+                  .addCode(findByThriftIdCode.build())
+                  .build());
+
+      typeBuilder.addType(thriftFieldsEnumBuilder.build());
+
+      return Optional.of(fieldsClassName);
+    }
+
     protected final void writeType(TypeSpec.Builder typeBuilder) throws IOException {
       TypeSpec type =
           typeBuilder.addAnnotation(
@@ -976,6 +1061,47 @@ public class ThriftRestGenTask extends DefaultTask {
               .addAnnotation(com.google.auto.value.AutoValue.class)
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
+      // TODO(John Sirois): XXX Tame this beast!
+      Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, struct);
+      Optional<ParameterSpec> fieldParam = Optional.absent();
+      Optional<MethodSpec.Builder> isSetMethod = Optional.absent();
+      Optional<CodeBlock.Builder> isSetCode = Optional.absent();
+      Optional<MethodSpec.Builder> getFieldValueMethod = Optional.absent();
+      Optional<CodeBlock.Builder> getFieldValueCode = Optional.absent();
+      if (fieldsEnumClassName.isPresent()) {
+        ClassName fieldsEnumClass = fieldsEnumClassName.get();
+        fieldParam = Optional.of(ParameterSpec.builder(fieldsEnumClass, "field").build());
+        isSetMethod =
+            Optional.of(
+                MethodSpec.methodBuilder("isSet")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addParameter(fieldParam.get())
+                    .returns(boolean.class));
+        isSetCode =
+            Optional.of(
+                CodeBlock.builder()
+                    .beginControlFlow("switch ($N)", fieldParam.get()));
+
+        getFieldValueMethod =
+            Optional.of(
+                MethodSpec.methodBuilder("getFieldValue")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addParameter(fieldParam.get())
+                    .returns(Object.class));
+        getFieldValueCode =
+            Optional.of(
+                CodeBlock.builder()
+                    .beginControlFlow("if (!this.isSet($N))", fieldParam.get())
+                    .addStatement(
+                        "throw new $T($T.format($S, $N))",
+                        IllegalArgumentException.class,
+                        String.class,
+                        "%s is not set.",
+                        fieldParam.get())
+                    .endControlFlow()
+                    .beginControlFlow("switch ($N)", fieldParam.get()));
+      }
+
       TypeSpec.Builder builderBuilder =
           TypeSpec.interfaceBuilder("_Builder")
               .addAnnotation(com.google.auto.value.AutoValue.Builder.class);
@@ -1056,14 +1182,21 @@ public class ThriftRestGenTask extends DefaultTask {
         MethodSpec accessor = accessorBuilder.build();
         typeBuilder.addMethod(accessor);
 
+        String fieldsValueName = toUpperSnakeCaseName(field);
         if (nullable && !unsetValue.isPresent()) {
-          typeBuilder.addMethod(
+          MethodSpec isSetFieldMethod =
               MethodSpec.methodBuilder(isSetName(field))
                   .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                   .returns(TypeName.BOOLEAN)
                   .addStatement("return $N() != null", accessor)
-                  .build());
+                  .build();
+          typeBuilder.addMethod(isSetFieldMethod);
+
+          isSetCode.get().addStatement("case $L: return $N()", fieldsValueName, isSetFieldMethod);
+        } else {
+          isSetCode.get().addStatement("case $L: return true", fieldsValueName);
         }
+        getFieldValueCode.get().addStatement("case $L: return $N()", fieldsValueName, accessor);
 
         ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
         if (nullable && !unsetValue.isPresent()) {
@@ -1142,6 +1275,38 @@ public class ThriftRestGenTask extends DefaultTask {
         ParameterSpec param = constructorParam.build();
         constructorParameters.add(param);
         constructorCode.add("\n.$N($N)", wrapperMethodSpec, param);
+      }
+
+      if (isSetMethod.isPresent()) {
+        typeBuilder.addMethod(
+            isSetMethod.get()
+                .addCode(
+                    isSetCode.get()
+                        .addStatement(
+                            "default: throw new $T($T.format($S, $N))",
+                            IllegalArgumentException.class,
+                            String.class,
+                            "%s is not a known field",
+                            fieldParam.get())
+                        .endControlFlow()
+                        .build())
+                .build());
+      }
+
+      if (getFieldValueMethod.isPresent()) {
+        typeBuilder.addMethod(
+            getFieldValueMethod.get()
+                .addCode(
+                    getFieldValueCode.get()
+                        .addStatement(
+                            "default: throw new $T($T.format($S, $N))",
+                            IllegalArgumentException.class,
+                            String.class,
+                            "%s is not a known field",
+                            fieldParam.get())
+                        .endControlFlow()
+                        .build())
+                .build());
       }
 
       constructorCode.add("\n.build();\n$]");
@@ -1379,13 +1544,56 @@ public class ThriftRestGenTask extends DefaultTask {
                 .build());
       }
 
-      typeBuilder.addMethod(
+      MethodSpec getSetIdMethod =
           MethodSpec.methodBuilder("getSetId")
-              .addAnnotation(com.facebook.swift.codec.ThriftUnionId.class)
+              .addAnnotation(ThriftUnionId.class)
               .addModifiers(Modifier.PUBLIC)
               .returns(short.class)
               .addStatement("return id")
-              .build());
+              .build();
+      typeBuilder.addMethod(getSetIdMethod);
+
+      Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, union);
+      if (fieldsEnumClassName.isPresent()) {
+        ClassName fieldsEnumClass = fieldsEnumClassName.get();
+        ParameterSpec fieldParam =
+            ParameterSpec.builder(fieldsEnumClass, "field")
+                .build();
+
+        MethodSpec getSetFieldMethod =
+            MethodSpec.methodBuilder("getSetField")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .returns(fieldsEnumClass)
+                .addStatement("return $T.findByThriftId($N())", fieldsEnumClass, getSetIdMethod)
+                .build();
+        typeBuilder.addMethod(getSetFieldMethod);
+
+        MethodSpec isSetMethod =
+            MethodSpec.methodBuilder("isSet")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(fieldParam)
+                .returns(boolean.class)
+                .addStatement("return $N() == $N", getSetFieldMethod, fieldParam)
+                .build();
+        typeBuilder.addMethod(isSetMethod);
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder("getFieldValue")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(fieldParam)
+                .returns(Object.class)
+                .beginControlFlow("if (!$N($N))", isSetMethod, fieldParam)
+                .addStatement(
+                    "throw new $T($T.format($S, $N, $N()))",
+                    IllegalArgumentException.class,
+                    String.class,
+                    "%s is not the set field, %s is.",
+                    fieldParam,
+                    getSetFieldMethod)
+                .endControlFlow()
+                .addStatement("return value")
+                .build());
+      }
 
       writeType(typeBuilder);
     }

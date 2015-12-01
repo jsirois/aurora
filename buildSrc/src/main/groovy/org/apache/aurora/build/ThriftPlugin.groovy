@@ -32,6 +32,8 @@ class ThriftPlugin implements Plugin<Project> {
         dependencies {
           thriftCompile "org.apache.thrift:libthrift:${thrift.version}"
           // TODO(John Sirois): Scope the new gen as seperate from the old thrift c gen.
+          // TODO(John Sirois): Use the ${thrift.version} pattern to get the versions below from the
+          // consuming project(s).
           thriftCompile "com.facebook.swift:swift-annotations:0.16.0"
           thriftCompile "com.facebook.swift:swift-codec:0.16.0"
           thriftCompile "com.google.auto.value:auto-value:1.1"

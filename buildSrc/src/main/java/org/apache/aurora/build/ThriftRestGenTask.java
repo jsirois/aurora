@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -913,7 +914,41 @@ public class ThriftRestGenTask extends DefaultTask {
     public void visit(IntegerEnum integerEnum) throws IOException {
       TypeSpec.Builder typeBuilder =
           TypeSpec.enumBuilder(integerEnum.getName())
-              .addModifiers(Modifier.PUBLIC);
+              .addModifiers(Modifier.PUBLIC)
+              .addSuperinterface(org.apache.thrift.TEnum.class);
+
+      ClassName className = getClassName(integerEnum.getName());
+      FieldSpec byVal =
+          FieldSpec.builder(
+              ParameterizedTypeName.get(
+                  ClassName.get(ImmutableMap.class),
+                  TypeName.INT.box(),
+                  className),
+              "byVal")
+              .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+              .initializer(
+                  "$T.uniqueIndex($T.allOf($T.class), $T::getValue)",
+                  Maps.class,
+                  EnumSet.class,
+                  className,
+                  className)
+              .build();
+      typeBuilder.addField(byVal);
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("findByValue")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addParameter(int.class, "val")
+              .returns(className)
+              .beginControlFlow("if (!$N.containsKey(val))", byVal)
+              .addStatement(
+                  "throw new $T($T.format($S, val))",
+                  IllegalArgumentException.class,
+                  String.class,
+                  "Unknown enum value %d.")
+              .endControlFlow()
+              .addStatement("return $N.get(val)", byVal)
+              .build());
 
       typeBuilder.addField(int.class, "value", Modifier.PRIVATE, Modifier.FINAL);
       typeBuilder.addMethod(
@@ -934,6 +969,7 @@ public class ThriftRestGenTask extends DefaultTask {
             field.getName(),
             TypeSpec.anonymousClassBuilder("$L", field.getValue()).build());
       }
+
       writeType(typeBuilder);
     }
   }

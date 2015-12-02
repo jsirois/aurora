@@ -1048,7 +1048,8 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
   /** Restarts a batch of shards. */
   Response restartShards(
       5: JobKey job (authorizing="true"),
-      3: set<i32> shardIds);
+      3: set<i32> shardIds,
+      6: Lock lock);
 
   /** Initiates a kill on tasks. */
   Response killTasks(

@@ -1234,12 +1234,22 @@ public class ThriftRestGenTask extends DefaultTask {
         if (type instanceof ListType) {
           ThriftType elementType = ((ListType) type).getElementType();
           Iterable<MethodSpec> overloads =
-              createCollectionBuilderOverloads(field, wrapperMethodSpec, List.class, elementType);
+              createCollectionBuilderOverloads(
+                  field,
+                  accessor,
+                  wrapperMethodSpec,
+                  List.class,
+                  elementType);
           wrapperBuilder.addMethods(overloads);
         } else if (type instanceof SetType) {
           ThriftType elementType = ((SetType) type).getElementType();
           Iterable<MethodSpec> overloads =
-              createCollectionBuilderOverloads(field, wrapperMethodSpec, Set.class, elementType);
+              createCollectionBuilderOverloads(
+                  field,
+                  accessor,
+                  wrapperMethodSpec,
+                  Set.class,
+                  elementType);
           wrapperBuilder.addMethods(overloads);
         } else if (type instanceof MapType) {
           MapType mapType = (MapType) type;
@@ -1272,11 +1282,16 @@ public class ThriftRestGenTask extends DefaultTask {
         if (field.getRequiredness() != ThriftField.Requiredness.OPTIONAL) {
           TypeName constructorParamType;
           if (type instanceof ListType) {
-            constructorParamType = ClassName.get(List.class);
+            ThriftType elementType = ((ListType) type).getElementType();
+            constructorParamType = parameterizedTypeName(List.class, elementType);
           } else if (type instanceof SetType) {
-            constructorParamType = ClassName.get(Set.class);
+            ThriftType elementType = ((SetType) type).getElementType();
+            constructorParamType = parameterizedTypeName(Set.class, elementType);
           } else if (type instanceof MapType) {
-            constructorParamType = ClassName.get(Map.class);
+            MapType mapType = (MapType) type;
+            ThriftType keyType = mapType.getKeyType();
+            ThriftType valueType = mapType.getValueType();
+            constructorParamType = parameterizedTypeName(Map.class, keyType, valueType);
           } else {
             constructorParamType = typeName(type);
           }
@@ -1362,6 +1377,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
     private Iterable<MethodSpec> createCollectionBuilderOverloads(
         ThriftField field,
+        MethodSpec accessor,
         MethodSpec primaryMethod,
         Class<? extends Collection> containerType,
         ThriftType elementType) {
@@ -1389,6 +1405,22 @@ public class ThriftRestGenTask extends DefaultTask {
       overloads.add(
           createBuilderOverload(
               field, primaryMethod, varargsParam, /* annotate */ false, /* varargs */ true));
+
+      ParameterizedTypeName primaryType = (ParameterizedTypeName) typeName(field.getType());
+      ClassName immutableFactoryType = primaryType.rawType;
+
+      overloads.add(
+          MethodSpec.methodBuilder("addTo" +toUpperCamelCaseName(field))
+              .addModifiers(primaryMethod.modifiers)
+              .addParameter(typeName(elementType), "item")
+              .returns(primaryMethod.returnType)
+              .addStatement(
+                  "return $N($T.<$T>builder().addAll(build().$N()).add(item).build())",
+                  primaryMethod,
+                  immutableFactoryType,
+                  typeName(elementType).box(),
+                  accessor)
+              .build());
 
       return overloads.build();
     }

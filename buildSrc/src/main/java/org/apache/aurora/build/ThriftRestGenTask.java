@@ -15,7 +15,6 @@ package org.apache.aurora.build;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -527,7 +526,7 @@ public class ThriftRestGenTask extends DefaultTask {
       if (thriftType instanceof BaseType) {
         BaseType baseType = (BaseType) thriftType;
         switch (baseType.getType()) {
-          case BINARY: return ClassName.get(ByteBuffer.class);
+          case BINARY: return ArrayTypeName.of(byte.class);
           case BOOL: return TypeName.BOOLEAN;
           case BYTE: return TypeName.BYTE;
           case DOUBLE: return TypeName.DOUBLE;

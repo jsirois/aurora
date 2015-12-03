@@ -15,6 +15,7 @@ package org.apache.aurora.build;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -75,6 +76,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.io.CharSource;
 import com.google.common.io.Files;
+import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ArrayTypeName;
@@ -88,7 +90,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
-import com.squareup.javapoet.WildcardTypeName;
 
 import org.apache.thrift.TFieldIdEnum;
 import org.gradle.api.DefaultTask;
@@ -812,11 +813,6 @@ public class ThriftRestGenTask extends DefaultTask {
       }
 
       ClassName fieldsClassName = getClassName(struct.getName(), "_Fields");
-      ParameterizedTypeName classType =
-          ParameterizedTypeName.get(
-              ClassName.get(Class.class),
-              WildcardTypeName.subtypeOf(TypeName.OBJECT));
-
       TypeSpec.Builder thriftFieldsEnumBuilder =
           // TODO(John Sirois): Rename this (striking _) after transitioning to new thrift gen.
           TypeSpec.enumBuilder("_Fields")
@@ -824,12 +820,12 @@ public class ThriftRestGenTask extends DefaultTask {
               .addSuperinterface(fieldsTypeName)
               .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
               .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
-              .addField(classType, "fieldType", Modifier.PRIVATE, Modifier.FINAL)
+              .addField(Type.class, "fieldType", Modifier.PRIVATE, Modifier.FINAL)
               .addMethod(
                   MethodSpec.constructorBuilder()
                       .addParameter(short.class, "thriftId")
                       .addParameter(String.class, "fieldName")
-                      .addParameter(classType, "fieldType")
+                      .addParameter(Type.class, "fieldType")
                       .addStatement("this.thriftId = thriftId")
                       .addStatement("this.fieldName = fieldName")
                       .addStatement("this.fieldType = fieldType")
@@ -849,7 +845,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .addMethod(
                   MethodSpec.methodBuilder("getFieldType")
                       .addModifiers(Modifier.PUBLIC)
-                      .returns(classType)
+                      .returns(Type.class)
                       .addStatement("return fieldType")
                       .build());
 
@@ -868,17 +864,22 @@ public class ThriftRestGenTask extends DefaultTask {
         short fieldId = extractId(field);
         String enumValueName = toUpperSnakeCaseName(field);
 
-        // TODO(John Sirois): Use TypeToken?
         TypeName fieldType = typeName(field.getType());
         if (fieldType instanceof ParameterizedTypeName) {
-          fieldType = ((ParameterizedTypeName) fieldType).rawType;
+          ParameterizedTypeName typeToken =
+              ParameterizedTypeName.get(ClassName.get(TypeToken.class), fieldType);
+          thriftFieldsEnumBuilder.addEnumConstant(
+              enumValueName,
+              TypeSpec.anonymousClassBuilder(
+                  "(short) $L, $S, new $T() {}.getType()", fieldId, field.getName(), typeToken)
+                  .build());
+        } else {
+          thriftFieldsEnumBuilder.addEnumConstant(
+              enumValueName,
+              TypeSpec.anonymousClassBuilder(
+                  "(short) $L, $S, $T.class", fieldId, field.getName(), fieldType)
+                  .build());
         }
-
-        thriftFieldsEnumBuilder.addEnumConstant(
-            enumValueName,
-            TypeSpec.anonymousClassBuilder(
-                "(short) $L, $S, $T.class", fieldId, field.getName(), fieldType)
-                .build());
 
         findByThriftIdCode.addStatement(
             "case $L: return $T.$L", fieldId, fieldsClassName, enumValueName);
@@ -943,10 +944,7 @@ public class ThriftRestGenTask extends DefaultTask {
             .addMethod(
                 MethodSpec.methodBuilder("getFieldType")
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                    .returns(
-                        ParameterizedTypeName.get(
-                            ClassName.get(Class.class),
-                            WildcardTypeName.subtypeOf(Object.class)))
+                    .returns(Type.class)
                     .build())
             .build();
 

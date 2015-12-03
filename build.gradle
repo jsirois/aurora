@@ -196,25 +196,6 @@ project(':commons') {
 
 project(':api') {
   apply plugin: org.apache.aurora.build.ThriftPlugin
-//  apply plugin: org.apache.aurora.build.ThriftEntitiesPlugin
-
-  task checkPython << {
-    def python27Executable = ['python2.7', 'python'].find { python ->
-      try {
-        def check = "import sys; sys.exit(0 if sys.version_info >= (2,7) and sys.version_info < (3,) else 1)"
-        return [python, "-c", check].execute().waitFor() == 0
-      } catch (IOException e) {
-        return false
-      }
-    }
-//
-//    if (python27Executable == null) {
-//      throw new GradleException('Build requires Python 2.7.')
-//    } else {
-//      thriftEntities.python = python27Executable
-//    }
-  }
-//  generateThriftEntitiesJava.dependsOn checkPython
 
   tasks.withType(Jar) {
     baseName "aurora-api"
@@ -239,17 +220,8 @@ project(':api') {
     resourcePrefix = 'org/apache/aurora/scheduler/gen/client'
   }
 
-//  thriftEntities {
-//    gsonRev = project.gsonRev
-//    guavaRev = project.guavaRev
-//    inputFiles = fileTree("src/main/thrift/org.apache.aurora.gen.).matching {
-//      include "**/*.thrift"
-//    }
-//  }
-
   idea {
     module {
-//      [thrift.genJavaDir, thriftEntities.genJavaDir].each {
       [thrift.genJavaDir].each {
         sourceDirs += it
         generatedSourceDirs += it

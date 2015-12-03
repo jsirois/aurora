@@ -86,7 +86,10 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.TypeVariableName;
+import com.squareup.javapoet.WildcardTypeName;
 
+import org.apache.thrift.TFieldIdEnum;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Input;
@@ -221,6 +224,7 @@ public class ThriftRestGenTask extends DefaultTask {
         ImmutableMap<String, String> packageNameByImportPrefix,
         String packageName) {
 
+      StructInterfaceFactory structInterfaceFactory = new StructInterfaceFactory(logger, outdir);
       visitors =
           ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
               .put(Const.class,
@@ -234,7 +238,12 @@ public class ThriftRestGenTask extends DefaultTask {
                   Visitor.failing("The Senum type is deprecated and removed in thrift 1.0.0, " +
                       "see: https://issues.apache.org/jira/browse/THRIFT-2003"))
               .put(Struct.class,
-                  new StructVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+                  new StructVisitor(
+                      structInterfaceFactory,
+                      logger,
+                      outdir,
+                      packageNameByImportPrefix,
+                      packageName))
               // Currently not used by Aurora, but trivial to support.
               .put(ThriftException.class, Visitor.failing())
               .put(TypeAnnotation.class,
@@ -245,7 +254,12 @@ public class ThriftRestGenTask extends DefaultTask {
               // typedefs.
               .put(Typedef.class, Visitor.failing())
               .put(Union.class,
-                  new UnionVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+                  new UnionVisitor(
+                      structInterfaceFactory,
+                      logger,
+                      outdir,
+                      packageNameByImportPrefix,
+                      packageName))
               .build();
     }
 
@@ -441,20 +455,61 @@ public class ThriftRestGenTask extends DefaultTask {
     }
   }
 
-  static abstract class BaseVisitor<T extends Visitable> implements Visitor<T> {
+  static class BaseEmitter {
     // TODO(John Sirois): Load this from a resource.
     private static final String APACHE_LICENSE =
         " Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
-        " you may not use this file except in compliance with the License.\n" +
-        " You may obtain a copy of the License at\n" +
-        "\n" +
-        "     http://www.apache.org/licenses/LICENSE-2.0\n" +
-        "\n" +
-        " Unless required by applicable law or agreed to in writing, software\n" +
-        " distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
-        " WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
-        " See the License for the specific language governing permissions and\n" +
-        " limitations under the License.";
+            " you may not use this file except in compliance with the License.\n" +
+            " You may obtain a copy of the License at\n" +
+            "\n" +
+            "     http://www.apache.org/licenses/LICENSE-2.0\n" +
+            "\n" +
+            " Unless required by applicable law or agreed to in writing, software\n" +
+            " distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
+            " WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
+            " See the License for the specific language governing permissions and\n" +
+            " limitations under the License.";
+
+    private static final String AURORA_THRIFT_PACKAGE_NAME = "org.apache.aurora.thrift";
+
+    private final Logger logger;
+    private final File outdir;
+
+    public BaseEmitter(Logger logger, File outdir) {
+      this.logger = logger;
+      this.outdir = requireNonNull(outdir);
+    }
+
+    protected final Logger getLogger() {
+      return logger;
+    }
+
+    protected final File getOutdir() {
+      return outdir;
+    }
+
+    protected final void writeType(String packageName, TypeSpec.Builder typeBuilder)
+        throws IOException {
+
+      TypeSpec type =
+          typeBuilder.addAnnotation(
+              AnnotationSpec.builder(Generated.class)
+                  .addMember("value", "$S", getClass().getName())
+                  .build())
+              .build();
+
+      JavaFile javaFile =
+          JavaFile.builder(packageName, type)
+              .addFileComment(APACHE_LICENSE)
+              .indent("  ")
+              .skipJavaLangImports(true)
+              .build();
+      javaFile.writeTo(getOutdir());
+      getLogger().info("Wrote {} to {}", type.name, getOutdir());
+    }
+  }
+
+  static abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements Visitor<T> {
 
     protected static short extractId(ThriftField field) {
       Optional<Long> identifier = field.getIdentifier();
@@ -469,8 +524,6 @@ public class ThriftRestGenTask extends DefaultTask {
       return value;
     }
 
-    private final Logger logger;
-    private final File outdir;
     private final ImmutableMap<String, String> packageNameByImportPrefix;
     private final String packageName;
 
@@ -480,18 +533,9 @@ public class ThriftRestGenTask extends DefaultTask {
         ImmutableMap<String, String> packageNameByImportPrefix,
         String packageName) {
 
-      this.logger = logger;
-      this.outdir = requireNonNull(outdir);
+      super(logger, outdir);
       this.packageNameByImportPrefix = packageNameByImportPrefix;
       this.packageName = requireNonNull(packageName);
-    }
-
-    protected final Logger getLogger() {
-      return logger;
-    }
-
-    protected final File getOutdir() {
-      return outdir;
     }
 
     protected final ClassName getClassName(IdentifierType identifierType, String... simpleNames) {
@@ -758,7 +802,8 @@ public class ThriftRestGenTask extends DefaultTask {
 
     protected final Optional<ClassName> maybeAddFieldsEnum(
         TypeSpec.Builder typeBuilder,
-        AbstractStruct struct) {
+        AbstractStruct struct,
+        TypeName fieldsTypeName) {
 
       // Enum types must have at least one enum constant, so skip adding the type for empty structs.
       if (struct.getFields().isEmpty()) {
@@ -766,19 +811,27 @@ public class ThriftRestGenTask extends DefaultTask {
       }
 
       ClassName fieldsClassName = getClassName(struct.getName(), "_Fields");
+      ParameterizedTypeName classType =
+          ParameterizedTypeName.get(
+              ClassName.get(Class.class),
+              WildcardTypeName.subtypeOf(TypeName.OBJECT));
+
       TypeSpec.Builder thriftFieldsEnumBuilder =
           // TODO(John Sirois): Rename this (striking _) after transitioning to new thrift gen.
           TypeSpec.enumBuilder("_Fields")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .addSuperinterface(org.apache.thrift.TFieldIdEnum.class)
+              .addSuperinterface(fieldsTypeName)
               .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
               .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
+              .addField(classType, "fieldType", Modifier.PRIVATE, Modifier.FINAL)
               .addMethod(
                   MethodSpec.constructorBuilder()
                       .addParameter(short.class, "thriftId")
                       .addParameter(String.class, "fieldName")
+                      .addParameter(classType, "fieldType")
                       .addStatement("this.thriftId = thriftId")
                       .addStatement("this.fieldName = fieldName")
+                      .addStatement("this.fieldType = fieldType")
                       .build())
               .addMethod(
                   MethodSpec.methodBuilder("getThriftFieldId")
@@ -791,6 +844,12 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addModifiers(Modifier.PUBLIC)
                       .returns(String.class)
                       .addStatement("return fieldName")
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldType")
+                      .addModifiers(Modifier.PUBLIC)
+                      .returns(classType)
+                      .addStatement("return fieldType")
                       .build());
 
       ParameterSpec fieldIdParam = ParameterSpec.builder(short.class, "fieldId").build();
@@ -808,9 +867,17 @@ public class ThriftRestGenTask extends DefaultTask {
         short fieldId = extractId(field);
         String enumValueName = toUpperSnakeCaseName(field);
 
+        // TODO(John Sirois): Use TypeToken?
+        TypeName fieldType = typeName(field.getType());
+        if (fieldType instanceof ParameterizedTypeName) {
+          fieldType = ((ParameterizedTypeName) fieldType).rawType;
+        }
+
         thriftFieldsEnumBuilder.addEnumConstant(
             enumValueName,
-            TypeSpec.anonymousClassBuilder("(short) $L, $S", fieldId, field.getName()).build());
+            TypeSpec.anonymousClassBuilder(
+                "(short) $L, $S, $T.class", fieldId, field.getName(), fieldType)
+                .build());
 
         findByThriftIdCode.addStatement(
             "case $L: return $T.$L", fieldId, fieldsClassName, enumValueName);
@@ -837,24 +904,87 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     protected final void writeType(TypeSpec.Builder typeBuilder) throws IOException {
-      TypeSpec type =
-          typeBuilder.addAnnotation(
-              AnnotationSpec.builder(Generated.class)
-                  .addMember("value", "$S", getClass().getName())
-                  .build())
-              .build();
-      writeType(getPackageName(), type);
+      writeType(getPackageName(), typeBuilder);
+    }
+  }
+
+  @NotThreadSafe
+  static class StructInterfaceFactory extends BaseEmitter {
+    private StructInterface structInterface;
+
+    public StructInterfaceFactory(Logger logger, File outdir) {
+      super(logger, outdir);
     }
 
-    protected final void writeType(String packageName, TypeSpec type) throws IOException {
-      JavaFile javaFile =
-          JavaFile.builder(packageName, type)
-              .addFileComment(APACHE_LICENSE)
-              .indent("  ")
-              .skipJavaLangImports(true)
-              .build();
-      javaFile.writeTo(getOutdir());
-      getLogger().info("Wrote {} to {}", type.name, getOutdir());
+    public StructInterface getStructInterface() throws IOException {
+      if (structInterface == null) {
+        structInterface = createStructInterface();
+      }
+      return structInterface;
+    }
+
+    static class StructInterface {
+      final ClassName typeName;
+      final ClassName fieldsTypeName;
+
+      public StructInterface(ClassName typeName, ClassName fieldsTypeName) {
+        this.typeName = typeName;
+        this.fieldsTypeName = fieldsTypeName;
+      }
+    }
+
+    private StructInterface createStructInterface() throws IOException {
+      String thriftFieldsSimpleName = "ThriftFields";
+      TypeSpec thriftFields =
+          TypeSpec.interfaceBuilder(thriftFieldsSimpleName)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addSuperinterface(TFieldIdEnum.class)
+            .addMethod(
+                MethodSpec.methodBuilder("getFieldType")
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .returns(
+                        ParameterizedTypeName.get(
+                            ClassName.get(Class.class),
+                            WildcardTypeName.subtypeOf(Object.class)))
+                    .build())
+            .build();
+
+      String thriftStructSimpleName = "ThriftStruct";
+      ClassName thriftFieldsClassName =
+          ClassName.get(
+              BaseEmitter.AURORA_THRIFT_PACKAGE_NAME,
+              thriftStructSimpleName,
+              thriftFieldsSimpleName);
+      TypeVariableName fieldsType = TypeVariableName.get("T", thriftFieldsClassName);
+      TypeSpec.Builder structInterfaceBuilder =
+          TypeSpec.interfaceBuilder(thriftStructSimpleName)
+              .addTypeVariable(fieldsType)
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addType(thriftFields)
+              .addMethod(
+                  MethodSpec.methodBuilder("isSet")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .addParameter(fieldsType, "field")
+                      .returns(boolean.class)
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldValue")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .addParameter(fieldsType, "field")
+                      .returns(TypeName.OBJECT)
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFields")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(
+                          ParameterizedTypeName.get(ClassName.get(ImmutableSet.class), fieldsType))
+                      .build());
+
+      writeType(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, structInterfaceBuilder);
+
+      return new StructInterface(
+          ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, thriftStructSimpleName),
+          thriftFieldsClassName);
     }
   }
 
@@ -1017,7 +1147,11 @@ public class ThriftRestGenTask extends DefaultTask {
                   .addMember("value", "$S", service.getName())
                   .build())
           .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-          .addSuperinterface(AutoCloseable.class);
+          .addSuperinterface(AutoCloseable.class)
+          .addMethod(MethodSpec.methodBuilder("close")
+              .addAnnotation(Override.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+              .build());
     }
 
     private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {
@@ -1057,14 +1191,17 @@ public class ThriftRestGenTask extends DefaultTask {
   @NotThreadSafe
   static class StructVisitor extends BaseVisitor<Struct> {
     private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
+    private final StructInterfaceFactory structInterfaceFactory;
 
     public StructVisitor(
+        StructInterfaceFactory structInterfaceFactory,
         Logger logger,
         File outdir,
         ImmutableMap<String, String> packageNameByImportPrefix,
         String packageName) {
 
       super(logger, outdir, packageNameByImportPrefix, packageName);
+      this.structInterfaceFactory = structInterfaceFactory;
     }
 
     @Override
@@ -1097,13 +1234,34 @@ public class ThriftRestGenTask extends DefaultTask {
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
       // TODO(John Sirois): XXX Tame this beast!
-      Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, struct);
+      StructInterfaceFactory.StructInterface structInterface =
+          structInterfaceFactory.getStructInterface();
+      Optional<ClassName> fieldsEnumClassName =
+          maybeAddFieldsEnum(typeBuilder, struct, structInterface.fieldsTypeName);
       Optional<ParameterSpec> fieldParam = Optional.absent();
       Optional<MethodSpec.Builder> isSetMethod = Optional.absent();
       Optional<CodeBlock.Builder> isSetCode = Optional.absent();
       Optional<MethodSpec.Builder> getFieldValueMethod = Optional.absent();
       Optional<CodeBlock.Builder> getFieldValueCode = Optional.absent();
       if (fieldsEnumClassName.isPresent()) {
+        ClassName localFieldsTypeName = getClassName(struct.getName(), "_Fields");
+        typeBuilder.addSuperinterface(
+            ParameterizedTypeName.get(structInterface.typeName, localFieldsTypeName));
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder("getFields")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .returns(
+                    ParameterizedTypeName.get(
+                        ClassName.get(ImmutableSet.class),
+                        localFieldsTypeName))
+                .addStatement(
+                    "return $T.copyOf($T.allOf($T.class))",
+                    ImmutableSet.class,
+                    EnumSet.class,
+                    localFieldsTypeName)
+                .build());
+
         ClassName fieldsEnumClass = fieldsEnumClassName.get();
         fieldParam = Optional.of(ParameterSpec.builder(fieldsEnumClass, "field").build());
         isSetMethod =
@@ -1487,10 +1645,10 @@ public class ThriftRestGenTask extends DefaultTask {
 
   static class TypeAnnotationVisitor extends BaseVisitor<TypeAnnotation> {
     private static final ClassName ANNOTATION_CLASS =
-        ClassName.get("org.apache.aurora.thrift", "Annotation");
+        ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, "Annotation");
 
     private static final ClassName PARAMETER_CLASS =
-        ClassName.get("org.apache.aurora.thrift", "Annotation", "Parameter");
+        ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, "Annotation", "Parameter");
 
     static AnnotationSpec createAnnotation(List<TypeAnnotation> typeAnnotations) {
       AnnotationSpec.Builder annotationBuilder = AnnotationSpec.builder(ANNOTATION_CLASS);
@@ -1551,33 +1709,53 @@ public class ThriftRestGenTask extends DefaultTask {
                   MethodSpec.methodBuilder("value")
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                       .returns(ArrayTypeName.of(PARAMETER_CLASS))
-                      .build())
-              .build());
+                      .build()));
     }
   }
 
   static class UnionVisitor extends BaseVisitor<Union> {
+    private final StructInterfaceFactory structInterfaceFactory;
+
     public UnionVisitor(
-        Logger logger,
+        StructInterfaceFactory structInterfaceFactory, Logger logger,
         File outdir,
         ImmutableMap<String, String> packageNameByImportPrefix,
         String packageName) {
 
       super(logger, outdir, packageNameByImportPrefix, packageName);
+      this.structInterfaceFactory = structInterfaceFactory;
     }
 
     @Override
     public void visit(Union union) throws IOException {
+      StructInterfaceFactory.StructInterface structInterface =
+          structInterfaceFactory.getStructInterface();
+
+      ClassName localFieldsTypeName = getClassName(union.getName(), "_Fields");
       TypeSpec.Builder typeBuilder =
           TypeSpec.classBuilder(union.getName())
               .addAnnotation(
                   AnnotationSpec.builder(com.facebook.swift.codec.ThriftUnion.class)
                       .addMember("value", "$S", union.getName())
                       .build())
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addSuperinterface(
+                  ParameterizedTypeName.get(structInterface.typeName, localFieldsTypeName));
 
       typeBuilder.addField(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL);
       typeBuilder.addField(short.class, "id", Modifier.PRIVATE, Modifier.FINAL);
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("getFields")
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .returns(
+                  ParameterizedTypeName.get(ClassName.get(ImmutableSet.class), localFieldsTypeName))
+              .addStatement(
+                  "return $T.copyOf($T.allOf($T.class))",
+                  ImmutableSet.class,
+                  EnumSet.class,
+                  localFieldsTypeName)
+              .build());
 
       ClassName unionClassName = getClassName(union.getName());
       for (ThriftField field : union.getFields()) {
@@ -1634,7 +1812,8 @@ public class ThriftRestGenTask extends DefaultTask {
               .build();
       typeBuilder.addMethod(getSetIdMethod);
 
-      Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, union);
+      Optional<ClassName> fieldsEnumClassName =
+          maybeAddFieldsEnum(typeBuilder, union, structInterface.fieldsTypeName);
       if (fieldsEnumClassName.isPresent()) {
         ClassName fieldsEnumClass = fieldsEnumClassName.get();
         ParameterSpec fieldParam =

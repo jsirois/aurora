@@ -21,21 +21,21 @@ import org.apache.aurora.gen.JobUpdateSettings;
 import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobUpdateInstructions;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 
 public class AddTaskTest extends EasyMockTest {
-  private static final IJobUpdateInstructions INSTRUCTIONS = IJobUpdateInstructions.build(
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
       new JobUpdateInstructions()
           .setSettings(
               new JobUpdateSettings()
                   .setMinWaitInInstanceRunningMs(1000)));
-  private static final IInstanceKey INSTANCE =
-      IInstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
+  private static final InstanceKey INSTANCE =
+      InstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
 
   private MutableStoreProvider storeProvider;
   private StateManager stateManager;

@@ -46,8 +46,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
 
-import org.apache.aurora.gen.AuroraAdmin.Iface;
-import org.apache.aurora.scheduler.storage.entities.AuroraAdminMetadata;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.scheduler.thrift.Responses;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 
@@ -63,7 +62,7 @@ public class ApiBeta {
 
   private static final Logger LOG = Logger.getLogger(ApiBeta.class.getName());
 
-  private final Iface api;
+  private final AuroraAdmin.Sync api;
 
   @Inject
   ApiBeta(AnnotatedAuroraAdmin api) {
@@ -114,7 +113,7 @@ public class ApiBeta {
 
   private Method getApiMethod(String name, Map<String, Type> metadata) {
     try {
-      return Iface.class.getMethod(name, metadata.values().toArray(new Class<?>[0]));
+      return AuroraAdmin.Sync.class.getMethod(name, metadata.values().toArray(new Class<?>[0]));
     } catch (NoSuchMethodException e) {
       throw Throwables.propagate(e);
     }
@@ -129,7 +128,8 @@ public class ApiBeta {
     }
 
     // First, verify that this is a valid method on the interface.
-    Map<String, Type> methodMetadata = AuroraAdminMetadata.METHODS.get(methodName);
+    // TODO(John Sirois): XXX FIXME!
+    Map<String, Type> methodMetadata = null; // AuroraAdminMetadata.METHODS.get(methodName);
     if (methodMetadata == null) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }

@@ -28,15 +28,15 @@ import com.google.common.eventbus.Subscribe;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
-import org.apache.aurora.gen.apiConstants;
+import org.apache.aurora.gen.Constants;
 import org.apache.aurora.scheduler.async.AsyncModule.AsyncExecutor;
 import org.apache.aurora.scheduler.async.DelayExecutor;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -56,9 +56,9 @@ public class TaskHistoryPruner implements EventSubscriber {
   private final HistoryPrunnerSettings settings;
   private final Storage storage;
 
-  private final Predicate<IScheduledTask> safeToDelete = new Predicate<IScheduledTask>() {
+  private final Predicate<ScheduledTask> safeToDelete = new Predicate<ScheduledTask>() {
     @Override
-    public boolean apply(IScheduledTask task) {
+    public boolean apply(ScheduledTask task) {
       return Tasks.getLatestEvent(task).getTimestamp()
           <= clock.nowMillis() - settings.minRetentionThresholdMillis;
     }
@@ -131,12 +131,12 @@ public class TaskHistoryPruner implements EventSubscriber {
   }
 
   @VisibleForTesting
-  static Query.Builder jobHistoryQuery(IJobKey jobKey) {
-    return Query.jobScoped(jobKey).byStatus(apiConstants.TERMINAL_STATES);
+  static Query.Builder jobHistoryQuery(JobKey jobKey) {
+    return Query.jobScoped(jobKey).byStatus(Constants.TERMINAL_STATES);
   }
 
   private void registerInactiveTask(
-      final IJobKey jobKey,
+      final JobKey jobKey,
       final String taskId,
       long timeRemaining) {
 
@@ -154,7 +154,7 @@ public class TaskHistoryPruner implements EventSubscriber {
     executor.execute(new Runnable() {
       @Override
       public void run() {
-        Iterable<IScheduledTask> inactiveTasks =
+        Iterable<ScheduledTask> inactiveTasks =
             Storage.Util.fetchTasks(storage, jobHistoryQuery(jobKey));
         int numInactiveTasks = Iterables.size(inactiveTasks);
         int tasksToPrune = numInactiveTasks - settings.perJobHistoryGoal;

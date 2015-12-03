@@ -41,9 +41,9 @@ import org.apache.aurora.scheduler.state.TaskAssigner;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
@@ -129,16 +129,16 @@ public interface TaskScheduler extends EventSubscriber {
     @Timed("task_schedule_attempt_locked")
     protected boolean scheduleTask(MutableStoreProvider store, String taskId) {
       LOG.fine("Attempting to schedule task " + taskId);
-      IAssignedTask assignedTask = Iterables.getOnlyElement(
+      AssignedTask assignedTask = Iterables.getOnlyElement(
           Iterables.transform(
               store.getTaskStore().fetchTasks(Query.taskScoped(taskId).byStatus(PENDING)),
-              IScheduledTask::getAssignedTask),
+              ScheduledTask::getAssignedTask),
           null);
 
       if (assignedTask == null) {
         LOG.warning("Failed to look up task " + taskId + ", it may have been deleted.");
       } else {
-        ITaskConfig task = assignedTask.getTask();
+        TaskConfig task = assignedTask.getTask();
         AttributeAggregate aggregate = AttributeAggregate.getJobActiveState(store, task.getJob());
 
         boolean launched = assigner.maybeAssign(
@@ -163,7 +163,7 @@ public interface TaskScheduler extends EventSubscriber {
     }
 
     private void maybePreemptFor(
-        IAssignedTask task,
+        AssignedTask task,
         AttributeAggregate jobState,
         MutableStoreProvider storeProvider) {
 
@@ -179,7 +179,7 @@ public interface TaskScheduler extends EventSubscriber {
     @Subscribe
     public void taskChanged(final TaskStateChange stateChangeEvent) {
       if (Optional.of(PENDING).equals(stateChangeEvent.getOldState())) {
-        IAssignedTask assigned = stateChangeEvent.getTask().getAssignedTask();
+        AssignedTask assigned = stateChangeEvent.getTask().getAssignedTask();
         if (assigned.getSlaveId() != null) {
           reservations.remove(assigned.getSlaveId(), TaskGroupKey.from(assigned.getTask()));
         }

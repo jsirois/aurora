@@ -23,9 +23,9 @@ import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.LockManager;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,8 +36,8 @@ import static org.junit.Assert.assertTrue;
 
 public class LocksTest extends EasyMockTest {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final IJobKey JOB_KEY = JobKeys.from("role", "env", "job");
-  private static final ILockKey LOCK_KEY = ILockKey.build(LockKey.job(JOB_KEY.newBuilder()));
+  private static final JobKey JOB_KEY = JobKeys.from("role", "env", "job");
+  private static final LockKey LOCK_KEY = LockKey.build(LockKey.job(JOB_KEY.newBuilder()));
 
   private Locks locks;
   private LockManager lockManager;
@@ -50,7 +50,7 @@ public class LocksTest extends EasyMockTest {
 
   @Test
   public void testDumpContents() throws Exception {
-    ILock lock = ILock.build(new Lock()
+    Lock lock = Lock.build(new Lock()
         .setKey(LOCK_KEY.newBuilder())
         .setToken("test token")
         .setMessage("test msg")

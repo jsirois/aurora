@@ -42,9 +42,9 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoGroup;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoType;
 import org.apache.aurora.scheduler.mesos.Offers;
 import org.apache.aurora.scheduler.mesos.TaskExecutors;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.TaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -95,7 +95,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testMeetsOffer() {
     control.replay();
 
-    IHostAttributes attributes = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
+    HostAttributes attributes = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
     assertNoVetoes(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK), attributes);
     assertNoVetoes(
         makeTask(DEFAULT_CPUS - 1, DEFAULT_RAM - 1, DEFAULT_DISK - 1),
@@ -109,21 +109,21 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     ResourceSlot twoPorts = Resources.from(
         Offers.createOffer(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK, Pair.of(80, 81))).slot();
 
-    ITaskConfig noPortTask = ITaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+    TaskConfig noPortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
         .newBuilder()
         .setRequestedPorts(ImmutableSet.of()));
-    ITaskConfig onePortTask = ITaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+    TaskConfig onePortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
         .newBuilder()
         .setRequestedPorts(ImmutableSet.of("one")));
-    ITaskConfig twoPortTask = ITaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+    TaskConfig twoPortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
         .newBuilder()
         .setRequestedPorts(ImmutableSet.of("one", "two")));
-    ITaskConfig threePortTask = ITaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+    TaskConfig threePortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
         .newBuilder()
         .setRequestedPorts(ImmutableSet.of("one", "two", "three")));
 
     Set<Veto> none = ImmutableSet.of();
-    IHostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
+    HostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
     assertEquals(
         none,
         defaultFilter.filter(
@@ -150,7 +150,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testInsufficientResources() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
+    HostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
     assertVetoes(
         makeTask(DEFAULT_CPUS + 1, DEFAULT_RAM + 1, DEFAULT_DISK + 1),
         hostA,
@@ -164,7 +164,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testDedicatedRole() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(HOST_A, dedicated(ROLE_A));
+    HostAttributes hostA = hostAttributes(HOST_A, dedicated(ROLE_A));
     checkConstraint(hostA, DEDICATED_ATTRIBUTE, true, ROLE_A);
     assertVetoes(makeTask(OWNER_B, JOB_B), hostA, Veto.dedicatedHostConstraintMismatch());
   }
@@ -175,7 +175,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
 
     String dedicated1 = "userA/jobA";
     String dedicated2 = "kestrel/kestrel";
-    IHostAttributes hostA = hostAttributes(HOST_A, dedicated(dedicated1, dedicated2));
+    HostAttributes hostA = hostAttributes(HOST_A, dedicated(dedicated1, dedicated2));
     assertNoVetoes(
         checkConstraint(
             new Identity().setRole("userA"),
@@ -200,12 +200,12 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testMultiValuedAttributes() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(HOST_A, valueAttribute("jvm", "1.0", "2.0", "3.0"));
+    HostAttributes hostA = hostAttributes(HOST_A, valueAttribute("jvm", "1.0", "2.0", "3.0"));
     checkConstraint(hostA, "jvm", true, "1.0");
     checkConstraint(hostA, "jvm", false, "4.0");
 
     checkConstraint(hostA, "jvm", true, "1.0", "2.0");
-    IHostAttributes hostB = hostAttributes(HOST_A, valueAttribute("jvm", "1.0"));
+    HostAttributes hostB = hostAttributes(HOST_A, valueAttribute("jvm", "1.0"));
     checkConstraint(hostB, "jvm", false, "2.0", "3.0");
   }
 
@@ -279,15 +279,15 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     assertNoVetoes(hostLimitTask(2), hostAttributes(HOST_A, host(HOST_A)));
   }
 
-  private IAttribute host(String host) {
+  private Attribute host(String host) {
     return valueAttribute(HOST_ATTRIBUTE, host);
   }
 
-  private IAttribute rack(String rack) {
+  private Attribute rack(String rack) {
     return valueAttribute(RACK_ATTRIBUTE, rack);
   }
 
-  private IAttribute dedicated(String value, String... values) {
+  private Attribute dedicated(String value, String... values) {
     return valueAttribute(DEDICATED_ATTRIBUTE, value, values);
   }
 
@@ -314,9 +314,9 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             host(HOST_B),
             rack(RACK_A))));
 
-    IHostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
-    IHostAttributes hostB = hostAttributes(HOST_B, host(HOST_B), rack(RACK_A));
-    IHostAttributes hostC = hostAttributes(HOST_C, host(HOST_C), rack(RACK_B));
+    HostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
+    HostAttributes hostB = hostAttributes(HOST_B, host(HOST_B), rack(RACK_A));
+    HostAttributes hostC = hostAttributes(HOST_C, host(HOST_C), rack(RACK_B));
     assertNoVetoes(hostLimitTask(OWNER_A, JOB_A, 2), hostA, stateA);
     assertVetoes(
         hostLimitTask(OWNER_A, JOB_A, 1),
@@ -356,7 +356,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testAttribute() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(HOST_A, valueAttribute("jvm", "1.0"));
+    HostAttributes hostA = hostAttributes(HOST_A, valueAttribute("jvm", "1.0"));
 
     // Matches attribute, matching value.
     checkConstraint(hostA, "jvm", true, "1.0");
@@ -378,7 +378,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testAttributes() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(
+    HostAttributes hostA = hostAttributes(
         HOST_A,
         valueAttribute("jvm", "1.4", "1.6", "1.7"),
         valueAttribute("zone", "a", "b", "c"));
@@ -402,7 +402,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     Constraint jvmConstraint = makeConstraint("jvm", "1.6");
     Constraint zoneConstraint = makeConstraint("zone", "c");
 
-    ITaskConfig task = makeTask(OWNER_A, JOB_A, jvmConstraint, zoneConstraint);
+    TaskConfig task = makeTask(OWNER_A, JOB_A, jvmConstraint, zoneConstraint);
     assertEquals(
         ImmutableSet.of(),
         defaultFilter.filter(
@@ -434,7 +434,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   public void testDuplicatedAttribute() {
     control.replay();
 
-    IHostAttributes hostA = hostAttributes(HOST_A,
+    HostAttributes hostA = hostAttributes(HOST_A,
         valueAttribute("jvm", "1.4"),
         valueAttribute("jvm", "1.6", "1.7"));
 
@@ -469,8 +469,8 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             Veto.unsatisfiedLimit("denied"))));
   }
 
-  private ITaskConfig checkConstraint(
-      IHostAttributes hostAttributes,
+  private TaskConfig checkConstraint(
+      HostAttributes hostAttributes,
       String constraintName,
       boolean expected,
       String value,
@@ -486,10 +486,10 @@ public class SchedulingFilterImplTest extends EasyMockTest {
         vs);
   }
 
-  private ITaskConfig checkConstraint(
+  private TaskConfig checkConstraint(
       Identity owner,
       String jobName,
-      IHostAttributes hostAttributes,
+      HostAttributes hostAttributes,
       String constraintName,
       boolean expected,
       String value,
@@ -506,17 +506,17 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             ImmutableSet.<String>builder().add(value).addAll(Arrays.asList(vs)).build()));
   }
 
-  private ITaskConfig checkConstraint(
+  private TaskConfig checkConstraint(
       Identity owner,
       String jobName,
       AttributeAggregate aggregate,
-      IHostAttributes hostAttributes,
+      HostAttributes hostAttributes,
       String constraintName,
       boolean expected,
       ValueConstraint value) {
 
     Constraint constraint = new Constraint(constraintName, TaskConstraint.value(value));
-    ITaskConfig task = makeTask(owner, jobName, constraint);
+    TaskConfig task = makeTask(owner, jobName, constraint);
     assertEquals(
         expected,
         defaultFilter.filter(
@@ -526,7 +526,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
 
     Constraint negated = constraint.deepCopy();
     negated.getConstraint().getValue().setNegated(!value.isNegated());
-    ITaskConfig negatedTask = makeTask(owner, jobName, negated);
+    TaskConfig negatedTask = makeTask(owner, jobName, negated);
     assertEquals(
         !expected,
         defaultFilter.filter(
@@ -536,25 +536,25 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     return task;
   }
 
-  private void assertNoVetoes(ITaskConfig task, IHostAttributes hostAttributes) {
+  private void assertNoVetoes(TaskConfig task, HostAttributes hostAttributes) {
     assertVetoes(task, hostAttributes, EMPTY);
   }
 
   private void assertNoVetoes(
-      ITaskConfig task,
-      IHostAttributes attributes,
+      TaskConfig task,
+      HostAttributes attributes,
       AttributeAggregate jobState) {
 
     assertVetoes(task, attributes, jobState);
   }
 
-  private void assertVetoes(ITaskConfig task, IHostAttributes hostAttributes, Veto... vetoes) {
+  private void assertVetoes(TaskConfig task, HostAttributes hostAttributes, Veto... vetoes) {
     assertVetoes(task, hostAttributes, EMPTY, vetoes);
   }
 
   private void assertVetoes(
-      ITaskConfig task,
-      IHostAttributes hostAttributes,
+      TaskConfig task,
+      HostAttributes hostAttributes,
       AttributeAggregate jobState,
       Veto... vetoes) {
 
@@ -565,27 +565,27 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             new ResourceRequest(task, jobState)));
   }
 
-  private static IHostAttributes hostAttributes(
+  private static HostAttributes hostAttributes(
       String host,
       MaintenanceMode mode,
-      IAttribute... attributes) {
+      Attribute... attributes) {
 
-    return IHostAttributes.build(
+    return HostAttributes.build(
         new HostAttributes()
             .setHost(host)
             .setMode(mode)
-            .setAttributes(IAttribute.toBuildersSet(ImmutableSet.copyOf(attributes))));
+            .setAttributes(Attribute.toBuildersSet(ImmutableSet.copyOf(attributes))));
   }
 
-  private static IHostAttributes hostAttributes(
+  private static HostAttributes hostAttributes(
       String host,
-      IAttribute... attributes) {
+      Attribute... attributes) {
 
     return hostAttributes(host, MaintenanceMode.NONE, attributes);
   }
 
-  private IAttribute valueAttribute(String name, String string, String... strings) {
-    return IAttribute.build(new Attribute(name,
+  private Attribute valueAttribute(String name, String string, String... strings) {
+    return Attribute.build(new Attribute(name,
         ImmutableSet.<String>builder().add(string).addAll(Arrays.asList(strings)).build()));
   }
 
@@ -598,34 +598,34 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     return new Constraint(name, TaskConstraint.limit(new LimitConstraint(value)));
   }
 
-  private ITaskConfig makeTask(Identity owner, String jobName, Constraint... constraint) {
-    return ITaskConfig.build(makeTask(OWNER_A, JOB_A, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+  private TaskConfig makeTask(Identity owner, String jobName, Constraint... constraint) {
+    return TaskConfig.build(makeTask(OWNER_A, JOB_A, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
         .newBuilder()
         .setOwner(owner)
         .setJobName(jobName)
         .setConstraints(Sets.newHashSet(constraint)));
   }
 
-  private ITaskConfig hostLimitTask(Identity owner, String jobName, int maxPerHost) {
+  private TaskConfig hostLimitTask(Identity owner, String jobName, int maxPerHost) {
     return makeTask(owner, jobName, limitConstraint(HOST_ATTRIBUTE, maxPerHost));
   }
 
-  private ITaskConfig hostLimitTask(int maxPerHost) {
+  private TaskConfig hostLimitTask(int maxPerHost) {
     return hostLimitTask(OWNER_A, JOB_A, maxPerHost);
   }
 
-  private ITaskConfig rackLimitTask(Identity owner, String jobName, int maxPerRack) {
+  private TaskConfig rackLimitTask(Identity owner, String jobName, int maxPerRack) {
     return makeTask(owner, jobName, limitConstraint(RACK_ATTRIBUTE, maxPerRack));
   }
 
-  private ITaskConfig makeTask(
+  private TaskConfig makeTask(
       Identity owner,
       String jobName,
       int cpus,
       long ramMb,
       long diskMb) {
 
-    return ITaskConfig.build(new TaskConfig()
+    return TaskConfig.build(new TaskConfig()
         .setOwner(owner)
         .setJobName(jobName)
         .setNumCpus(cpus)
@@ -634,11 +634,11 @@ public class SchedulingFilterImplTest extends EasyMockTest {
         .setExecutorConfig(new ExecutorConfig("aurora", "config")));
   }
 
-  private ITaskConfig makeTask(int cpus, long ramMb, long diskMb) {
+  private TaskConfig makeTask(int cpus, long ramMb, long diskMb) {
     return makeTask(OWNER_A, JOB_A, cpus, ramMb, diskMb);
   }
 
-  private ITaskConfig makeTask() {
+  private TaskConfig makeTask() {
     return makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK);
   }
 }

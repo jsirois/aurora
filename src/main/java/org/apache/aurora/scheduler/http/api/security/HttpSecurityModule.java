@@ -78,11 +78,11 @@ public class HttpSecurityModule extends ServletModule {
 
   @VisibleForTesting
   static final Matcher<Method> AURORA_SCHEDULER_MANAGER_SERVICE =
-      GuiceUtils.interfaceMatcher(AuroraSchedulerManager.Iface.class, true);
+      GuiceUtils.interfaceMatcher(AuroraSchedulerManager.Sync.class, true);
 
   @VisibleForTesting
   static final Matcher<Method> AURORA_ADMIN_SERVICE =
-      GuiceUtils.interfaceMatcher(AuroraAdmin.Iface.class, true);
+      GuiceUtils.interfaceMatcher(AuroraAdmin.Sync.class, true);
 
   public enum HttpAuthenticationMechanism {
     /**
@@ -194,7 +194,7 @@ public class HttpSecurityModule extends ServletModule {
     MethodInterceptor authenticatingInterceptor = new ShiroAuthenticatingThriftInterceptor();
     requestInjection(authenticatingInterceptor);
     bindInterceptor(
-        Matchers.subclassesOf(AuroraSchedulerManager.Iface.class),
+        Matchers.subclassesOf(AuroraSchedulerManager.Sync.class),
         AURORA_SCHEDULER_MANAGER_SERVICE.or(AURORA_ADMIN_SERVICE),
         authenticatingInterceptor);
 
@@ -202,7 +202,7 @@ public class HttpSecurityModule extends ServletModule {
         THRIFT_AURORA_SCHEDULER_MANAGER);
     requestInjection(apiInterceptor);
     bindInterceptor(
-        Matchers.subclassesOf(AuroraSchedulerManager.Iface.class),
+        Matchers.subclassesOf(AuroraSchedulerManager.Sync.class),
         AURORA_SCHEDULER_MANAGER_SERVICE,
         apiInterceptor);
 

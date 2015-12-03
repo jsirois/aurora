@@ -54,7 +54,7 @@ public class ShiroAuthorizingInterceptorTest extends EasyMockTest {
     subject = createMock(Subject.class);
     statsProvider = createMock(StatsProvider.class);
     methodInvocation = createMock(MethodInvocation.class);
-    interceptedMethod = AuroraAdmin.Iface.class.getMethod("snapshot");
+    interceptedMethod = AuroraAdmin.Sync.class.getMethod("snapshot");
     expect(statsProvider.makeCounter(SHIRO_AUTHORIZATION_FAILURES)).andReturn(new AtomicLong());
   }
 

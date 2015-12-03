@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.gen.LockKey._Fields;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.LockStore;
@@ -30,8 +31,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
 
 import static java.util.Objects.requireNonNull;
 
@@ -53,14 +52,14 @@ public class LockManagerImpl implements LockManager {
   }
 
   @Override
-  public ILock acquireLock(final ILockKey lockKey, final String user) throws LockException {
-    return storage.write(new MutateWork<ILock, LockException>() {
+  public Lock acquireLock(final LockKey lockKey, final String user) throws LockException {
+    return storage.write(new MutateWork<Lock, LockException>() {
       @Override
-      public ILock apply(Storage.MutableStoreProvider storeProvider)
+      public Lock apply(Storage.MutableStoreProvider storeProvider)
           throws LockException {
 
         LockStore.Mutable lockStore = storeProvider.getLockStore();
-        Optional<ILock> existingLock = lockStore.fetchLock(lockKey);
+        Optional<Lock> existingLock = lockStore.fetchLock(lockKey);
 
         if (existingLock.isPresent()) {
           throw new LockException(String.format(
@@ -70,11 +69,12 @@ public class LockManagerImpl implements LockManager {
               existingLock.get().getUser()));
         }
 
-        ILock lock = ILock.build(new Lock()
-            .setKey(lockKey.newBuilder())
+        Lock lock = Lock.builder()
+            .setKey(lockKey)
             .setToken(tokenGenerator.createNew().toString())
             .setTimestampMs(clock.nowMillis())
-            .setUser(user));
+            .setUser(user)
+            .build();
 
         lockStore.saveLock(lock);
         return lock;
@@ -83,7 +83,7 @@ public class LockManagerImpl implements LockManager {
   }
 
   @Override
-  public void releaseLock(final ILock lock) {
+  public void releaseLock(final Lock lock) {
     storage.write(new MutateWork.NoResult.Quiet() {
       @Override
       public void execute(MutableStoreProvider storeProvider) {
@@ -93,12 +93,12 @@ public class LockManagerImpl implements LockManager {
   }
 
   @Override
-  public void validateIfLocked(final ILockKey context, Optional<ILock> heldLock)
+  public void validateIfLocked(final LockKey context, Optional<Lock> heldLock)
       throws LockException {
 
-    Optional<ILock> stored = storage.read(new Work.Quiet<Optional<ILock>>() {
+    Optional<Lock> stored = storage.read(new Work.Quiet<Optional<Lock>>() {
       @Override
-      public Optional<ILock> apply(StoreProvider storeProvider) {
+      public Optional<Lock> apply(StoreProvider storeProvider) {
         return storeProvider.getLockStore().fetchLock(context);
       }
     });
@@ -124,16 +124,16 @@ public class LockManagerImpl implements LockManager {
   }
 
   @Override
-  public Iterable<ILock> getLocks() {
-    return storage.read(new Work.Quiet<Iterable<ILock>>() {
+  public Iterable<Lock> getLocks() {
+    return storage.read(new Work.Quiet<Iterable<Lock>>() {
       @Override
-      public Iterable<ILock> apply(StoreProvider storeProvider) {
+      public Iterable<Lock> apply(StoreProvider storeProvider) {
         return storeProvider.getLockStore().fetchLocks();
       }
     });
   }
 
-  private static String formatLockKey(ILockKey lockKey) {
+  private static String formatLockKey(LockKey lockKey) {
     return lockKey.getSetField() == _Fields.JOB
         ? JobKeys.canonicalString(lockKey.getJob())
         : "Unknown lock key type: " + lockKey.getSetField();

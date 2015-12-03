@@ -22,7 +22,7 @@ final class FieldGetters {
     // Utility class.
   }
 
-  public static <P extends TBase<P, ?>, C extends TBase<C, ?>, G extends TBase<G, ?>>
+  public static <P, C, G>
       FieldGetter<P, G> compose(final FieldGetter<P, C> parent, final FieldGetter<C, G> child) {
 
     return new FieldGetter<P, G>() {

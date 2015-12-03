@@ -37,9 +37,9 @@ import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.TaskConfig;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -88,11 +88,11 @@ class AuroraCronJob implements Job {
   }
 
   private static final class DeferredLaunch {
-    private final ITaskConfig task;
+    private final TaskConfig task;
     private final Set<Integer> instanceIds;
     private final Set<String> activeTaskIds;
 
-    DeferredLaunch(ITaskConfig task, Set<Integer> instanceIds, Set<String> activeTaskIds) {
+    DeferredLaunch(TaskConfig task, Set<Integer> instanceIds, Set<String> activeTaskIds) {
       this.task = task;
       this.instanceIds = instanceIds;
       this.activeTaskIds = activeTaskIds;
@@ -109,14 +109,14 @@ class AuroraCronJob implements Job {
   }
 
   @VisibleForTesting
-  void doExecute(final IJobKey key) throws JobExecutionException {
+  void doExecute(final JobKey key) throws JobExecutionException {
     final String path = JobKeys.canonicalString(key);
 
     final Optional<DeferredLaunch> deferredLaunch = storage.write(
         new Storage.MutateWork.Quiet<Optional<DeferredLaunch>>() {
           @Override
           public Optional<DeferredLaunch> apply(Storage.MutableStoreProvider storeProvider) {
-            Optional<IJobConfiguration> config = storeProvider.getCronJobStore().fetchJob(key);
+            Optional<JobConfiguration> config = storeProvider.getCronJobStore().fetchJob(key);
             if (!config.isPresent()) {
               LOG.warning(String.format(
                   "Cron was triggered for %s but no job with that key was found in storage.",
@@ -144,7 +144,7 @@ class AuroraCronJob implements Job {
             Set<String> activeTasks =
                 Tasks.ids(storeProvider.getTaskStore().fetchTasks(activeQuery));
 
-            ITaskConfig task = cronJob.getSanitizedConfig().getJobConfig().getTaskConfig();
+            TaskConfig task = cronJob.getSanitizedConfig().getJobConfig().getTaskConfig();
             Set<Integer> instanceIds = cronJob.getSanitizedConfig().getInstanceIds();
             if (activeTasks.isEmpty()) {
               stateManager.insertPendingTasks(storeProvider, task, instanceIds);

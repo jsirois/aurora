@@ -19,9 +19,9 @@ import java.util.Set;
 import com.google.common.base.MoreObjects;
 
 import org.apache.aurora.scheduler.ResourceSlot;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.TaskConfig;
 
 import static org.apache.aurora.scheduler.filter.SchedulingFilter.VetoType.CONSTRAINT_MISMATCH;
 import static org.apache.aurora.scheduler.filter.SchedulingFilter.VetoType.INSUFFICIENT_RESOURCES;
@@ -247,9 +247,9 @@ public interface SchedulingFilter {
    */
   class UnusedResource {
     private final ResourceSlot offer;
-    private final IHostAttributes attributes;
+    private final HostAttributes attributes;
 
-    public UnusedResource(ResourceSlot offer, IHostAttributes attributes) {
+    public UnusedResource(ResourceSlot offer, HostAttributes attributes) {
       this.offer = offer;
       this.attributes = attributes;
     }
@@ -258,7 +258,7 @@ public interface SchedulingFilter {
       return offer;
     }
 
-    public IHostAttributes getAttributes() {
+    public HostAttributes getAttributes() {
       return attributes;
     }
 
@@ -283,19 +283,19 @@ public interface SchedulingFilter {
    * A request for resources in the cluster.
    */
   class ResourceRequest {
-    private final ITaskConfig task;
+    private final TaskConfig task;
     private final AttributeAggregate jobState;
 
-    public ResourceRequest(ITaskConfig task, AttributeAggregate jobState) {
+    public ResourceRequest(TaskConfig task, AttributeAggregate jobState) {
       this.task = task;
       this.jobState = jobState;
     }
 
-    public Iterable<IConstraint> getConstraints() {
+    public Iterable<Constraint> getConstraints() {
       return task.getConstraints();
     }
 
-    public ITaskConfig getTask() {
+    public TaskConfig getTask() {
       return task;
     }
 

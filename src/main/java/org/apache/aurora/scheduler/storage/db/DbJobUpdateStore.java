@@ -32,16 +32,16 @@ import org.apache.aurora.scheduler.storage.JobUpdateStore;
 import org.apache.aurora.scheduler.storage.db.views.DbJobUpdate;
 import org.apache.aurora.scheduler.storage.db.views.DbJobUpdateInstructions;
 import org.apache.aurora.scheduler.storage.db.views.DbStoredJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.IRange;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Range;
 
 import static java.util.Objects.requireNonNull;
 
@@ -78,7 +78,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
   @Timed("job_update_store_save_update")
   @Override
-  public void saveJobUpdate(IJobUpdate update, Optional<String> lockToken) {
+  public void saveJobUpdate(JobUpdate update, Optional<String> lockToken) {
     requireNonNull(update);
     if (!update.getInstructions().isSetDesiredState()
         && update.getInstructions().getInitialState().isEmpty()) {
@@ -86,25 +86,25 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
           "Missing both initial and desired states. At least one is required.");
     }
 
-    IJobUpdateKey key = update.getSummary().getKey();
+    JobUpdateKey key = update.getSummary().getKey();
     jobKeyMapper.merge(key.getJob());
-    detailsMapper.insert(update.newBuilder());
+    detailsMapper.insert(update);
 
     if (lockToken.isPresent()) {
       detailsMapper.insertLockToken(key, lockToken.get());
     }
 
     // Insert optional instance update overrides.
-    Set<IRange> instanceOverrides =
+    Set<Range> instanceOverrides =
         update.getInstructions().getSettings().getUpdateOnlyTheseInstances();
 
     if (!instanceOverrides.isEmpty()) {
-      detailsMapper.insertInstanceOverrides(key, IRange.toBuildersSet(instanceOverrides));
+      detailsMapper.insertInstanceOverrides(key, instanceOverrides);
     }
 
     // Insert desired state task config and instance mappings.
     if (update.getInstructions().isSetDesiredState()) {
-      IInstanceTaskConfig desired = update.getInstructions().getDesiredState();
+      InstanceTaskConfig desired = update.getInstructions().getDesiredState();
       detailsMapper.insertTaskConfig(
           key,
           taskConfigManager.insert(desired.getTask()),
@@ -113,12 +113,12 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
       detailsMapper.insertDesiredInstances(
           key,
-          IRange.toBuildersSet(MorePreconditions.checkNotBlank(desired.getInstances())));
+          MorePreconditions.checkNotBlank(desired.getInstances()));
     }
 
     // Insert initial state task configs and instance mappings.
     if (!update.getInstructions().getInitialState().isEmpty()) {
-      for (IInstanceTaskConfig config : update.getInstructions().getInitialState()) {
+      for (InstanceTaskConfig config : update.getInstructions().getInitialState()) {
         InsertResult result = new InsertResult();
         detailsMapper.insertTaskConfig(
             key,
@@ -128,7 +128,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
         detailsMapper.insertTaskConfigInstances(
             result.getId(),
-            IRange.toBuildersSet(MorePreconditions.checkNotBlank(config.getInstances())));
+            MorePreconditions.checkNotBlank(config.getInstances()));
       }
     }
   }
@@ -140,15 +140,15 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
   @Timed("job_update_store_save_event")
   @Override
-  public void saveJobUpdateEvent(IJobUpdateKey key, IJobUpdateEvent event) {
+  public void saveJobUpdateEvent(JobUpdateKey key, JobUpdateEvent event) {
     stats.get(statName(event.getStatus())).incrementAndGet();
-    jobEventMapper.insert(key, event.newBuilder());
+    jobEventMapper.insert(key, event);
   }
 
   @Timed("job_update_store_save_instance_event")
   @Override
-  public void saveJobInstanceUpdateEvent(IJobUpdateKey key, IJobInstanceUpdateEvent event) {
-    instanceEventMapper.insert(key, event.newBuilder());
+  public void saveJobInstanceUpdateEvent(JobUpdateKey key, JobInstanceUpdateEvent event) {
+    instanceEventMapper.insert(key, event);
   }
 
   @Timed("job_update_store_delete_all")
@@ -157,18 +157,18 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
     detailsMapper.truncate();
   }
 
-  private static final Function<PruneVictim, IJobUpdateKey> GET_UPDATE_KEY =
-      new Function<PruneVictim, IJobUpdateKey>() {
+  private static final Function<PruneVictim, JobUpdateKey> GET_UPDATE_KEY =
+      new Function<PruneVictim, JobUpdateKey>() {
         @Override
-        public IJobUpdateKey apply(PruneVictim victim) {
-          return IJobUpdateKey.build(victim.getUpdate());
+        public JobUpdateKey apply(PruneVictim victim) {
+          return victim.getUpdate();
         }
       };
 
   @Timed("job_update_store_prune_history")
   @Override
-  public Set<IJobUpdateKey> pruneHistory(int perJobRetainCount, long historyPruneThresholdMs) {
-    ImmutableSet.Builder<IJobUpdateKey> pruned = ImmutableSet.builder();
+  public Set<JobUpdateKey> pruneHistory(int perJobRetainCount, long historyPruneThresholdMs) {
+    ImmutableSet.Builder<JobUpdateKey> pruned = ImmutableSet.builder();
 
     Set<Long> jobKeyIdsToPrune = detailsMapper.selectJobKeysForPruning(
         perJobRetainCount,
@@ -190,40 +190,38 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
   @Timed("job_update_store_fetch_summaries")
   @Override
-  public List<IJobUpdateSummary> fetchJobUpdateSummaries(IJobUpdateQuery query) {
-    return IJobUpdateSummary.listFromBuilders(detailsMapper.selectSummaries(query.newBuilder()));
+  public List<JobUpdateSummary> fetchJobUpdateSummaries(JobUpdateQuery query) {
+    return detailsMapper.selectSummaries(query);
   }
 
   @Timed("job_update_store_fetch_details_list")
   @Override
-  public List<IJobUpdateDetails> fetchJobUpdateDetails(IJobUpdateQuery query) {
+  public List<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateQuery query) {
     return FluentIterable
-        .from(detailsMapper.selectDetailsList(query.newBuilder()))
+        .from(detailsMapper.selectDetailsList(query))
         .transform(DbStoredJobUpdateDetails::toThrift)
         .transform(StoredJobUpdateDetails::getDetails)
-        .transform(IJobUpdateDetails::build)
         .toList();
   }
 
   @Timed("job_update_store_fetch_details")
   @Override
-  public Optional<IJobUpdateDetails> fetchJobUpdateDetails(final IJobUpdateKey key) {
+  public Optional<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectDetails(key))
         .transform(DbStoredJobUpdateDetails::toThrift)
-        .transform(StoredJobUpdateDetails::getDetails)
-        .transform(IJobUpdateDetails::build);
+        .transform(StoredJobUpdateDetails::getDetails);
   }
 
   @Timed("job_update_store_fetch_update")
   @Override
-  public Optional<IJobUpdate> fetchJobUpdate(IJobUpdateKey key) {
+  public Optional<JobUpdate> fetchJobUpdate(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectUpdate(key))
         .transform(DbJobUpdate::toImmutable);
   }
 
   @Timed("job_update_store_fetch_instructions")
   @Override
-  public Optional<IJobUpdateInstructions> fetchJobUpdateInstructions(IJobUpdateKey key) {
+  public Optional<JobUpdateInstructions> fetchJobUpdateInstructions(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectInstructions(key))
         .transform(DbJobUpdateInstructions::toImmutable);
   }
@@ -238,7 +236,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
   @Timed("job_update_store_get_lock_token")
   @Override
-  public Optional<String> getLockToken(IJobUpdateKey key) {
+  public Optional<String> getLockToken(JobUpdateKey key) {
     // We assume here that cascading deletes will cause a lock-update associative row to disappear
     // when the lock is invalidated.  This further assumes that a lock row is deleted when a lock
     // is no longer valid.
@@ -247,8 +245,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
   @Timed("job_update_store_fetch_instance_events")
   @Override
-  public List<IJobInstanceUpdateEvent> fetchInstanceEvents(IJobUpdateKey key, int instanceId) {
-    return IJobInstanceUpdateEvent.listFromBuilders(
-        detailsMapper.selectInstanceUpdateEvents(key, instanceId));
+  public List<JobInstanceUpdateEvent> fetchInstanceEvents(JobUpdateKey key, int instanceId) {
+    return detailsMapper.selectInstanceUpdateEvents(key, instanceId);
   }
 }

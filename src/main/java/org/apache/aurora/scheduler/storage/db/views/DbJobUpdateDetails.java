@@ -25,9 +25,10 @@ public final class DbJobUpdateDetails {
   private List<JobInstanceUpdateEvent> instanceEvents;
 
   public JobUpdateDetails toThrift() {
-    return new JobUpdateDetails()
+    return JobUpdateDetails.builder()
         .setUpdate(update.toThrift())
         .setUpdateEvents(updateEvents)
-        .setInstanceEvents(instanceEvents);
+        .setInstanceEvents(instanceEvents)
+        .build();
   }
 }

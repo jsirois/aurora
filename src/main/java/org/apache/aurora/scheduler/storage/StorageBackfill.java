@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
@@ -25,9 +26,9 @@ import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.TaskStore.Mutable.TaskMutation;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 /**
  * Utility class to contain and perform storage backfill operations.
  */
@@ -46,20 +47,24 @@ public final class StorageBackfill {
   }
 
   private static void backfillJobDefaults(CronJobStore.Mutable jobStore) {
-    for (JobConfiguration job : IJobConfiguration.toBuildersList(jobStore.fetchJobs())) {
-      populateJobKey(job.getTaskConfig(), BACKFILLED_JOB_CONFIG_KEYS);
-      jobStore.saveAcceptedJob(IJobConfiguration.build(job));
+    for (JobConfiguration job : jobStore.fetchJobs()) {
+      TaskConfig config = populateJobKey(job.getTaskConfig(), BACKFILLED_JOB_CONFIG_KEYS);
+      jobStore.saveAcceptedJob(job.toBuilder().setTaskConfig(config).build());
     }
   }
 
-  private static void populateJobKey(TaskConfig config, AtomicLong counter) {
-    if (!config.isSetJob() || !JobKeys.isValid(IJobKey.build(config.getJob()))) {
-      config.setJob(new JobKey()
-          .setRole(config.getOwner().getRole())
-          .setEnvironment(config.getEnvironment())
-          .setName(config.getJobName()));
-
+  private static TaskConfig populateJobKey(TaskConfig config, AtomicLong counter) {
+    if (!config.isSetJob() || !JobKeys.isValid(config.getJob())) {
       counter.incrementAndGet();
+      return config.toBuilder()
+          .setJob(JobKey.builder()
+              .setRole(config.getOwner().getRole())
+              .setEnvironment(config.getEnvironment())
+              .setName(config.getJobName())
+              .build())
+          .build();
+    } else {
+      return config;
     }
   }
 
@@ -77,10 +82,14 @@ public final class StorageBackfill {
     LOG.info("Backfilling task config job keys.");
     storeProvider.getUnsafeTaskStore().mutateTasks(Query.unscoped(), new TaskMutation() {
       @Override
-      public IScheduledTask apply(final IScheduledTask task) {
-        ScheduledTask builder = task.newBuilder();
-        populateJobKey(builder.getAssignedTask().getTask(), BACKFILLED_TASK_CONFIG_KEYS);
-        return IScheduledTask.build(builder);
+      public ScheduledTask apply(ScheduledTask task) {
+        AssignedTask assignedTask = task.getAssignedTask();
+        TaskConfig config = populateJobKey(assignedTask.getTask(), BACKFILLED_TASK_CONFIG_KEYS);
+        return task.toBuilder()
+            .setAssignedTask(assignedTask.toBuilder()
+                .setTask(config)
+                .build())
+            .build();
       }
     });
   }

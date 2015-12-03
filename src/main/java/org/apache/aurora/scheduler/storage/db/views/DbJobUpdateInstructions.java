@@ -19,7 +19,7 @@ import com.google.common.collect.FluentIterable;
 
 import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateSettings;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateInstructions;
 
 public final class DbJobUpdateInstructions {
   private Set<DbInstanceTaskConfig> initialState;
@@ -30,16 +30,17 @@ public final class DbJobUpdateInstructions {
   }
 
   JobUpdateInstructions toThrift() {
-    return new JobUpdateInstructions()
+    return JobUpdateInstructions.builder()
         .setInitialState(
             FluentIterable.from(initialState)
                 .transform(DbInstanceTaskConfig::toThrift)
                 .toSet())
         .setDesiredState(desiredState == null ? null : desiredState.toThrift())
-        .setSettings(settings);
+        .setSettings(settings)
+        .build();
   }
 
-  public IJobUpdateInstructions toImmutable() {
-    return IJobUpdateInstructions.build(toThrift());
+  public JobUpdateInstructions toImmutable() {
+    return toThrift();
   }
 }

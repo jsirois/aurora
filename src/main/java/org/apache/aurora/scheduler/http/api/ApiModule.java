@@ -16,12 +16,14 @@ package org.apache.aurora.scheduler.http.api;
 import javax.inject.Singleton;
 import javax.ws.rs.HttpMethod;
 
+import com.facebook.swift.service.ThriftServiceProcessor;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Provides;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 
+import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.gen.AuroraAdmin;
@@ -83,6 +85,7 @@ public class ApiModule extends ServletModule {
   @Singleton
   TServlet provideApiThriftServlet(AnnotatedAuroraAdmin schedulerThriftInterface) {
     return new TServlet(
-        new AuroraAdmin.Processor<>(schedulerThriftInterface), new TJSONProtocol.Factory());
+        ThriftBinaryCodec.processorFor(AuroraAdmin.class, schedulerThriftInterface),
+        new TJSONProtocol.Factory());
   }
 }

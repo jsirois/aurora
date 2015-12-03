@@ -23,7 +23,7 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class StorageBackfillTest {
   // By default, only the mesos container is allowed by ConfigurationManager.
-  private static final IScheduledTask TASK =
+  private static final ScheduledTask TASK =
       setMesosContainer(TaskTestUtil.makeTask("task_id", TaskTestUtil.JOB));
 
   private Storage storage;
@@ -47,7 +47,7 @@ public class StorageBackfillTest {
 
   @Test
   public void testBackfillTask() {
-    final Set<IScheduledTask> backfilledTasks = ImmutableSet.of(TASK);
+    final Set<ScheduledTask> backfilledTasks = ImmutableSet.of(TASK);
     storage.write(new Storage.MutateWork.NoResult.Quiet() {
       @Override
       public void execute(Storage.MutableStoreProvider storeProvider) {
@@ -71,9 +71,9 @@ public class StorageBackfillTest {
     });
   }
 
-  private static IScheduledTask setMesosContainer(IScheduledTask task) {
+  private static ScheduledTask setMesosContainer(ScheduledTask task) {
     ScheduledTask builder = task.newBuilder();
     builder.getAssignedTask().getTask().setContainer(Container.mesos(new MesosContainer()));
-    return IScheduledTask.build(builder);
+    return ScheduledTask.build(builder);
   }
 }

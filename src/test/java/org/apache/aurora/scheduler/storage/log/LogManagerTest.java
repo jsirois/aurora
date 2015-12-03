@@ -53,7 +53,7 @@ import org.apache.aurora.gen.storage.SaveFrameworkId;
 import org.apache.aurora.gen.storage.SaveTasks;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.storageConstants;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.log.Log.Entry;
 import org.apache.aurora.scheduler.log.Log.Position;
@@ -559,7 +559,7 @@ public class LogManagerTest extends EasyMockTest {
 
   private LogEntry createLogEntry(Op... ops) {
     return LogEntry.transaction(
-        new Transaction(ImmutableList.copyOf(ops), storageConstants.CURRENT_SCHEMA_VERSION));
+        new Transaction(ImmutableList.copyOf(ops), Constants.CURRENT_SCHEMA_VERSION));
   }
 
   private void expectAppend(Position position, LogEntry logEntry) throws CodingException {

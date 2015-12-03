@@ -29,8 +29,8 @@ import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 
 /**
  * Task factory.
@@ -119,19 +119,19 @@ final class Tasks {
     }
 
     /**
-     * Builds a set of {@link IScheduledTask} for the current configuration.
+     * Builds a set of {@link ScheduledTask} for the current configuration.
      *
      * @param count Number of tasks to build.
      * @return Set of tasks.
      */
-    Set<IScheduledTask> build(int count) {
-      ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
+    Set<ScheduledTask> build(int count) {
+      ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
 
       for (int i = 0; i < count; i++) {
         String taskId =
             jobKey.getRole() + "-" + jobKey.getEnvironment() + "-" + i + "-" + (uuidStart + i);
 
-        ScheduledTask builder = TaskTestUtil.makeTask(taskId, IJobKey.build(jobKey))
+        ScheduledTask builder = TaskTestUtil.makeTask(taskId, JobKey.build(jobKey))
             .newBuilder()
             .setStatus(scheduleStatus)
             .setTaskEvents(Lists.newArrayList(
@@ -147,7 +147,7 @@ final class Tasks {
             .setDiskMb(disk.as(Data.MB))
             .setProduction(isProduction)
             .setRequestedPorts(ImmutableSet.of());
-        tasks.add(IScheduledTask.build(builder));
+        tasks.add(ScheduledTask.build(builder));
       }
 
       return tasks.build();

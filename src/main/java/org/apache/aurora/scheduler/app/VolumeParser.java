@@ -41,6 +41,6 @@ public class VolumeParser extends NonParameterizedTypeParser<Volume> {
       throw new IllegalArgumentException("Illegal mount string " + raw + ". "
         + "Read/Write spec must be in " + Joiner.on(", ").join(Mode.values()), e);
     }
-    return new Volume(split[1], split[0], mode);
+    return Volume.create(split[1], split[0], mode);
   }
 }

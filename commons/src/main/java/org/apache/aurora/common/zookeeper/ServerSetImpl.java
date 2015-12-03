@@ -210,10 +210,12 @@ public class ServerSetImpl implements ServerSet {
     }
 
     byte[] serializeServiceInstance() {
-      ServiceInstance serviceInstance = new ServiceInstance(
-          ServerSets.toEndpoint(endpoint),
-          Maps.transformValues(additionalEndpoints, ServerSets.TO_ENDPOINT),
-          Status.ALIVE);
+      ServiceInstance.Builder serviceInstance =
+          ServiceInstance.builder()
+              .setServiceEndpoint(ServerSets.toEndpoint(endpoint))
+              .setAdditionalEndpoints(
+                  Maps.transformValues(additionalEndpoints, ServerSets.TO_ENDPOINT))
+              .setStatus(Status.ALIVE);
 
       if (shardId.isPresent()) {
         serviceInstance.setShard(shardId.get());
@@ -221,7 +223,7 @@ public class ServerSetImpl implements ServerSet {
 
       LOG.fine("updating endpoint data to:\n\t" + serviceInstance);
       try {
-        return ServerSets.serializeServiceInstance(serviceInstance, codec);
+        return ServerSets.serializeServiceInstance(serviceInstance.build(), codec);
       } catch (IOException e) {
         throw new IllegalStateException("Unexpected problem serializing thrift struct " +
             serviceInstance + "to a byte[]", e);
@@ -452,7 +454,8 @@ public class ServerSetImpl implements ServerSet {
         this.additionalEndpoints = Maps.newHashMap();
       }
       this.status  = instance.getStatus();
-      this.shard = instance.isSetShard() ? instance.getShard() : null;
+      // TODO(John Sirois): XXX
+      this.shard = instance.getShard(); // instance.isSetShard() ? instance.getShard() : null;
     }
 
     EndpointSchema getServiceEndpoint() {
@@ -491,22 +494,25 @@ public class ServerSetImpl implements ServerSet {
     @Override
     public ServiceInstance deserialize(InputStream source) throws IOException {
       ServiceInstanceSchema output = gson.fromJson(new InputStreamReader(source, ENCODING), CLASS);
-      Endpoint primary = new Endpoint(
+      Endpoint primary = Endpoint.create(
           output.getServiceEndpoint().getHost(), output.getServiceEndpoint().getPort());
       Map<String, Endpoint> additional = Maps.transformValues(
           output.getAdditionalEndpoints(),
           new Function<EndpointSchema, Endpoint>() {
             @Override public Endpoint apply(EndpointSchema endpoint) {
-              return new Endpoint(endpoint.getHost(), endpoint.getPort());
+              return Endpoint.create(endpoint.getHost(), endpoint.getPort());
             }
           }
       );
-      ServiceInstance instance =
-          new ServiceInstance(primary, ImmutableMap.copyOf(additional), output.getStatus());
+      ServiceInstance.Builder instance =
+          ServiceInstance.builder()
+              .setServiceEndpoint(primary)
+              .setAdditionalEndpoints(ImmutableMap.copyOf(additional))
+              .setStatus(output.getStatus());
       if (output.getShard() != null) {
         instance.setShard(output.getShard());
       }
-      return instance;
+      return instance.build();
     }
   }
 

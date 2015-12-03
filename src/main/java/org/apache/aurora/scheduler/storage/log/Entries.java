@@ -13,6 +13,7 @@
  */
 package org.apache.aurora.scheduler.storage.log;
 
+import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
 import com.google.common.base.Preconditions;
@@ -36,7 +37,7 @@ final class Entries {
   /**
    * Deflates a log entry and wraps it in a deflated entry.
    * <p>
-   * This will encode the entry using the thrift binary codec, and will apply deflate compression to
+   * This will encode the entry using the thrift binary codecForType, and will apply deflate compression to
    * the resulting encoded data.
    * <p>
    * This operation is symmetric with {@link #inflate(LogEntry)}.
@@ -47,7 +48,8 @@ final class Entries {
    * @throws CodingException If the value could not be encoded or deflated.
    */
   static LogEntry deflate(LogEntry entry) throws CodingException {
-    return LogEntry.deflatedEntry(ThriftBinaryCodec.deflateNonNull(entry));
+    byte[] data = ThriftBinaryCodec.deflateNonNull(entry);
+    return LogEntry.deflatedEntry(ByteBuffer.wrap(data));
   }
 
   /**
@@ -63,9 +65,9 @@ final class Entries {
   static LogEntry inflate(LogEntry entry) throws CodingException {
     Preconditions.checkArgument(entry.isSet(_Fields.DEFLATED_ENTRY));
 
-    byte[] data = entry.getDeflatedEntry();
-    LOG.info("Inflating deflated log entry of size " + data.length);
-    return ThriftBinaryCodec.inflateNonNull(LogEntry.class, entry.getDeflatedEntry());
+    ByteBuffer data = entry.getDeflatedEntry();
+    LOG.info("Inflating deflated log entry of size " + data.remaining());
+    return ThriftBinaryCodec.inflateNonNull(LogEntry.class, data);
   }
 
   /**

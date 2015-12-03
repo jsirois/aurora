@@ -23,8 +23,9 @@ public final class DbStoredJobUpdateDetails {
   }
 
   public StoredJobUpdateDetails toThrift() {
-    return new StoredJobUpdateDetails()
+    return StoredJobUpdateDetails.builder()
         .setDetails(details.toThrift())
-        .setLockToken(lockToken);
+        .setLockToken(lockToken)
+        .build();
   }
 }

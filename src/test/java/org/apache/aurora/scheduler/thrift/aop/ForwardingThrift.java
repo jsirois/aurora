@@ -13,7 +13,7 @@
  */
 package org.apache.aurora.scheduler.thrift.aop;
 
-import java.util.Set;
+import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.gen.AddInstancesConfig;
 import org.apache.aurora.gen.Hosts;
@@ -30,7 +30,6 @@ import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.RewriteConfigsRequest;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.TaskQuery;
-import org.apache.thrift.TException;
 
 import static java.util.Objects.requireNonNull;
 
@@ -49,218 +48,218 @@ abstract class ForwardingThrift implements AnnotatedAuroraAdmin {
   @Override
   public Response setQuota(
       String ownerRole,
-      ResourceAggregate resourceAggregate) throws TException {
+      ResourceAggregate resourceAggregate) {
 
     return delegate.setQuota(ownerRole, resourceAggregate);
   }
 
   @Override
-  public Response forceTaskState(String taskId, ScheduleStatus status) throws TException {
+  public Response forceTaskState(String taskId, ScheduleStatus status) {
     return delegate.forceTaskState(taskId, status);
   }
 
   @Override
-  public Response performBackup() throws TException {
+  public Response performBackup() {
     return delegate.performBackup();
   }
 
   @Override
-  public Response listBackups() throws TException {
+  public Response listBackups() {
     return delegate.listBackups();
   }
 
   @Override
-  public Response stageRecovery(String backupId) throws TException {
+  public Response stageRecovery(String backupId) {
     return delegate.stageRecovery(backupId);
   }
 
   @Override
-  public Response queryRecovery(TaskQuery query) throws TException {
+  public Response queryRecovery(TaskQuery query) {
     return delegate.queryRecovery(query);
   }
 
   @Override
-  public Response deleteRecoveryTasks(TaskQuery query) throws TException {
+  public Response deleteRecoveryTasks(TaskQuery query) {
     return delegate.deleteRecoveryTasks(query);
   }
 
   @Override
-  public Response commitRecovery() throws TException {
+  public Response commitRecovery() {
     return delegate.commitRecovery();
   }
 
   @Override
-  public Response unloadRecovery() throws TException {
+  public Response unloadRecovery() {
     return delegate.unloadRecovery();
   }
 
   @Override
-  public Response getRoleSummary() throws TException {
+  public Response getRoleSummary() {
     return delegate.getRoleSummary();
   }
 
   @Override
-  public Response getJobSummary(String role) throws TException {
+  public Response getJobSummary(String role) {
     return delegate.getJobSummary(role);
   }
 
   @Override
-  public Response getConfigSummary(JobKey key) throws TException {
+  public Response getConfigSummary(JobKey key) {
     return delegate.getConfigSummary(key);
   }
 
   @Override
-  public Response createJob(JobConfiguration description, Lock lock) throws TException {
+  public Response createJob(JobConfiguration description, Lock lock) {
     return delegate.createJob(description, lock);
   }
 
   @Override
-  public Response scheduleCronJob(JobConfiguration description, Lock lock) throws TException {
+  public Response scheduleCronJob(JobConfiguration description, Lock lock) {
     return delegate.scheduleCronJob(description, lock);
   }
 
   @Override
-  public Response descheduleCronJob(JobKey job, Lock lock) throws TException {
+  public Response descheduleCronJob(JobKey job, Lock lock) {
     return delegate.descheduleCronJob(job, lock);
   }
 
   @Override
-  public Response replaceCronTemplate(JobConfiguration config, Lock lock) throws TException {
+  public Response replaceCronTemplate(JobConfiguration config, Lock lock) {
     return delegate.replaceCronTemplate(config, lock);
   }
 
   @Override
-  public Response populateJobConfig(JobConfiguration description) throws TException {
+  public Response populateJobConfig(JobConfiguration description) {
     return delegate.populateJobConfig(description);
   }
 
   @Override
-  public Response startCronJob(JobKey job) throws TException {
+  public Response startCronJob(JobKey job) {
     return delegate.startCronJob(job);
   }
 
   @Override
-  public Response restartShards(JobKey job, Set<Integer> shardIds, Lock lock) throws TException {
+  public Response restartShards(JobKey job, ImmutableSet<Integer> shardIds, Lock lock) {
     return delegate.restartShards(job, shardIds, lock);
   }
 
   @Override
-  public Response getTasksStatus(TaskQuery query) throws TException {
+  public Response getTasksStatus(TaskQuery query) {
     return delegate.getTasksStatus(query);
   }
 
   @Override
-  public Response getTasksWithoutConfigs(TaskQuery query) throws TException {
+  public Response getTasksWithoutConfigs(TaskQuery query) {
     return delegate.getTasksStatus(query);
   }
 
   @Override
-  public Response getJobs(String ownerRole) throws TException {
+  public Response getJobs(String ownerRole) {
     return delegate.getJobs(ownerRole);
   }
 
   @Override
-  public Response killTasks(TaskQuery query, Lock lock) throws TException {
+  public Response killTasks(TaskQuery query, Lock lock) {
     return delegate.killTasks(query, lock);
   }
 
   @Override
-  public Response getQuota(String ownerRole) throws TException {
+  public Response getQuota(String ownerRole) {
     return delegate.getQuota(ownerRole);
   }
 
   @Override
-  public Response startMaintenance(Hosts hosts) throws TException {
+  public Response startMaintenance(Hosts hosts) {
     return delegate.startMaintenance(hosts);
   }
 
   @Override
-  public Response drainHosts(Hosts hosts) throws TException {
+  public Response drainHosts(Hosts hosts) {
     return delegate.drainHosts(hosts);
   }
 
   @Override
-  public Response maintenanceStatus(Hosts hosts) throws TException {
+  public Response maintenanceStatus(Hosts hosts) {
     return delegate.maintenanceStatus(hosts);
   }
 
   @Override
-  public Response endMaintenance(Hosts hosts) throws TException {
+  public Response endMaintenance(Hosts hosts) {
     return delegate.endMaintenance(hosts);
   }
 
   @Override
-  public Response snapshot() throws TException {
+  public Response snapshot() {
     return delegate.snapshot();
   }
 
   @Override
-  public Response rewriteConfigs(RewriteConfigsRequest request) throws TException {
+  public Response rewriteConfigs(RewriteConfigsRequest request) {
     return delegate.rewriteConfigs(request);
   }
 
   @Override
-  public Response acquireLock(LockKey lockKey) throws TException {
+  public Response acquireLock(LockKey lockKey) {
     return delegate.acquireLock(lockKey);
   }
 
   @Override
-  public Response releaseLock(Lock lock, LockValidation validation) throws TException {
+  public Response releaseLock(Lock lock, LockValidation validation) {
     return delegate.releaseLock(lock, validation);
   }
 
   @Override
-  public Response getLocks() throws TException {
+  public Response getLocks() {
     return delegate.getLocks();
   }
 
   @Override
-  public Response addInstances(AddInstancesConfig config, Lock lock) throws TException {
+  public Response addInstances(AddInstancesConfig config, Lock lock) {
     return delegate.addInstances(config, lock);
   }
 
   @Override
-  public Response getPendingReason(TaskQuery query) throws TException {
+  public Response getPendingReason(TaskQuery query) {
     return delegate.getPendingReason(query);
   }
 
   @Override
-  public Response startJobUpdate(JobUpdateRequest request, String message) throws TException {
+  public Response startJobUpdate(JobUpdateRequest request, String message) {
     return delegate.startJobUpdate(request, message);
   }
 
   @Override
-  public Response pauseJobUpdate(JobUpdateKey key, String message) throws TException {
+  public Response pauseJobUpdate(JobUpdateKey key, String message) {
     return delegate.pauseJobUpdate(key, message);
   }
 
   @Override
-  public Response resumeJobUpdate(JobUpdateKey key, String message) throws TException {
+  public Response resumeJobUpdate(JobUpdateKey key, String message) {
     return delegate.resumeJobUpdate(key, message);
   }
 
   @Override
-  public Response abortJobUpdate(JobUpdateKey key, String message) throws TException {
+  public Response abortJobUpdate(JobUpdateKey key, String message) {
     return delegate.abortJobUpdate(key, message);
   }
 
   @Override
-  public Response pulseJobUpdate(JobUpdateKey key) throws TException {
+  public Response pulseJobUpdate(JobUpdateKey key) {
     return delegate.pulseJobUpdate(key);
   }
 
   @Override
-  public Response getJobUpdateSummaries(JobUpdateQuery updateQuery) throws TException {
+  public Response getJobUpdateSummaries(JobUpdateQuery updateQuery) {
     return delegate.getJobUpdateSummaries(updateQuery);
   }
 
   @Override
-  public Response getJobUpdateDetails(JobUpdateKey key) throws TException {
+  public Response getJobUpdateDetails(JobUpdateKey key) {
     return delegate.getJobUpdateDetails(key);
   }
 
   @Override
-  public Response getJobUpdateDiff(JobUpdateRequest request) throws TException {
+  public Response getJobUpdateDiff(JobUpdateRequest request) {
     return delegate.getJobUpdateDiff(request);
   }
 }

@@ -32,7 +32,7 @@ import static org.junit.Assert.assertEquals;
 public class AnnotatedAuroraAdminTest {
   @Test
   public void testAllAuroraSchedulerManagerIfaceMethodsHaveAuthorizingParam() throws Exception {
-    for (final Method declaredMethod : AuroraSchedulerManager.Iface.class.getDeclaredMethods()) {
+    for (final Method declaredMethod : AuroraSchedulerManager.Sync.class.getDeclaredMethods()) {
       Invokable<?, ?> invokable = Invokable.from(declaredMethod);
       Collection<Parameter> parameters = invokable.getParameters();
       Invokable<?, ?> annotatedInvokable = Invokable.from(

@@ -32,8 +32,8 @@ public class IHostAttributesTest {
     HostAttributes mutable = new HostAttributes()
         .setHost("a")
         .setAttributes(ImmutableSet.of(attribute));
-    IHostAttributes immutable1 = IHostAttributes.build(mutable);
-    IHostAttributes immutable2 = IHostAttributes.build(mutable);
+    HostAttributes immutable1 = HostAttributes.build(mutable);
+    HostAttributes immutable2 = HostAttributes.build(mutable);
     assertEquals(immutable1, immutable2);
     assertEquals(immutable2, immutable1);
     attribute.setValues(ImmutableSet.of("a"));

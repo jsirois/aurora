@@ -21,20 +21,20 @@ import com.google.common.base.Optional;
 
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 import org.apache.aurora.scheduler.base.Query;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -94,77 +94,77 @@ public class ForwardingStore implements
   }
 
   @Override
-  public Iterable<IJobConfiguration> fetchJobs() {
+  public Iterable<JobConfiguration> fetchJobs() {
     return cronJobStore.fetchJobs();
   }
 
   @Override
-  public Optional<IJobConfiguration> fetchJob(IJobKey jobKey) {
+  public Optional<JobConfiguration> fetchJob(JobKey jobKey) {
     return cronJobStore.fetchJob(jobKey);
   }
 
   @Override
-  public Iterable<IScheduledTask> fetchTasks(Query.Builder querySupplier) {
+  public Iterable<ScheduledTask> fetchTasks(Query.Builder querySupplier) {
     return taskStore.fetchTasks(querySupplier);
   }
 
   @Override
-  public Set<IJobKey> getJobKeys() {
+  public Set<JobKey> getJobKeys() {
     return taskStore.getJobKeys();
   }
 
   @Override
-  public Set<ILock> fetchLocks() {
+  public Set<Lock> fetchLocks() {
     return lockStore.fetchLocks();
   }
 
   @Override
-  public java.util.Optional<ILock> fetchLock(ILockKey lockKey) {
+  public java.util.Optional<Lock> fetchLock(LockKey lockKey) {
     return lockStore.fetchLock(lockKey);
   }
 
   @Override
-  public Map<String, IResourceAggregate> fetchQuotas() {
+  public Map<String, ResourceAggregate> fetchQuotas() {
     return quotaStore.fetchQuotas();
   }
 
   @Override
-  public Optional<IResourceAggregate> fetchQuota(String role) {
+  public Optional<ResourceAggregate> fetchQuota(String role) {
     return quotaStore.fetchQuota(role);
   }
 
   @Override
-  public Optional<IHostAttributes> getHostAttributes(String host) {
+  public Optional<HostAttributes> getHostAttributes(String host) {
     return attributeStore.getHostAttributes(host);
   }
 
   @Override
-  public Set<IHostAttributes> getHostAttributes() {
+  public Set<HostAttributes> getHostAttributes() {
     return attributeStore.getHostAttributes();
   }
 
   @Override
-  public List<IJobUpdateSummary> fetchJobUpdateSummaries(IJobUpdateQuery query) {
+  public List<JobUpdateSummary> fetchJobUpdateSummaries(JobUpdateQuery query) {
     return jobUpdateStore.fetchJobUpdateSummaries(query);
   }
 
   @Override
-  public Optional<IJobUpdateDetails> fetchJobUpdateDetails(IJobUpdateKey key) {
+  public Optional<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateKey key) {
     return jobUpdateStore.fetchJobUpdateDetails(key);
   }
 
   @Override
-  public List<IJobUpdateDetails> fetchJobUpdateDetails(IJobUpdateQuery query) {
+  public List<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateQuery query) {
     return jobUpdateStore.fetchJobUpdateDetails(query);
   }
 
   @Override
-  public Optional<IJobUpdate> fetchJobUpdate(IJobUpdateKey key) {
+  public Optional<JobUpdate> fetchJobUpdate(JobUpdateKey key) {
     return jobUpdateStore.fetchJobUpdate(key);
   }
 
   @Override
-  public Optional<IJobUpdateInstructions> fetchJobUpdateInstructions(IJobUpdateKey key) {
+  public Optional<JobUpdateInstructions> fetchJobUpdateInstructions(JobUpdateKey key) {
     return jobUpdateStore.fetchJobUpdateInstructions(key);
   }
 
@@ -174,12 +174,12 @@ public class ForwardingStore implements
   }
 
   @Override
-  public Optional<String> getLockToken(IJobUpdateKey key) {
+  public Optional<String> getLockToken(JobUpdateKey key) {
     return jobUpdateStore.getLockToken(key);
   }
 
   @Override
-  public List<IJobInstanceUpdateEvent> fetchInstanceEvents(IJobUpdateKey key, int instanceId) {
+  public List<JobInstanceUpdateEvent> fetchInstanceEvents(JobUpdateKey key, int instanceId) {
     return jobUpdateStore.fetchInstanceEvents(key, instanceId);
   }
 }

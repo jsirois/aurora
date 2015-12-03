@@ -27,7 +27,8 @@ interface StreamTransaction {
    * atomic record.
    *
    * @return The position of the log entry committed in this transaction, if any.
-   * @throws CodingException If there was a problem encoding a log entry for commit.
+   * @throws ThriftBinaryCodec.CodingException If there was a problem encoding a log entry for
+   *         commit.
    */
   Log.Position commit() throws ThriftBinaryCodec.CodingException;
 

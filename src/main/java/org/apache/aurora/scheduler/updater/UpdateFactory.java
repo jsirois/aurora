@@ -29,12 +29,12 @@ import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.scheduler.base.Numbers;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSettings;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateSettings;
+import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.updater.strategy.BatchStrategy;
 import org.apache.aurora.scheduler.updater.strategy.QueueStrategy;
 import org.apache.aurora.scheduler.updater.strategy.UpdateStrategy;
@@ -62,7 +62,7 @@ interface UpdateFactory {
    *         {@code configuration}.
    */
   Update newUpdate(
-      IJobUpdateInstructions configuration,
+      JobUpdateInstructions configuration,
       boolean rollingForward);
 
   class UpdateFactoryImpl implements UpdateFactory {
@@ -74,9 +74,9 @@ interface UpdateFactory {
     }
 
     @Override
-    public Update newUpdate(IJobUpdateInstructions instructions, boolean rollingForward) {
+    public Update newUpdate(JobUpdateInstructions instructions, boolean rollingForward) {
       requireNonNull(instructions);
-      IJobUpdateSettings settings = instructions.getSettings();
+      JobUpdateSettings settings = instructions.getSettings();
       checkArgument(
           settings.getMaxWaitToInstanceRunningMs() > 0,
           "Max wait to running must be positive.");
@@ -100,10 +100,10 @@ interface UpdateFactory {
         instances = Numbers.rangesToInstanceIds(settings.getUpdateOnlyTheseInstances());
       }
 
-      ImmutableMap.Builder<Integer, StateEvaluator<Optional<IScheduledTask>>> evaluators =
+      ImmutableMap.Builder<Integer, StateEvaluator<Optional<ScheduledTask>>> evaluators =
           ImmutableMap.builder();
       for (int instanceId : instances) {
-        Optional<ITaskConfig> desiredStateConfig;
+        Optional<TaskConfig> desiredStateConfig;
         if (rollingForward) {
           desiredStateConfig = desiredInstances.contains(instanceId)
               ? Optional.of(instructions.getDesiredState().getTask())
@@ -144,16 +144,16 @@ interface UpdateFactory {
     }
 
     @VisibleForTesting
-    static Set<Integer> expandInstanceIds(Set<IInstanceTaskConfig> instanceGroups) {
+    static Set<Integer> expandInstanceIds(Set<InstanceTaskConfig> instanceGroups) {
       return Updates.getInstanceIds(instanceGroups).asSet(DiscreteDomain.integers());
     }
 
-    private static Optional<ITaskConfig> getConfig(
+    private static Optional<TaskConfig> getConfig(
         int id,
-        Set<IInstanceTaskConfig> instanceGroups) {
+        Set<InstanceTaskConfig> instanceGroups) {
 
-      for (IInstanceTaskConfig group : instanceGroups) {
-        for (IRange range : group.getInstances()) {
+      for (InstanceTaskConfig group : instanceGroups) {
+        for (Range range : group.getInstances()) {
           if (toRange(range).contains(id)) {
             return Optional.of(group.getTask());
           }
@@ -165,12 +165,12 @@ interface UpdateFactory {
   }
 
   class Update {
-    private final OneWayJobUpdater<Integer, Optional<IScheduledTask>> updater;
+    private final OneWayJobUpdater<Integer, Optional<ScheduledTask>> updater;
     private final JobUpdateStatus successStatus;
     private final JobUpdateStatus failureStatus;
 
     Update(
-        OneWayJobUpdater<Integer, Optional<IScheduledTask>> updater,
+        OneWayJobUpdater<Integer, Optional<ScheduledTask>> updater,
         JobUpdateStatus successStatus,
         JobUpdateStatus failureStatus) {
 
@@ -179,7 +179,7 @@ interface UpdateFactory {
       this.failureStatus = requireNonNull(failureStatus);
     }
 
-    OneWayJobUpdater<Integer, Optional<IScheduledTask>> getUpdater() {
+    OneWayJobUpdater<Integer, Optional<ScheduledTask>> getUpdater() {
       return updater;
     }
 

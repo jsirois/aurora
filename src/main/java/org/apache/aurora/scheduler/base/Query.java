@@ -23,8 +23,8 @@ import com.google.common.primitives.Ints;
 
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.TaskQuery;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobKey;
 
 import static java.util.Objects.requireNonNull;
 
@@ -51,11 +51,11 @@ public final class Query {
    */
   public static boolean isJobScoped(Builder taskQuery) {
     TaskQuery q = taskQuery.get();
-    return q.isSetRole() && q.isSetEnvironment() && q.isSetJobName() || q.isSetJobKeys();
+    return (q.isSetRole() && q.isSetEnvironment() && q.isSetJobName()) || !q.getJobKeys().isEmpty();
   }
 
   public static Builder arbitrary(TaskQuery query) {
-    return new Builder(query.deepCopy());
+    return new Builder(query);
   }
 
   public static Builder unscoped() {
@@ -70,23 +70,23 @@ public final class Query {
     return unscoped().byEnv(role, environment);
   }
 
-  public static Builder jobScoped(IJobKey jobKey) {
+  public static Builder jobScoped(JobKey jobKey) {
     return unscoped().byJob(jobKey);
   }
 
-  public static Builder jobScoped(Iterable<IJobKey> jobKeys) {
+  public static Builder jobScoped(Iterable<JobKey> jobKeys) {
     return unscoped().byJobKeys(jobKeys);
   }
 
-  public static Builder instanceScoped(IInstanceKey instanceKey) {
+  public static Builder instanceScoped(InstanceKey instanceKey) {
     return instanceScoped(instanceKey.getJobKey(), instanceKey.getInstanceId());
   }
 
-  public static Builder instanceScoped(IJobKey jobKey, int instanceId, int... instanceIds) {
+  public static Builder instanceScoped(JobKey jobKey, int instanceId, int... instanceIds) {
     return unscoped().byInstances(jobKey, instanceId, instanceIds);
   }
 
-  public static Builder instanceScoped(IJobKey jobKey, Iterable<Integer> instanceIds) {
+  public static Builder instanceScoped(JobKey jobKey, Iterable<Integer> instanceIds) {
     return unscoped().byInstances(jobKey, instanceIds);
   }
 
@@ -128,21 +128,29 @@ public final class Query {
    * TODO(ksweeney): Add an environment scope.
    */
   public static final class Builder implements Supplier<TaskQuery> {
-    private final TaskQuery query;
 
-    Builder() {
-      this.query = new TaskQuery();
-    }
-
-    Builder(final TaskQuery query) {
-      // It is expected that the caller calls deepCopy.
+    static TaskQuery.Builder sanitizeOwner(TaskQuery query) {
       // TODO(maxim): Safe to keep only Role here as TaskQuery is not returned back to the client.
       // Remove in 0.7.0. (AURORA-749)
+      TaskQuery.Builder builder = query.toBuilder();
       if (query.isSetOwner()) {
-        query.setRole(query.getOwner().getRole());
-        query.unsetOwner();
+        builder.setRole(query.getOwner().getRole());
+        builder.setOwner(null);
       }
+      return builder;
+    }
 
+    private final TaskQuery.Builder query;
+
+    Builder() {
+      this(TaskQuery.builder());
+    }
+
+    Builder(TaskQuery query) {
+      this(sanitizeOwner(query));
+    }
+
+    Builder(TaskQuery.Builder query) {
       this.query = query;
     }
 
@@ -155,26 +163,30 @@ public final class Query {
      */
     @Override
     public TaskQuery get() {
-      return query.deepCopy();
+      return query.build();
     }
 
     @Override
     public boolean equals(Object that) {
       return that != null
           && that instanceof Builder
-          && Objects.equals(query, ((Builder) that).query);
+          && Objects.equals(get(), ((Builder) that).get());
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(query);
+      return Objects.hash(get());
     }
 
     @Override
     public String toString() {
       return MoreObjects.toStringHelper(this)
-          .add("query", query)
+          .add("query", get())
           .toString();
+    }
+
+    private TaskQuery.Builder deepCopy() {
+      return get().toBuilder();
     }
 
     /**
@@ -188,7 +200,7 @@ public final class Query {
       requireNonNull(taskId);
 
       return new Builder(
-          query.deepCopy()
+          deepCopy()
               .setTaskIds(ImmutableSet.<String>builder().add(taskId).add(taskIds).build()));
     }
 
@@ -203,8 +215,7 @@ public final class Query {
     public Builder byId(Iterable<String> taskIds) {
       requireNonNull(taskIds);
 
-      return new Builder(
-          query.deepCopy().setTaskIds(ImmutableSet.copyOf(taskIds)));
+      return new Builder(deepCopy().setTaskIds(taskIds));
     }
 
     /**
@@ -216,7 +227,7 @@ public final class Query {
     public Builder byRole(String role) {
       requireNonNull(role);
 
-      return new Builder(query.deepCopy().setRole(role));
+      return new Builder(deepCopy().setRole(role));
     }
 
     /**
@@ -231,8 +242,7 @@ public final class Query {
       requireNonNull(role);
       requireNonNull(environment);
 
-      return new Builder(
-          query.deepCopy().setRole(role).setEnvironment(environment));
+      return new Builder(deepCopy().setRole(role).setEnvironment(environment));
     }
 
     /**
@@ -242,12 +252,10 @@ public final class Query {
      * @param jobKey The key of the job to scope the query to.
      * @return A new Builder scoped to the given jobKey.
      */
-    public Builder byJob(IJobKey jobKey) {
+    public Builder byJob(JobKey jobKey) {
       JobKeys.assertValid(jobKey);
 
-      return new Builder(
-          query.deepCopy()
-              .setJobKeys(ImmutableSet.of(jobKey.newBuilder())));
+      return new Builder(deepCopy().setJobKeys(ImmutableSet.of(jobKey)));
     }
 
     /**
@@ -275,7 +283,7 @@ public final class Query {
     public Builder bySlave(Iterable<String> slaveHosts) {
       requireNonNull(slaveHosts);
 
-      return new Builder(query.deepCopy().setSlaveHosts(ImmutableSet.copyOf(slaveHosts)));
+      return new Builder(deepCopy().setSlaveHosts(ImmutableSet.copyOf(slaveHosts)));
     }
 
     /**
@@ -289,8 +297,7 @@ public final class Query {
     public Builder byStatus(ScheduleStatus status, ScheduleStatus... statuses) {
       requireNonNull(status);
 
-      return new Builder(
-          query.deepCopy().setStatuses(EnumSet.of(status, statuses)));
+      return new Builder(deepCopy().setStatuses(EnumSet.of(status, statuses)));
     }
 
     /**
@@ -305,7 +312,7 @@ public final class Query {
       requireNonNull(statuses);
 
       return new Builder(
-          query.deepCopy().setStatuses(EnumSet.copyOf(ImmutableSet.copyOf(statuses))));
+          deepCopy().setStatuses(EnumSet.copyOf(ImmutableSet.copyOf(statuses))));
     }
 
     /**
@@ -317,11 +324,11 @@ public final class Query {
      * @param instanceIds Additional instance ids of the target job.
      * @return A new Builder scoped to the given instance ids.
      */
-    public Builder byInstances(IJobKey jobKey, int instanceId, int... instanceIds) {
+    public Builder byInstances(JobKey jobKey, int instanceId, int... instanceIds) {
       JobKeys.assertValid(jobKey);
 
       return new Builder(
-          query.deepCopy()
+          deepCopy()
               .setRole(jobKey.getRole())
               .setEnvironment(jobKey.getEnvironment())
               .setJobName(jobKey.getName())
@@ -340,12 +347,12 @@ public final class Query {
      * @param instanceIds Instances of the target job.
      * @return A new Builder scoped to the given instance ids.
      */
-    public Builder byInstances(IJobKey jobKey, Iterable<Integer> instanceIds) {
+    public Builder byInstances(JobKey jobKey, Iterable<Integer> instanceIds) {
       JobKeys.assertValid(jobKey);
       requireNonNull(instanceIds);
 
       return new Builder(
-          query.deepCopy()
+          deepCopy()
               .setRole(jobKey.getRole())
               .setEnvironment(jobKey.getEnvironment())
               .setJobName(jobKey.getName())
@@ -359,10 +366,10 @@ public final class Query {
      * @param jobKeys The job keys to scope this builder to.
      * @return A new Builder scoped to the job keys.
      */
-    public Builder byJobKeys(Iterable<IJobKey> jobKeys) {
+    public Builder byJobKeys(Iterable<JobKey> jobKeys) {
       requireNonNull(jobKeys);
 
-      return new Builder(query.deepCopy().setJobKeys(IJobKey.toBuildersSet(jobKeys)));
+      return new Builder(deepCopy().setJobKeys(jobKeys));
     }
 
     /**

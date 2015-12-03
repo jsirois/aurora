@@ -17,7 +17,7 @@ import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
+import org.apache.aurora.gen.JobConfiguration;
 
 public final class DbJobConfiguration {
   private JobKey key;
@@ -30,14 +30,14 @@ public final class DbJobConfiguration {
   private DbJobConfiguration() {
   }
 
-  public IJobConfiguration toImmutable() {
-    return IJobConfiguration.build(
-        new JobConfiguration()
+  public JobConfiguration toImmutable() {
+    return JobConfiguration.builder()
         .setKey(key)
         .setOwner(owner)
         .setCronSchedule(cronSchedule)
         .setCronCollisionPolicy(cronCollisionPolicy)
         .setTaskConfig(taskConfig.toThrift())
-        .setInstanceCount(instanceCount));
+        .setInstanceCount(instanceCount)
+        .build();
   }
 }

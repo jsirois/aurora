@@ -39,7 +39,7 @@ import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEvent.TasksDeleted;
 import org.apache.aurora.scheduler.events.PubsubEvent.Vetoed;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.TaskConfig;
 
 /**
  * Tracks vetoes against scheduling decisions and maintains the closest fit among all the vetoes
@@ -92,9 +92,9 @@ public class NearestFit implements EventSubscriber {
   @Subscribe
   public synchronized void remove(TasksDeleted deletedEvent) {
     fitByGroupKey.invalidateAll(Iterables.transform(deletedEvent.getTasks(), Functions.compose(
-        new Function<ITaskConfig, TaskGroupKey>() {
+        new Function<TaskConfig, TaskGroupKey>() {
           @Override
-          public TaskGroupKey apply(ITaskConfig task) {
+          public TaskGroupKey apply(TaskConfig task) {
             return TaskGroupKey.from(task);
           }
         },

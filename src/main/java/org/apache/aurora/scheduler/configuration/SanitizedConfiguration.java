@@ -22,24 +22,24 @@ import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 
 import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
+import org.apache.aurora.gen.JobConfiguration;
 
 /**
  * Wrapper for a configuration that has been fully-sanitized and populated with defaults.
  */
 public final class SanitizedConfiguration {
 
-  private final IJobConfiguration sanitized;
+  private final JobConfiguration sanitized;
   private final Set<Integer> instanceIds;
 
   /**
    * Constructs a SanitizedConfiguration object and populates the set of instance IDs for
-   * the provided {@link org.apache.aurora.scheduler.storage.entities.ITaskConfig}.
+   * the provided {@link org.apache.aurora.gen.TaskConfig}.
    *
    * @param sanitized A sanitized configuration.
    */
   @VisibleForTesting
-  public SanitizedConfiguration(IJobConfiguration sanitized) {
+  public SanitizedConfiguration(JobConfiguration sanitized) {
     this.sanitized = sanitized;
     this.instanceIds = ContiguousSet.create(
         Range.closedOpen(0, sanitized.getInstanceCount()),
@@ -53,13 +53,13 @@ public final class SanitizedConfiguration {
    * @return A wrapper containing the sanitized configuration.
    * @throws TaskDescriptionException If the configuration is invalid.
    */
-  public static SanitizedConfiguration fromUnsanitized(IJobConfiguration unsanitized)
+  public static SanitizedConfiguration fromUnsanitized(JobConfiguration unsanitized)
       throws TaskDescriptionException {
 
     return new SanitizedConfiguration(ConfigurationManager.validateAndPopulate(unsanitized));
   }
 
-  public IJobConfiguration getJobConfig() {
+  public JobConfiguration getJobConfig() {
     return sanitized;
   }
 

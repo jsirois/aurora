@@ -31,9 +31,9 @@ import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.LockManager.LockException;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
@@ -50,8 +50,8 @@ public class LockManagerImplTest extends EasyMockTest {
   private static final String USER = "jim-user";
   private static final Identity JIM = new Identity("jim", USER);
   private static final String MY_JOB = "myJob";
-  private static final IJobKey JOB_KEY = JobKeys.from(JIM.getRole(), "devel", MY_JOB);
-  private static final ILockKey LOCK_KEY = ILockKey.build(LockKey.job(JOB_KEY.newBuilder()));
+  private static final JobKey JOB_KEY = JobKeys.from(JIM.getRole(), "devel", MY_JOB);
+  private static final LockKey LOCK_KEY = LockKey.build(LockKey.job(JOB_KEY.newBuilder()));
   private static final UUID TOKEN = UUID.fromString("79d6d790-3212-11e3-aa6e-0800200c9a66");
 
   private FakeClock clock;
@@ -78,13 +78,13 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testAcquireLock() throws Exception {
     control.replay();
 
-    ILock expected = ILock.build(new Lock()
+    Lock expected = Lock.build(new Lock()
         .setKey(LOCK_KEY.newBuilder())
         .setToken(TOKEN.toString())
         .setTimestampMs(timestampMs)
         .setUser(USER));
 
-    ILock actual = lockManager.acquireLock(expected.getKey(), USER);
+    Lock actual = lockManager.acquireLock(expected.getKey(), USER);
     assertEquals(expected, actual);
   }
 
@@ -101,7 +101,7 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testReleaseLock() throws Exception {
     control.replay();
 
-    ILock lock = lockManager.acquireLock(LOCK_KEY, USER);
+    Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
     lockManager.releaseLock(lock);
 
     // Should be able to lock again after releasing.
@@ -112,7 +112,7 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testValidateLockStoredEqualHeld() throws Exception {
     control.replay();
 
-    ILock lock = lockManager.acquireLock(LOCK_KEY, USER);
+    Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
     lockManager.validateIfLocked(LOCK_KEY, Optional.of(lock));
   }
 
@@ -128,8 +128,8 @@ public class LockManagerImplTest extends EasyMockTest {
     control.replay();
 
     expectLockException(JOB_KEY);
-    ILock lock = lockManager.acquireLock(LOCK_KEY, USER);
-    lock = ILock.build(lock.newBuilder().setUser("bob"));
+    Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
+    lock = Lock.build(lock.newBuilder().setUser("bob"));
     lockManager.validateIfLocked(LOCK_KEY, Optional.of(lock));
   }
 
@@ -146,10 +146,10 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testValidateLockNotStoredHeld() throws Exception {
     control.replay();
 
-    IJobKey jobKey = JobKeys.from("r", "e", "n");
+    JobKey jobKey = JobKeys.from("r", "e", "n");
     expectLockException(jobKey);
-    ILock lock = lockManager.acquireLock(LOCK_KEY, USER);
-    ILockKey key = ILockKey.build(LockKey.job(jobKey.newBuilder()));
+    Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
+    LockKey key = LockKey.build(LockKey.job(jobKey.newBuilder()));
     lockManager.validateIfLocked(key, Optional.of(lock));
   }
 
@@ -157,7 +157,7 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testGetLocks() throws Exception {
     control.replay();
 
-    ILock lock = lockManager.acquireLock(LOCK_KEY, USER);
+    Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
     assertEquals(lock, Iterables.getOnlyElement(lockManager.getLocks()));
   }
 
@@ -209,7 +209,7 @@ public class LockManagerImplTest extends EasyMockTest {
     lockManager.validateIfLocked(LOCK_KEY, Optional.empty());
   }
 
-  private void expectLockException(IJobKey key) {
+  private void expectLockException(JobKey key) {
     expectedException.expect(LockException.class);
     expectedException.expectMessage(JobKeys.canonicalString(key));
   }

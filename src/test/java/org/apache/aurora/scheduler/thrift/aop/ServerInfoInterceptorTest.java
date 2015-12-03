@@ -24,7 +24,7 @@ import org.apache.aurora.gen.GetJobsResult;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.Result;
 import org.apache.aurora.gen.ServerInfo;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +40,7 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
   private AnnotatedAuroraAdmin realThrift;
   private AnnotatedAuroraAdmin decoratedThrift;
 
-  private static final IServerInfo SERVER_INFO = IServerInfo.build(
+  private static final ServerInfo SERVER_INFO = ServerInfo.build(
       new ServerInfo()
           .setClusterName("test")
           .setThriftAPIVersion(1)
@@ -56,7 +56,7 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
       @Override
       protected void configure() {
         MockDecoratedThrift.bindForwardedMock(binder(), realThrift);
-        bind(IServerInfo.class).toInstance(SERVER_INFO);
+        bind(ServerInfo.class).toInstance(SERVER_INFO);
         AopModule.bindThriftDecorator(
             binder(),
             Matchers.annotatedWith(DecoratedThrift.class),

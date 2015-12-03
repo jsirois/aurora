@@ -14,7 +14,7 @@
 package org.apache.aurora.scheduler.quota;
 
 import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
+import org.apache.aurora.gen.ResourceAggregate;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.quota.QuotaCheckResult.Result.INSUFFICIENT_QUOTA;
@@ -26,11 +26,11 @@ public class QuotaCheckResultTest {
 
   @Test
   public void testGreaterOrEqualPass() {
-    IResourceAggregate quota = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate quota = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(512L));
-    IResourceAggregate request = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate request = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(512L));
@@ -39,11 +39,11 @@ public class QuotaCheckResultTest {
 
   @Test
   public void testGreaterOrEqualFailsCpu() {
-    IResourceAggregate quota = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate quota = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(512L));
-    IResourceAggregate request = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate request = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(2.0)
         .setRamMb(256L)
         .setDiskMb(512L));
@@ -54,11 +54,11 @@ public class QuotaCheckResultTest {
 
   @Test
   public void testGreaterOrEqualFailsRam() {
-    IResourceAggregate quota = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate quota = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(512L));
-    IResourceAggregate request = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate request = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(512L)
         .setDiskMb(512L));
@@ -70,11 +70,11 @@ public class QuotaCheckResultTest {
 
   @Test
   public void testGreaterOrEqualFailsDisk() {
-    IResourceAggregate quota = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate quota = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(512L));
-    IResourceAggregate request = IResourceAggregate.build(new ResourceAggregate()
+    ResourceAggregate request = ResourceAggregate.build(new ResourceAggregate()
         .setNumCpus(1.0)
         .setRamMb(256L)
         .setDiskMb(1024L));

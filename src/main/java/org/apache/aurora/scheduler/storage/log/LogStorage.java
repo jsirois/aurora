@@ -63,18 +63,18 @@ import org.apache.aurora.scheduler.storage.SnapshotStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -354,21 +354,19 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           @Override
           public void execute(Op op) {
             SaveCronJob cronJob = op.getSaveCronJob();
-            writeBehindJobStore.saveAcceptedJob(
-                IJobConfiguration.build(cronJob.getJobConfig()));
+            writeBehindJobStore.saveAcceptedJob(cronJob.getJobConfig());
           }
         })
         .put(Op._Fields.REMOVE_JOB, new Closure<Op>() {
           @Override
           public void execute(Op op) {
-            writeBehindJobStore.removeJob(IJobKey.build(op.getRemoveJob().getJobKey()));
+            writeBehindJobStore.removeJob(op.getRemoveJob().getJobKey());
           }
         })
         .put(Op._Fields.SAVE_TASKS, new Closure<Op>() {
           @Override
           public void execute(Op op) {
-            writeBehindTaskStore.saveTasks(
-                IScheduledTask.setFromBuilders(op.getSaveTasks().getTasks()));
+            writeBehindTaskStore.saveTasks(op.getSaveTasks().getTasks());
           }
         })
         .put(Op._Fields.REWRITE_TASK, new Closure<Op>() {
@@ -377,7 +375,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             RewriteTask rewriteTask = op.getRewriteTask();
             writeBehindTaskStore.unsafeModifyInPlace(
                 rewriteTask.getTaskId(),
-                ITaskConfig.build(rewriteTask.getTask()));
+                rewriteTask.getTask());
           }
         })
         .put(Op._Fields.REMOVE_TASKS, new Closure<Op>() {
@@ -392,7 +390,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             SaveQuota saveQuota = op.getSaveQuota();
             writeBehindQuotaStore.saveQuota(
                 saveQuota.getRole(),
-                IResourceAggregate.build(saveQuota.getQuota()));
+                saveQuota.getQuota());
           }
         })
         .put(Op._Fields.REMOVE_QUOTA, new Closure<Op>() {
@@ -409,7 +407,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             // unknown hosts.  5cf760b began rejecting these, but the replicated log may still
             // contain entries with a null slave ID.
             if (attributes.isSetSlaveId()) {
-              writeBehindAttributeStore.saveHostAttributes(IHostAttributes.build(attributes));
+              writeBehindAttributeStore.saveHostAttributes(attributes);
             } else {
               LOG.info("Dropping host attributes with no slave ID: " + attributes);
             }
@@ -418,13 +416,13 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
         .put(Op._Fields.SAVE_LOCK, new Closure<Op>() {
           @Override
           public void execute(Op op) {
-            writeBehindLockStore.saveLock(ILock.build(op.getSaveLock().getLock()));
+            writeBehindLockStore.saveLock(op.getSaveLock().getLock());
           }
         })
         .put(Op._Fields.REMOVE_LOCK, new Closure<Op>() {
           @Override
           public void execute(Op op) {
-            writeBehindLockStore.removeLock(ILockKey.build(op.getRemoveLock().getLockKey()));
+            writeBehindLockStore.removeLock(op.getRemoveLock().getLockKey());
           }
         })
         .put(Op._Fields.SAVE_JOB_UPDATE, new Closure<Op>() {
@@ -432,7 +430,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           public void execute(Op op) {
             JobUpdate update = op.getSaveJobUpdate().getJobUpdate();
             writeBehindJobUpdateStore.saveJobUpdate(
-                IJobUpdate.build(update),
+                update,
                 Optional.fromNullable(op.getSaveJobUpdate().getLockToken()));
           }
         })
@@ -441,8 +439,8 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           public void execute(Op op) {
             SaveJobUpdateEvent event = op.getSaveJobUpdateEvent();
             writeBehindJobUpdateStore.saveJobUpdateEvent(
-                IJobUpdateKey.build(event.getKey()),
-                IJobUpdateEvent.build(op.getSaveJobUpdateEvent().getEvent()));
+                event.getKey(),
+                op.getSaveJobUpdateEvent().getEvent());
           }
         })
         .put(Op._Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, new Closure<Op>() {
@@ -450,8 +448,8 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           public void execute(Op op) {
             SaveJobInstanceUpdateEvent event = op.getSaveJobInstanceUpdateEvent();
             writeBehindJobUpdateStore.saveJobInstanceUpdateEvent(
-                IJobUpdateKey.build(event.getKey()),
-                IJobInstanceUpdateEvent.build(op.getSaveJobInstanceUpdateEvent().getEvent()));
+                event.getKey(),
+                op.getSaveJobInstanceUpdateEvent().getEvent());
           }
         })
         .put(Op._Fields.PRUNE_JOB_UPDATE_HISTORY, new Closure<Op>() {
@@ -580,11 +578,11 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
         Snapshot snapshot = snapshotStore.createSnapshot();
         persist(snapshot);
         LOG.info("Snapshot complete."
-            + " host attrs: " + snapshot.getHostAttributesSize()
-            + ", cron jobs: " + snapshot.getCronJobsSize()
-            + ", locks: " + snapshot.getLocksSize()
-            + ", quota confs: " + snapshot.getQuotaConfigurationsSize()
-            + ", tasks: " + snapshot.getTasksSize());
+            + " host attrs: " + snapshot.getHostAttributes().size()
+            + ", cron jobs: " + snapshot.getCronJobs().size()
+            + ", locks: " + snapshot.getLocks().size()
+            + ", quota confs: " + snapshot.getQuotaConfigurations().size()
+            + ", tasks: " + snapshot.getTasks().size());
       }
     });
   }

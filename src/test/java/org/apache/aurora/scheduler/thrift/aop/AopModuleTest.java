@@ -22,12 +22,12 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
-import org.apache.aurora.gen.AuroraAdmin.Iface;
+import org.apache.aurora.gen.AuroraAdmin.Sync;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
 import org.apache.aurora.gen.ServerInfo;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.ServerInfo;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,7 +49,7 @@ public class AopModuleTest extends EasyMockTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(IServerInfo.class).toInstance(IServerInfo.build(new ServerInfo()));
+            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()));
             MockDecoratedThrift.bindForwardedMock(binder(), mockThrift);
           }
         },

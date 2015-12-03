@@ -34,9 +34,9 @@ import com.google.common.collect.Range;
 import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
 
 import static java.util.Objects.requireNonNull;
 
@@ -45,20 +45,20 @@ import static org.apache.aurora.gen.ScheduleStatus.PENDING;
 import static org.apache.aurora.gen.ScheduleStatus.RUNNING;
 
 /**
- * Defines an SLA algorithm to be applied to a {@link IScheduledTask}
+ * Defines an SLA algorithm to be applied to a {@link ScheduledTask}
  * set for calculating a specific SLA metric.
  */
 interface SlaAlgorithm {
 
   /**
-   * Applies this algorithm to a set of {@link IScheduledTask} to
+   * Applies this algorithm to a set of {@link ScheduledTask} to
    * produce a named metric value over the specified time frame.
    *
    * @param tasks Set of tasks to apply this algorithm to.
    * @param timeFrame Relevant time frame.
    * @return Produced metric value.
    */
-  Number calculate(Iterable<IScheduledTask> tasks, Range<Long> timeFrame);
+  Number calculate(Iterable<ScheduledTask> tasks, Range<Long> timeFrame);
 
   /**
    * Pre-configured SLA algorithms.
@@ -116,15 +116,15 @@ interface SlaAlgorithm {
     }
 
     @Override
-    public Number calculate(Iterable<IScheduledTask> tasks, Range<Long> timeFrame) {
-      Iterable<IScheduledTask> activeTasks = FluentIterable.from(tasks)
+    public Number calculate(Iterable<ScheduledTask> tasks, Range<Long> timeFrame) {
+      Iterable<ScheduledTask> activeTasks = FluentIterable.from(tasks)
           .filter(
-              Predicates.compose(Predicates.in(Tasks.ACTIVE_STATES), IScheduledTask::getStatus));
+              Predicates.compose(Predicates.in(Tasks.ACTIVE_STATES), ScheduledTask::getStatus));
 
       List<Long> waitTimes = Lists.newLinkedList();
-      for (IScheduledTask task : activeTasks) {
+      for (ScheduledTask task : activeTasks) {
         long pendingTs = 0;
-        for (ITaskEvent event : task.getTaskEvents()) {
+        for (TaskEvent event : task.getTaskEvents()) {
           if (event.getStatus() == PENDING) {
             pendingTs = event.getTimestamp();
           } else if (event.getStatus() == status && timeFrame.contains(event.getTimestamp())) {
@@ -154,15 +154,15 @@ interface SlaAlgorithm {
     private static final String NAME_FORMAT = "job_uptime_%.2f_sec";
     private final float percentile;
 
-    private static final Predicate<IScheduledTask> IS_RUNNING =
+    private static final Predicate<ScheduledTask> IS_RUNNING =
         Predicates.compose(
             Predicates.in(ImmutableSet.of(RUNNING)),
-            IScheduledTask::getStatus);
+            ScheduledTask::getStatus);
 
-    private static final Function<IScheduledTask, ITaskEvent> TASK_TO_EVENT =
-        new Function<IScheduledTask, ITaskEvent>() {
+    private static final Function<ScheduledTask, TaskEvent> TASK_TO_EVENT =
+        new Function<ScheduledTask, TaskEvent>() {
           @Override
-          public ITaskEvent apply(IScheduledTask task) {
+          public TaskEvent apply(ScheduledTask task) {
             return Tasks.getLatestEvent(task);
           }
         };
@@ -172,13 +172,13 @@ interface SlaAlgorithm {
     }
 
     @Override
-    public Number calculate(Iterable<IScheduledTask> tasks, final Range<Long> timeFrame) {
+    public Number calculate(Iterable<ScheduledTask> tasks, final Range<Long> timeFrame) {
       List<Long> uptimes = FluentIterable.from(tasks)
           .filter(IS_RUNNING)
           .transform(Functions.compose(
-              new Function<ITaskEvent, Long>() {
+              new Function<TaskEvent, Long>() {
                 @Override
-                public Long apply(ITaskEvent event) {
+                public Long apply(TaskEvent event) {
                   return timeFrame.upperEndpoint() - event.getTimestamp();
                 }
               },
@@ -252,10 +252,10 @@ interface SlaAlgorithm {
     }
 
     private static class InstanceId {
-      private final IJobKey jobKey;
+      private final JobKey jobKey;
       private final int id;
 
-      InstanceId(IJobKey jobKey, int instanceId) {
+      InstanceId(JobKey jobKey, int instanceId) {
         this.jobKey = requireNonNull(jobKey);
         this.id = instanceId;
       }
@@ -277,20 +277,20 @@ interface SlaAlgorithm {
       }
     }
 
-    private static final Function<IScheduledTask, InstanceId> TO_ID =
-        new Function<IScheduledTask, InstanceId>() {
+    private static final Function<ScheduledTask, InstanceId> TO_ID =
+        new Function<ScheduledTask, InstanceId>() {
           @Override
-          public InstanceId apply(IScheduledTask task) {
+          public InstanceId apply(ScheduledTask task) {
             return new InstanceId(
                 task.getAssignedTask().getTask().getJob(),
                 task.getAssignedTask().getInstanceId());
           }
         };
 
-    private static final Function<ITaskEvent, Long> TASK_EVENT_TO_TIMESTAMP =
-        new Function<ITaskEvent, Long>() {
+    private static final Function<TaskEvent, Long> TASK_EVENT_TO_TIMESTAMP =
+        new Function<TaskEvent, Long>() {
           @Override
-          public Long apply(ITaskEvent taskEvent) {
+          public Long apply(TaskEvent taskEvent) {
             return taskEvent.getTimestamp();
           }
         };
@@ -298,12 +298,12 @@ interface SlaAlgorithm {
     /**
      * Combine all task events per given instance into the unified sorted instance history view.
      */
-    private static final Function<Collection<IScheduledTask>, List<ITaskEvent>> TO_SORTED_EVENTS =
-        new Function<Collection<IScheduledTask>, List<ITaskEvent>>() {
+    private static final Function<Collection<ScheduledTask>, List<TaskEvent>> TO_SORTED_EVENTS =
+        new Function<Collection<ScheduledTask>, List<TaskEvent>>() {
           @Override
-          public List<ITaskEvent> apply(Collection<IScheduledTask> tasks) {
-            List<ITaskEvent> result = Lists.newLinkedList();
-            for (IScheduledTask task : tasks) {
+          public List<TaskEvent> apply(Collection<ScheduledTask> tasks) {
+            List<TaskEvent> result = Lists.newLinkedList();
+            for (ScheduledTask task : tasks) {
               result.addAll(task.getTaskEvents());
             }
 
@@ -315,15 +315,15 @@ interface SlaAlgorithm {
     /**
      * Convert instance history into the {@link SlaState} based {@link Interval} list.
      */
-    private static final Function<List<ITaskEvent>, List<Interval>> TASK_EVENTS_TO_INTERVALS =
-        new Function<List<ITaskEvent>, List<Interval>>() {
+    private static final Function<List<TaskEvent>, List<Interval>> TASK_EVENTS_TO_INTERVALS =
+        new Function<List<TaskEvent>, List<Interval>>() {
           @Override
-          public List<Interval> apply(List<ITaskEvent> events) {
+          public List<Interval> apply(List<TaskEvent> events) {
 
             ImmutableList.Builder<Interval> intervals = ImmutableList.builder();
             Pair<SlaState, Long> current = Pair.of(SlaState.REMOVED, 0L);
 
-            for (ITaskEvent event : events) {
+            for (TaskEvent event : events) {
               long timestamp = event.getTimestamp();
 
               // Event status in the instance timeline signifies either of the following:
@@ -397,10 +397,10 @@ interface SlaAlgorithm {
     }
 
     @Override
-    public Number calculate(Iterable<IScheduledTask> tasks, Range<Long> timeFrame) {
+    public Number calculate(Iterable<ScheduledTask> tasks, Range<Long> timeFrame) {
       // Given the set of tasks do the following:
       // - index all available tasks by InstanceId (JobKey + instance ID);
-      // - combine individual task ITaskEvent lists into the instance based timeline to represent
+      // - combine individual task TaskEvent lists into the instance based timeline to represent
       //   all available history for a given task instance;
       // - convert instance timeline into the SlaState intervals.
       Map<InstanceId, List<Interval>> instanceSlaTimeline =

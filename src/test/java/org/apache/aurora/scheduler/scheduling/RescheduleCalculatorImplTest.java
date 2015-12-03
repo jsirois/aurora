@@ -33,7 +33,7 @@ import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.scheduling.RescheduleCalculator.RescheduleCalculatorImpl;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -90,7 +90,7 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
 
   @Test
   public void testFlappingTask() {
-    IScheduledTask ancestor = makeFlappyTask("a");
+    ScheduledTask ancestor = makeFlappyTask("a");
     storageUtil.expectTaskFetch(Query.taskScoped(Tasks.id(ancestor)), ancestor);
     long penaltyMs = 1000L;
     expect(backoff.calculateBackoffMs(0L)).andReturn(penaltyMs);
@@ -107,19 +107,19 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
   public void testFlappingTasksBackoffTruncation() {
     // Ensures that the reschedule calculator detects penalty truncation and avoids inspecting
     // ancestors once truncated.
-    IScheduledTask taskA = setAncestor(makeFlappyTask("a"), "bugIfQueried");
-    IScheduledTask taskB = setAncestor(makeFlappyTask("b"), Tasks.id(taskA));
-    IScheduledTask taskC = setAncestor(makeFlappyTask("c"), Tasks.id(taskB));
-    IScheduledTask taskD = setAncestor(makeFlappyTask("d"), Tasks.id(taskC));
+    ScheduledTask taskA = setAncestor(makeFlappyTask("a"), "bugIfQueried");
+    ScheduledTask taskB = setAncestor(makeFlappyTask("b"), Tasks.id(taskA));
+    ScheduledTask taskC = setAncestor(makeFlappyTask("c"), Tasks.id(taskB));
+    ScheduledTask taskD = setAncestor(makeFlappyTask("d"), Tasks.id(taskC));
 
-    Map<IScheduledTask, Long> ancestorsAndPenalties = ImmutableMap.of(
+    Map<ScheduledTask, Long> ancestorsAndPenalties = ImmutableMap.of(
         taskD, 100L,
         taskC, 200L,
         taskB, 300L,
         taskA, 300L);
 
     long lastPenalty = 0L;
-    for (Map.Entry<IScheduledTask, Long> taskAndPenalty : ancestorsAndPenalties.entrySet()) {
+    for (Map.Entry<ScheduledTask, Long> taskAndPenalty : ancestorsAndPenalties.entrySet()) {
       storageUtil.expectTaskFetch(
           Query.taskScoped(Tasks.id(taskAndPenalty.getKey())),
           taskAndPenalty.getKey());
@@ -129,13 +129,13 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
 
     control.replay();
 
-    IScheduledTask newTask = setAncestor(makeFlappyTask("newTask"), Tasks.id(taskD));
+    ScheduledTask newTask = setAncestor(makeFlappyTask("newTask"), Tasks.id(taskD));
     assertEquals(300L, rescheduleCalculator.getFlappingPenaltyMs(newTask));
   }
 
   @Test
   public void testNoPenaltyForInterruptedTasks() {
-    IScheduledTask ancestor = setEvents(
+    ScheduledTask ancestor = setEvents(
         makeTask("a", KILLED),
         ImmutableMap.of(INIT, 0L, PENDING, 100L, RUNNING, 200L, KILLING, 300L, KILLED, 400L));
     storageUtil.expectTaskFetch(Query.taskScoped(Tasks.id(ancestor)), ancestor);
@@ -148,14 +148,14 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
             setAncestor(makeTask("b", INIT), Tasks.id(ancestor))));
   }
 
-  private IScheduledTask makeFlappyTask(String taskId) {
+  private ScheduledTask makeFlappyTask(String taskId) {
     return setEvents(
         makeTask(taskId, FINISHED),
         ImmutableMap.of(INIT, 0L, PENDING, 100L, RUNNING, 200L, FINISHED, 300L));
   }
 
-  private IScheduledTask makeTask(String taskId) {
-    return IScheduledTask.build(new ScheduledTask()
+  private ScheduledTask makeTask(String taskId) {
+    return ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask()
             .setInstanceId(0)
             .setTaskId(taskId)
@@ -165,12 +165,12 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
                 .setEnvironment("env-" + taskId))));
   }
 
-  private IScheduledTask makeTask(String taskId, ScheduleStatus status) {
-    return IScheduledTask.build(makeTask(taskId).newBuilder().setStatus(status));
+  private ScheduledTask makeTask(String taskId, ScheduleStatus status) {
+    return ScheduledTask.build(makeTask(taskId).newBuilder().setStatus(status));
   }
 
-  private IScheduledTask setAncestor(IScheduledTask task, String ancestorId) {
-    return IScheduledTask.build(task.newBuilder().setAncestorId(ancestorId));
+  private ScheduledTask setAncestor(ScheduledTask task, String ancestorId) {
+    return ScheduledTask.build(task.newBuilder().setAncestorId(ancestorId));
   }
 
   private static final Function<Map.Entry<ScheduleStatus, Long>, TaskEvent> TO_EVENT =
@@ -181,8 +181,8 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
         }
       };
 
-  private IScheduledTask setEvents(IScheduledTask task, Map<ScheduleStatus, Long> events) {
-    return IScheduledTask.build(task.newBuilder().setTaskEvents(
+  private ScheduledTask setEvents(ScheduledTask task, Map<ScheduleStatus, Long> events) {
+    return ScheduledTask.build(task.newBuilder().setTaskEvents(
         FluentIterable.from(events.entrySet()).transform(TO_EVENT).toList()));
   }
 }

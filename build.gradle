@@ -242,7 +242,7 @@ project(':api') {
 //  thriftEntities {
 //    gsonRev = project.gsonRev
 //    guavaRev = project.guavaRev
-//    inputFiles = fileTree("src/main/thrift/org/apache/aurora/gen").matching {
+//    inputFiles = fileTree("src/main/thrift/org.apache.aurora.gen.).matching {
 //      include "**/*.thrift"
 //    }
 //  }
@@ -298,6 +298,7 @@ compileJava {
   options.compilerArgs << '-Xlint:-serial'
   // Don't fail for third party classfile warnings.
   options.compilerArgs << '-Xlint:-classfile'
+  options.compilerArgs << '-Xmaxerrs' << '1000'
 }
 
 task enforceVersion {

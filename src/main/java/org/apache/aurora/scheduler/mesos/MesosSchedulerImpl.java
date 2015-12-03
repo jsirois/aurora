@@ -44,7 +44,7 @@ import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.mesos.Protos.ExecutorID;
 import org.apache.mesos.Protos.FrameworkID;
 import org.apache.mesos.Protos.MasterInfo;
@@ -167,7 +167,7 @@ public class MesosSchedulerImpl implements Scheduler {
           @Override
           public void execute(MutableStoreProvider storeProvider) {
             for (Offer offer : offers) {
-              IHostAttributes attributes =
+              HostAttributes attributes =
                   AttributeStore.Util.mergeOffer(storeProvider.getAttributeStore(), offer);
               storeProvider.getAttributeStore().saveHostAttributes(attributes);
               if (log.isLoggable(Level.FINE)) {

@@ -32,7 +32,7 @@ import org.apache.aurora.scheduler.async.DelayExecutor;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.state.StateChangeResult;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -101,7 +101,7 @@ public class TaskTimeoutTest extends EasyMockTest {
   }
 
   private void changeState(String taskId, ScheduleStatus from, ScheduleStatus to) {
-    IScheduledTask task = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask task = ScheduledTask.build(new ScheduledTask()
         .setStatus(to)
         .setAssignedTask(new AssignedTask().setTaskId(taskId)));
     timeout.recordStateChange(TaskStateChange.transition(task, from));
@@ -183,12 +183,12 @@ public class TaskTimeoutTest extends EasyMockTest {
     assertEquals(timedOutTaskCounter.intValue(), 0);
   }
 
-  private static IScheduledTask makeTask(
+  private static ScheduledTask makeTask(
       String taskId,
       ScheduleStatus status,
       long stateEnteredMs) {
 
-    return IScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.build(new ScheduledTask()
         .setStatus(status)
         .setTaskEvents(ImmutableList.of(new TaskEvent(stateEnteredMs, status)))
         .setAssignedTask(new AssignedTask()
@@ -205,7 +205,7 @@ public class TaskTimeoutTest extends EasyMockTest {
     replayAndCreate();
 
     clock.setNowMillis(TIMEOUT.as(Time.MILLISECONDS) * 2);
-    for (IScheduledTask task : ImmutableList.of(
+    for (ScheduledTask task : ImmutableList.of(
         makeTask("a", ASSIGNED, 0),
         makeTask("b", KILLING, TIMEOUT.as(Time.MILLISECONDS)),
         makeTask("c", PREEMPTING, clock.nowMillis() + TIMEOUT.as(Time.MILLISECONDS)))) {

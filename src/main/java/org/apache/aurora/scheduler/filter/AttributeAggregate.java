@@ -26,9 +26,9 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -61,12 +61,12 @@ public final class AttributeAggregate {
    */
   public static AttributeAggregate getJobActiveState(
       final StoreProvider storeProvider,
-      final IJobKey jobKey) {
+      final JobKey jobKey) {
 
     return create(
-        new Supplier<Iterable<IScheduledTask>>() {
+        new Supplier<Iterable<ScheduledTask>>() {
           @Override
-          public Iterable<IScheduledTask> get() {
+          public Iterable<ScheduledTask> get() {
             return storeProvider.getTaskStore()
                 .fetchTasks(Query.jobScoped(jobKey).byStatus(Tasks.SLAVE_ASSIGNED_STATES));
           }
@@ -76,13 +76,13 @@ public final class AttributeAggregate {
 
   @VisibleForTesting
   static AttributeAggregate create(
-      final Supplier<Iterable<IScheduledTask>> taskSupplier,
+      final Supplier<Iterable<ScheduledTask>> taskSupplier,
       final AttributeStore attributeStore) {
 
-    final Function<String, Iterable<IAttribute>> getHostAttributes =
-        new Function<String, Iterable<IAttribute>>() {
+    final Function<String, Iterable<Attribute>> getHostAttributes =
+        new Function<String, Iterable<Attribute>>() {
           @Override
-          public Iterable<IAttribute> apply(String host) {
+          public Iterable<Attribute> apply(String host) {
             // Note: this assumes we have access to attributes for hosts where all active tasks
             // reside.
             requireNonNull(host);
@@ -91,9 +91,9 @@ public final class AttributeAggregate {
         };
 
     return create(Suppliers.compose(
-        new Function<Iterable<IScheduledTask>, Iterable<IAttribute>>() {
+        new Function<Iterable<ScheduledTask>, Iterable<Attribute>>() {
           @Override
-          public Iterable<IAttribute> apply(Iterable<IScheduledTask> tasks) {
+          public Iterable<Attribute> apply(Iterable<ScheduledTask> tasks) {
             return FluentIterable.from(tasks)
                 .transform(Tasks::scheduledToSlaveHost)
                 .transformAndConcat(getHostAttributes);
@@ -103,13 +103,13 @@ public final class AttributeAggregate {
   }
 
   @VisibleForTesting
-  static AttributeAggregate create(Supplier<Iterable<IAttribute>> attributes) {
+  static AttributeAggregate create(Supplier<Iterable<Attribute>> attributes) {
     Supplier<Multiset<Pair<String, String>>> aggregator = Suppliers.compose(
-        new Function<Iterable<IAttribute>, Multiset<Pair<String, String>>>() {
+        new Function<Iterable<Attribute>, Multiset<Pair<String, String>>>() {
           @Override
-          public Multiset<Pair<String, String>> apply(Iterable<IAttribute> attributes) {
+          public Multiset<Pair<String, String>> apply(Iterable<Attribute> attributes) {
             ImmutableMultiset.Builder<Pair<String, String>> builder = ImmutableMultiset.builder();
-            for (IAttribute attribute : attributes) {
+            for (Attribute attribute : attributes) {
               for (String value : attribute.getValues()) {
                 builder.add(Pair.of(attribute.getName(), value));
               }

@@ -35,7 +35,7 @@ import org.apache.aurora.scheduler.storage.DistributedSnapshotStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -67,7 +67,7 @@ public interface Recovery {
    * @return Tasks matching the query.
    * @throws RecoveryException If a backup is not staged, or could not be queried.
    */
-  Iterable<IScheduledTask> query(Query.Builder query) throws RecoveryException;
+  Iterable<ScheduledTask> query(Query.Builder query) throws RecoveryException;
 
   /**
    * Deletes tasks from a staged backup.
@@ -163,7 +163,7 @@ public interface Recovery {
     }
 
     @Override
-    public Iterable<IScheduledTask> query(Query.Builder query) throws RecoveryException {
+    public Iterable<ScheduledTask> query(Query.Builder query) throws RecoveryException {
       return getLoadedRecovery().query(query);
     }
 
@@ -203,7 +203,7 @@ public interface Recovery {
         });
       }
 
-      Iterable<IScheduledTask> query(final Query.Builder query) {
+      Iterable<ScheduledTask> query(final Query.Builder query) {
         return tempStorage.fetchTasks(query);
       }
 

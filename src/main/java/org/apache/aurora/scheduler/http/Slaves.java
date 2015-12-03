@@ -30,9 +30,9 @@ import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ServerInfo;
 
 import static java.util.Objects.requireNonNull;
 
@@ -56,25 +56,25 @@ public class Slaves extends JerseyTemplateServlet {
    * @param storage store to fetch the host attributes from
    */
   @Inject
-  public Slaves(IServerInfo serverInfo, Storage storage) {
+  public Slaves(ServerInfo serverInfo, Storage storage) {
     super("slaves");
     this.clusterName = checkNotBlank(serverInfo.getClusterName());
     this.storage = requireNonNull(storage);
   }
 
-  private Iterable<IHostAttributes> getHostAttributes() {
-    return storage.read(new Work.Quiet<Iterable<IHostAttributes>>() {
+  private Iterable<HostAttributes> getHostAttributes() {
+    return storage.read(new Work.Quiet<Iterable<HostAttributes>>() {
       @Override
-      public Iterable<IHostAttributes> apply(StoreProvider storeProvider) {
+      public Iterable<HostAttributes> apply(StoreProvider storeProvider) {
         return storeProvider.getAttributeStore().getHostAttributes();
       }
     });
   }
 
-  private static final Function<IHostAttributes, Slave> TO_SLAVE =
-      new Function<IHostAttributes, Slave>() {
+  private static final Function<HostAttributes, Slave> TO_SLAVE =
+      new Function<HostAttributes, Slave>() {
         @Override
-        public Slave apply(IHostAttributes attributes) {
+        public Slave apply(HostAttributes attributes) {
           return new Slave(attributes);
         }
       };
@@ -98,10 +98,10 @@ public class Slaves extends JerseyTemplateServlet {
     });
   }
 
-  private static final Ordering<IAttribute> ATTR_ORDER = Ordering.natural().onResultOf(
-      new Function<IAttribute, String>() {
+  private static final Ordering<Attribute> ATTR_ORDER = Ordering.natural().onResultOf(
+      new Function<Attribute, String>() {
         @Override
-        public String apply(IAttribute attr) {
+        public String apply(Attribute attr) {
           return attr .getName();
         }
       });
@@ -110,9 +110,9 @@ public class Slaves extends JerseyTemplateServlet {
    * Template object to represent a slave.
    */
   private static class Slave {
-    private final IHostAttributes attributes;
+    private final HostAttributes attributes;
 
-    Slave(IHostAttributes attributes) {
+    Slave(HostAttributes attributes) {
       this.attributes = attributes;
     }
 
@@ -128,10 +128,10 @@ public class Slaves extends JerseyTemplateServlet {
       return attributes.getMode();
     }
 
-    private static final Function<IAttribute, String> ATTR_TO_STRING =
-        new Function<IAttribute, String>() {
+    private static final Function<Attribute, String> ATTR_TO_STRING =
+        new Function<Attribute, String>() {
           @Override
-          public String apply(IAttribute attr) {
+          public String apply(Attribute attr) {
             return attr.getName() + "=[" + Joiner.on(",").join(attr.getValues()) + "]";
           }
         };

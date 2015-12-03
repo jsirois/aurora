@@ -91,7 +91,7 @@ public class ServerSets {
       Codec<ServiceInstance> codec) throws IOException {
 
     ServiceInstance serviceInstance =
-        new ServiceInstance(toEndpoint(address), additionalEndpoints, status);
+        ServiceInstance.create(toEndpoint(address), additionalEndpoints, status);
     return serializeServiceInstance(serviceInstance, codec);
   }
 
@@ -113,6 +113,6 @@ public class ServerSets {
    * @param address the target address to create the endpoint for
    */
   public static Endpoint toEndpoint(InetSocketAddress address) {
-    return new Endpoint(address.getHostName(), address.getPort());
+    return Endpoint.create(address.getHostName(), address.getPort());
   }
 }

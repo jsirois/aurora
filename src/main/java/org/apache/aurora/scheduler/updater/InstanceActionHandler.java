@@ -18,7 +18,6 @@ import java.util.logging.Logger;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Range;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
@@ -27,11 +26,11 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.TaskConfig;
 
 import static org.apache.aurora.gen.JobUpdateStatus.ROLLING_FORWARD;
 import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
@@ -39,8 +38,8 @@ import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 interface InstanceActionHandler {
 
   Amount<Long, Time> getReevaluationDelay(
-      IInstanceKey instance,
-      IJobUpdateInstructions instructions,
+      InstanceKey instance,
+      JobUpdateInstructions instructions,
       MutableStoreProvider storeProvider,
       StateManager stateManager,
       JobUpdateStatus status);
@@ -48,8 +47,8 @@ interface InstanceActionHandler {
   Logger LOG = Logger.getLogger(InstanceActionHandler.class.getName());
 
   class AddTask implements InstanceActionHandler {
-    private static ITaskConfig getTargetConfig(
-        IJobUpdateInstructions instructions,
+    private static TaskConfig getTargetConfig(
+        JobUpdateInstructions instructions,
         boolean rollingForward,
         int instanceId) {
 
@@ -57,9 +56,10 @@ interface InstanceActionHandler {
         // Desired state is assumed to be non-null when AddTask is used.
         return instructions.getDesiredState().getTask();
       } else {
-        for (IInstanceTaskConfig config : instructions.getInitialState()) {
-          for (IRange range : config.getInstances()) {
-            if (Range.closed(range.getFirst(), range.getLast()).contains(instanceId)) {
+        for (InstanceTaskConfig config : instructions.getInitialState()) {
+          for (Range range : config.getInstances()) {
+            if (com.google.common.collect.Range.closed(range.getFirst(), range.getLast())
+                .contains(instanceId)) {
               return config.getTask();
             }
           }
@@ -71,14 +71,14 @@ interface InstanceActionHandler {
 
     @Override
     public Amount<Long, Time> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {
 
       LOG.info("Adding instance " + instance + " while " + status);
-      ITaskConfig replacement = getTargetConfig(
+      TaskConfig replacement = getTargetConfig(
           instructions,
           status == ROLLING_FORWARD,
           instance.getInstanceId());
@@ -95,8 +95,8 @@ interface InstanceActionHandler {
   class KillTask implements InstanceActionHandler {
     @Override
     public Amount<Long, Time> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {
@@ -119,8 +119,8 @@ interface InstanceActionHandler {
   class WatchRunningTask implements InstanceActionHandler {
     @Override
     public Amount<Long, Time> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {

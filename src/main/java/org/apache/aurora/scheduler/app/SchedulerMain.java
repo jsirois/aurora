@@ -63,7 +63,7 @@ import org.apache.aurora.scheduler.stats.StatsModule;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.backup.BackupModule;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.storage.log.LogStorageModule;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 import org.apache.aurora.scheduler.zookeeper.guice.client.ZooKeeperClientModule;
@@ -71,7 +71,7 @@ import org.apache.aurora.scheduler.zookeeper.guice.client.ZooKeeperClientModule.
 import org.apache.aurora.scheduler.zookeeper.guice.client.flagged.FlaggedClientConfig;
 
 import static org.apache.aurora.common.logging.RootLogConfig.Configuration;
-import static org.apache.aurora.gen.apiConstants.THRIFT_API_VERSION;
+import static org.apache.aurora.gen.Constants.THRIFT_API_VERSION;
 
 /**
  * Launcher for the aurora scheduler.
@@ -186,12 +186,12 @@ public class SchedulerMain {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(IServerInfo.class).toInstance(
-                IServerInfo.build(
-                    new ServerInfo()
-                        .setClusterName(CLUSTER_NAME.get())
-                        .setThriftAPIVersion(THRIFT_API_VERSION)
-                        .setStatsUrlPrefix(STATS_URL_PREFIX.get())));
+            bind(ServerInfo.class).toInstance(
+                ServerInfo.builder()
+                    .setClusterName(CLUSTER_NAME.get())
+                    .setThriftAPIVersion(THRIFT_API_VERSION)
+                    .setStatsUrlPrefix(STATS_URL_PREFIX.get())
+                    .build());
           }
         });
 

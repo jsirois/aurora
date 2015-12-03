@@ -13,8 +13,6 @@
  */
 package org.apache.aurora.scheduler.thrift;
 
-import com.google.common.collect.Lists;
-
 import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
@@ -28,6 +26,7 @@ import static org.apache.aurora.gen.ResponseCode.OK;
 /**
  * Utility class for constructing responses to API calls.
  */
+// TODO(John Sirois): XXX: Re-structure towards exposing Builders or simply kill.
 public final class Responses {
 
   private Responses() {
@@ -40,7 +39,7 @@ public final class Responses {
    * @return An empty response message.
    */
   public static Response empty() {
-    return new Response().setDetails(Lists.newArrayList());
+    return Response.builder().build();
   }
 
   /**
@@ -65,7 +64,7 @@ public final class Responses {
    * @see {@link #addMessage(Response, String)}
    */
   public static Response addMessage(Response response, ResponseCode code, String message) {
-    return addMessage(response.setResponseCode(code), message);
+    return addMessage(response.toBuilder().setResponseCode(code).build(), message);
   }
 
   /**
@@ -78,12 +77,11 @@ public final class Responses {
    * @return {@link #addMessage(Response, String)}
    */
   public static Response addMessage(Response response, ResponseCode code, Throwable throwable) {
-    return appendMessage(response.setResponseCode(code), throwable.getMessage());
+    return appendMessage(response.toBuilder().setResponseCode(code).build(), throwable.getMessage());
   }
 
   private static Response appendMessage(Response response, String message) {
-    response.addToDetails(new ResponseDetail(message));
-    return response;
+    return response.toBuilder().addToDetails(ResponseDetail.create(message)).build();
   }
 
   /**
@@ -102,18 +100,24 @@ public final class Responses {
    * @return Ok response with an empty result.
    */
   public static Response ok()  {
-    return empty().setResponseCode(OK);
+    return Response.builder().setResponseCode(OK).build();
   }
 
   static Response invalidRequest(String message) {
-    return addMessage(empty(), INVALID_REQUEST, message);
+    return Response.builder()
+        .setDetails(ResponseDetail.create(message))
+        .setResponseCode(INVALID_REQUEST)
+        .build();
   }
 
   static Response ok(Result result) {
-    return ok().setResult(result);
+    return Response.builder().setResponseCode(OK).setResult(result).build();
   }
 
   static Response error(ResponseCode code, Throwable error) {
-    return addMessage(empty(), code, error);
+    return Response.builder()
+        .setDetails(ResponseDetail.create(error.getMessage()))
+        .setResponseCode(code)
+        .build();
   }
 }

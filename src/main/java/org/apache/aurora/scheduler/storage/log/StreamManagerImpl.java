@@ -13,9 +13,12 @@
  */
 package org.apache.aurora.scheduler.storage.log;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,7 +29,6 @@ import javax.inject.Inject;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
@@ -36,6 +38,7 @@ import com.google.inject.assistedinject.Assisted;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.stats.Stats;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.gen.storage.Frame;
 import org.apache.aurora.gen.storage.FrameHeader;
 import org.apache.aurora.gen.storage.LogEntry;
@@ -45,7 +48,6 @@ import org.apache.aurora.gen.storage.SaveHostAttributes;
 import org.apache.aurora.gen.storage.SaveTasks;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.storageConstants;
 import org.apache.aurora.scheduler.log.Log;
 import org.apache.aurora.scheduler.log.Log.Stream;
 
@@ -154,14 +156,20 @@ class StreamManagerImpl implements StreamManager {
         logBadFrame(header, i);
         return logEntry;
       }
-      byte[] chunkData = chunkFrame.getChunk().getData();
+      byte[] chunkData = asByteArray(chunkFrame.getChunk().getData());
       hasher.putBytes(chunkData);
       chunks[i] = chunkData;
     }
-    if (!Arrays.equals(header.getChecksum(), hasher.hash().asBytes())) {
+    if (header.getChecksum().equals(ByteBuffer.wrap(hasher.hash().asBytes()))) {
       throw new CodingException("Read back a framed log entry that failed its checksum");
     }
     return Entries.thriftBinaryDecode(Bytes.concat(chunks));
+  }
+
+  private static byte[] asByteArray(ByteBuffer data) {
+    byte[] buffer = new byte[data.remaining()];
+    data.duplicate().get(buffer);
+    return buffer;
   }
 
   private static boolean isFrame(LogEntry logEntry) {
@@ -247,8 +255,7 @@ class StreamManagerImpl implements StreamManager {
   }
 
   final class StreamTransactionImpl implements StreamTransaction {
-    private final Transaction transaction =
-        new Transaction().setSchemaVersion(storageConstants.CURRENT_SCHEMA_VERSION);
+    private final LinkedList<Op> ops = new LinkedList<>();
     private final AtomicBoolean committed = new AtomicBoolean(false);
 
     StreamTransactionImpl() {
@@ -260,10 +267,11 @@ class StreamManagerImpl implements StreamManager {
       Preconditions.checkState(!committed.getAndSet(true),
           "Can only call commit once per transaction.");
 
-      if (!transaction.isSetOps()) {
+      if (ops.isEmpty()) {
         return null;
       }
 
+      Transaction transaction = Transaction.create(ops, Constants.CURRENT_SCHEMA_VERSION);
       Log.Position position = appendAndGetPosition(LogEntry.transaction(transaction));
       vars.unSnapshottedTransactions.incrementAndGet();
       return position;
@@ -273,9 +281,15 @@ class StreamManagerImpl implements StreamManager {
     public void add(Op op) {
       Preconditions.checkState(!committed.get());
 
-      Op prior = transaction.isSetOps() ? Iterables.getLast(transaction.getOps(), null) : null;
-      if (prior == null || !coalesce(prior, op)) {
-        transaction.addToOps(op);
+      @Nullable Op prior = ops.peekLast();
+      ops.add(op);
+      if (prior != null) {
+        Optional<Op> coalesced = coalesce(prior, op);
+        if (coalesced.isPresent()) {
+          ops.removeLast();
+          ops.removeLast();
+          ops.add(coalesced.get());
+        }
       }
     }
 
@@ -287,72 +301,55 @@ class StreamManagerImpl implements StreamManager {
      * @param next The next op to be added.
      * @return {@code true} if the next op was coalesced into the prior, {@code false} otherwise.
      */
-    private boolean coalesce(Op prior, Op next) {
-      if (!prior.isSet() && !next.isSet()) {
-        return false;
-      }
-
+    @Nullable
+    private Optional<Op> coalesce(Op prior, Op next) {
       Op._Fields priorType = prior.getSetField();
       if (!priorType.equals(next.getSetField())) {
-        return false;
+        return Optional.empty();
       }
 
       switch (priorType) {
         case SAVE_FRAMEWORK_ID:
-          prior.setSaveFrameworkId(next.getSaveFrameworkId());
-          return true;
+          return Optional.of(next);
         case SAVE_TASKS:
-          coalesce(prior.getSaveTasks(), next.getSaveTasks());
-          return true;
+          return coalesce(prior.getSaveTasks(), next.getSaveTasks());
         case REMOVE_TASKS:
-          coalesce(prior.getRemoveTasks(), next.getRemoveTasks());
-          return true;
+          return coalesce(prior.getRemoveTasks(), next.getRemoveTasks());
         case SAVE_HOST_ATTRIBUTES:
           return coalesce(prior.getSaveHostAttributes(), next.getSaveHostAttributes());
         default:
-          return false;
+          return Optional.empty();
       }
     }
 
-    private void coalesce(SaveTasks prior, SaveTasks next) {
-      if (next.isSetTasks()) {
-        if (prior.isSetTasks()) {
-          // It is an expected invariant that an operation may reference a task (identified by
-          // task ID) no more than one time.  Therefore, to coalesce two SaveTasks operations,
-          // the most recent task definition overrides the prior operation.
-          Map<String, ScheduledTask> coalesced = Maps.newHashMap();
-          for (ScheduledTask task : prior.getTasks()) {
-            coalesced.put(task.getAssignedTask().getTaskId(), task);
-          }
-          for (ScheduledTask task : next.getTasks()) {
-            coalesced.put(task.getAssignedTask().getTaskId(), task);
-          }
-          prior.setTasks(ImmutableSet.copyOf(coalesced.values()));
-        } else {
-          prior.setTasks(next.getTasks());
-        }
+    private Optional<Op> coalesce(SaveTasks prior, SaveTasks next) {
+      // It is an expected invariant that an operation may reference a task (identified by
+      // task ID) no more than one time.  Therefore, to coalesce two SaveTasks operations,
+      // the most recent task definition overrides the prior operation.
+      Map<String, ScheduledTask> coalesced = Maps.newHashMap();
+      for (ScheduledTask task : prior.getTasks()) {
+        coalesced.put(task.getAssignedTask().getTaskId(), task);
       }
+      for (ScheduledTask task : next.getTasks()) {
+        coalesced.put(task.getAssignedTask().getTaskId(), task);
+      }
+      return Optional.of(Op.saveTasks(SaveTasks.create(ImmutableSet.copyOf(coalesced.values()))));
     }
 
-    private void coalesce(RemoveTasks prior, RemoveTasks next) {
-      if (next.isSetTaskIds()) {
-        if (prior.isSetTaskIds()) {
-          prior.setTaskIds(ImmutableSet.<String>builder()
-              .addAll(prior.getTaskIds())
-              .addAll(next.getTaskIds())
-              .build());
-        } else {
-          prior.setTaskIds(next.getTaskIds());
-        }
-      }
+    private Optional<Op> coalesce(RemoveTasks prior, RemoveTasks next) {
+      ImmutableSet<String> taskIds = ImmutableSet.<String>builder()
+          .addAll(prior.getTaskIds())
+          .addAll(next.getTaskIds())
+          .build();
+      return Optional.of(Op.removeTasks(RemoveTasks.create(taskIds)));
     }
 
-    private boolean coalesce(SaveHostAttributes prior, SaveHostAttributes next) {
+    @Nullable
+    private Optional<Op> coalesce(SaveHostAttributes prior, SaveHostAttributes next) {
       if (prior.getHostAttributes().getHost().equals(next.getHostAttributes().getHost())) {
-        prior.getHostAttributes().setAttributes(next.getHostAttributes().getAttributes());
-        return true;
+        return Optional.of(Op.saveHostAttributes(next));
       }
-      return false;
+      return Optional.empty();
     }
   }
 }

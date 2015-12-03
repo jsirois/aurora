@@ -25,7 +25,7 @@ import com.google.common.base.Strings;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.configuration.SanitizedConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
+import org.apache.aurora.gen.JobConfiguration;
 
 import static java.util.Objects.requireNonNull;
 
@@ -39,14 +39,14 @@ public final class SanitizedCronJob {
   private final SanitizedConfiguration config;
   private final CrontabEntry crontabEntry;
 
-  private SanitizedCronJob(IJobConfiguration unsanitized)
+  private SanitizedCronJob(JobConfiguration unsanitized)
       throws CronException, ConfigurationManager.TaskDescriptionException {
 
     this(SanitizedConfiguration.fromUnsanitized(unsanitized));
   }
 
   private SanitizedCronJob(SanitizedConfiguration config) throws CronException {
-    final IJobConfiguration job = config.getJobConfig();
+    final JobConfiguration job = config.getJobConfig();
     if (!hasCronSchedule(job)) {
       throw new CronException(NO_CRON_SCHEDULE);
     }
@@ -94,7 +94,7 @@ public final class SanitizedCronJob {
    * @throws ConfigurationManager.TaskDescriptionException If validation fails with a non
    * cron-specific error.
    */
-  public static SanitizedCronJob fromUnsanitized(IJobConfiguration unsanitized)
+  public static SanitizedCronJob fromUnsanitized(JobConfiguration unsanitized)
       throws CronException, ConfigurationManager.TaskDescriptionException {
 
     return new SanitizedCronJob(unsanitized);
@@ -109,7 +109,7 @@ public final class SanitizedCronJob {
     return orDefault(config.getJobConfig().getCronCollisionPolicy());
   }
 
-  private static boolean hasCronSchedule(IJobConfiguration job) {
+  private static boolean hasCronSchedule(JobConfiguration job) {
     requireNonNull(job);
     return !Strings.isNullOrEmpty(job.getCronSchedule());
   }

@@ -26,8 +26,9 @@ public final class DbInstanceTaskConfig {
   }
 
   InstanceTaskConfig toThrift() {
-    return new InstanceTaskConfig()
+    return InstanceTaskConfig.builder()
         .setTask(task.toThrift())
-        .setInstances(instances);
+        .setInstances(instances)
+        .build();
   }
 }

@@ -69,7 +69,7 @@ import org.apache.aurora.gen.storage.SaveFrameworkId;
 import org.apache.aurora.gen.storage.SaveTasks;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.storageConstants;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.scheduler.AppStartup;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorSettings;
@@ -81,7 +81,7 @@ import org.apache.aurora.scheduler.mesos.DriverFactory;
 import org.apache.aurora.scheduler.mesos.DriverSettings;
 import org.apache.aurora.scheduler.mesos.TestExecutorSettings;
 import org.apache.aurora.scheduler.storage.backup.BackupModule;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.storage.log.EntrySerializer;
 import org.apache.aurora.scheduler.storage.log.LogStorageModule;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
@@ -104,7 +104,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import static org.apache.aurora.common.testing.easymock.EasyMockTest.createCapture;
-import static org.apache.aurora.gen.apiConstants.THRIFT_API_VERSION;
+import static org.apache.aurora.gen.Constants.THRIFT_API_VERSION;
 import static org.apache.mesos.Protos.FrameworkInfo;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createControl;
@@ -199,8 +199,8 @@ public class SchedulerIT extends BaseZooKeeperTest {
             .toInstance(TestExecutorSettings.thermosOnlyWithOverhead(executorOverhead));
         install(new BackupModule(backupDir, SnapshotStoreImpl.class));
 
-        bind(IServerInfo.class).toInstance(
-            IServerInfo.build(
+        bind(ServerInfo.class).toInstance(
+            ServerInfo.build(
                 new ServerInfo()
                     .setClusterName(CLUSTER_NAME)
                     .setThriftAPIVersion(THRIFT_API_VERSION)
@@ -335,7 +335,7 @@ public class SchedulerIT extends BaseZooKeeperTest {
         LogEntry.snapshot(new Snapshot().setTasks(ImmutableSet.of(snapshotTask))),
         LogEntry.transaction(new Transaction(
             ImmutableList.of(Op.saveTasks(new SaveTasks(ImmutableSet.of(transactionTask)))),
-            storageConstants.CURRENT_SCHEMA_VERSION)));
+            Constants.CURRENT_SCHEMA_VERSION)));
 
     expect(log.open()).andReturn(logStream);
     expect(logStream.readAll()).andReturn(recoveredEntries.iterator()).anyTimes();

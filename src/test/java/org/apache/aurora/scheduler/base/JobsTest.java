@@ -21,8 +21,8 @@ import com.google.common.collect.ImmutableList;
 
 import org.apache.aurora.gen.JobStats;
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.storage.entities.IJobStats;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobStats;
+import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.base.TaskTestUtil.addStateTransition;
@@ -32,17 +32,17 @@ import static org.junit.Assert.assertEquals;
 public class JobsTest {
   @Test
   public void testGetJobStats() {
-    ImmutableList<IScheduledTask> tasks =
+    ImmutableList<ScheduledTask> tasks =
         FluentIterable
             .from(EnumSet.allOf(ScheduleStatus.class))
-            .transform(new Function<ScheduleStatus, IScheduledTask>() {
+            .transform(new Function<ScheduleStatus, ScheduledTask>() {
               @Override
-              public IScheduledTask apply(ScheduleStatus status) {
+              public ScheduledTask apply(ScheduleStatus status) {
                 return addStateTransition(makeTask("id", TaskTestUtil.JOB), status, 100L);
               }
             }).toList();
 
-    IJobStats expectedStats = IJobStats.build(new JobStats()
+    JobStats expectedStats = JobStats.build(new JobStats()
         .setActiveTaskCount(7)
         .setFailedTaskCount(2)
         .setFinishedTaskCount(2)

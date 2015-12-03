@@ -24,9 +24,9 @@ import com.google.common.collect.Iterables;
 import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.scheduler.base.SchedulerException;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.ITaskConstraint;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.TaskConstraint;
 
 /**
  * Filter that determines whether a task's constraints are satisfied.
@@ -36,10 +36,10 @@ final class ConstraintMatcher {
     // Utility class.
   }
 
-  private static final Function<IAttribute, Set<String>> GET_VALUES =
-      new Function<IAttribute, Set<String>>() {
+  private static final Function<Attribute, Set<String>> GET_VALUES =
+      new Function<Attribute, Set<String>>() {
         @Override
-        public Set<String> apply(IAttribute attribute) {
+        public Set<String> apply(Attribute attribute) {
           return attribute.getValues();
         }
       };
@@ -53,22 +53,22 @@ final class ConstraintMatcher {
    */
   static Optional<Veto> getVeto(
       AttributeAggregate cachedjobState,
-      Iterable<IAttribute> hostAttributes,
-      IConstraint constraint) {
+      Iterable<Attribute> hostAttributes,
+      Constraint constraint) {
 
-    Iterable<IAttribute> sameNameAttributes =
+    Iterable<Attribute> sameNameAttributes =
         Iterables.filter(hostAttributes, new NameFilter(constraint.getName()));
-    Optional<IAttribute> attribute;
+    Optional<Attribute> attribute;
     if (Iterables.isEmpty(sameNameAttributes)) {
       attribute = Optional.absent();
     } else {
       Set<String> attributeValues = ImmutableSet.copyOf(
           Iterables.concat(Iterables.transform(sameNameAttributes, GET_VALUES)));
       attribute =
-          Optional.of(IAttribute.build(new Attribute(constraint.getName(), attributeValues)));
+          Optional.of(Attribute.create(constraint.getName(), attributeValues));
     }
 
-    ITaskConstraint taskConstraint = constraint.getConstraint();
+    TaskConstraint taskConstraint = constraint.getConstraint();
     switch (taskConstraint.getSetField()) {
       case VALUE:
         boolean matches = AttributeFilter.matches(
@@ -100,7 +100,7 @@ final class ConstraintMatcher {
   /**
    * A filter to find attributes matching a name.
    */
-  static class NameFilter implements Predicate<IAttribute> {
+  static class NameFilter implements Predicate<Attribute> {
     private final String attributeName;
 
     NameFilter(String attributeName) {
@@ -108,7 +108,7 @@ final class ConstraintMatcher {
     }
 
     @Override
-    public boolean apply(IAttribute attribute) {
+    public boolean apply(Attribute attribute) {
       return attributeName.equals(attribute.getName());
     }
   }

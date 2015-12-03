@@ -27,7 +27,7 @@ import org.apache.aurora.scheduler.state.StateChangeResult;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -134,7 +134,7 @@ public class AuroraCronJobTest extends EasyMockTest {
       @Override
       public void execute(MutableStoreProvider storeProvider) {
         storeProvider.getUnsafeTaskStore().saveTasks(ImmutableSet.of(
-            IScheduledTask.build(new ScheduledTask()
+            ScheduledTask.build(new ScheduledTask()
                 .setStatus(ScheduleStatus.RUNNING)
                 .setAssignedTask(new AssignedTask()
                     .setTaskId(TASK_ID)

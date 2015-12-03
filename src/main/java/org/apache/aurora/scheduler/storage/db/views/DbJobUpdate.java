@@ -15,7 +15,7 @@ package org.apache.aurora.scheduler.storage.db.views;
 
 import org.apache.aurora.gen.JobUpdate;
 import org.apache.aurora.gen.JobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
+import org.apache.aurora.gen.JobUpdate;
 
 public final class DbJobUpdate {
   private JobUpdateSummary summary;
@@ -25,12 +25,13 @@ public final class DbJobUpdate {
   }
 
   JobUpdate toThrift() {
-    return new JobUpdate()
+    return JobUpdate.builder()
         .setSummary(summary)
-        .setInstructions(instructions.toThrift());
+        .setInstructions(instructions.toThrift())
+        .build();
   }
 
-  public IJobUpdate toImmutable() {
-    return IJobUpdate.build(toThrift());
+  public JobUpdate toImmutable() {
+    return toThrift();
   }
 }

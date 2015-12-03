@@ -32,13 +32,10 @@ import org.apache.aurora.gen.LockKey;
  * is called the first time.
  */
 public class LockRow {
-  private final Lock lock = new Lock();
-
-  public LockRow() {
-    LockKey lockKey = new LockKey();
-    lock.setKey(lockKey);
-    lockKey.setJob(new JobKey());
-  }
+  private final Lock lock =
+      Lock.builder()
+          .setKey(LockKey.job(JobKey.builder().build()))
+          .build();
 
   public Lock getLock() {
     return lock;

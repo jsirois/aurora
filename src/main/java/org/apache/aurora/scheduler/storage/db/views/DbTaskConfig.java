@@ -26,7 +26,7 @@ import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.TaskConfig;
 
 public final class DbTaskConfig {
   private long rowId;
@@ -58,7 +58,7 @@ public final class DbTaskConfig {
   }
 
   TaskConfig toThrift() {
-    return new TaskConfig()
+    return TaskConfig.builder()
         .setJob(job)
         .setOwner(owner)
         .setEnvironment(environment)
@@ -79,11 +79,14 @@ public final class DbTaskConfig {
         .setContactEmail(contactEmail)
         .setExecutorConfig(executorConfig)
         .setMetadata(ImmutableSet.copyOf(metadata))
+        // TODO(John Sirois): The default constructed below is accurately modelled as the builder
+        // default as taken from the api.thrift default - consider only setting when non-null.
         .setContainer(
-            container == null ? Container.mesos(new MesosContainer()) : container.toThrift());
+            container == null ? Container.mesos(MesosContainer.create()) : container.toThrift())
+        .build();
   }
 
-  public ITaskConfig toImmutable() {
-    return ITaskConfig.build(toThrift());
+  public TaskConfig toImmutable() {
+    return toThrift();
   }
 }

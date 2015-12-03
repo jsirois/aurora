@@ -32,7 +32,7 @@ import com.google.common.collect.Maps;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
+import org.apache.aurora.gen.ResourceAggregate;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
@@ -59,11 +59,11 @@ public class Quotas {
     return storage.read(new Work.Quiet<Response>() {
       @Override
       public Response apply(StoreProvider storeProvider) {
-        Map<String, IResourceAggregate> quotas;
+        Map<String, ResourceAggregate> quotas;
         if (role == null) {
           quotas = storeProvider.getQuotaStore().fetchQuotas();
         } else {
-          Optional<IResourceAggregate> quota = storeProvider.getQuotaStore().fetchQuota(role);
+          Optional<ResourceAggregate> quota = storeProvider.getQuotaStore().fetchQuota(role);
           if (quota.isPresent()) {
             quotas = ImmutableMap.of(role, quota.get());
           } else {
@@ -76,10 +76,10 @@ public class Quotas {
     });
   }
 
-  private static final Function<IResourceAggregate, ResourceAggregateBean> TO_BEAN =
-      new Function<IResourceAggregate, ResourceAggregateBean>() {
+  private static final Function<ResourceAggregate, ResourceAggregateBean> TO_BEAN =
+      new Function<ResourceAggregate, ResourceAggregateBean>() {
         @Override
-        public ResourceAggregateBean apply(IResourceAggregate quota) {
+        public ResourceAggregateBean apply(ResourceAggregate quota) {
           return new ResourceAggregateBean(quota.getNumCpus(), quota.getRamMb(), quota.getDiskMb());
         }
       };

@@ -36,8 +36,8 @@ import org.apache.aurora.scheduler.cron.SanitizedCronJob;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,12 +54,12 @@ import static org.junit.Assert.assertTrue;
 public class CronIT extends EasyMockTest {
   public static final CrontabEntry CRONTAB_ENTRY = CrontabEntry.parse("* * * * *");
 
-  private static final IJobKey JOB_KEY = JobKeys.from("roll", "b", "c");
+  private static final JobKey JOB_KEY = JobKeys.from("roll", "b", "c");
   private static final Identity IDENTITY = new Identity()
       .setRole(JOB_KEY.getRole())
       .setUser("user");
 
-  private static final IJobConfiguration CRON_JOB = IJobConfiguration.build(
+  private static final JobConfiguration CRON_JOB = JobConfiguration.build(
       new JobConfiguration()
           .setCronSchedule(CRONTAB_ENTRY.toString())
           .setKey(JOB_KEY.newBuilder())

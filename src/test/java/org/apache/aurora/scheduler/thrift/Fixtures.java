@@ -45,13 +45,13 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.quota.QuotaCheckResult;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IResult;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.Result;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static org.apache.aurora.gen.ResponseCode.OK;
 import static org.apache.aurora.scheduler.quota.QuotaCheckResult.Result.INSUFFICIENT_QUOTA;
@@ -63,15 +63,15 @@ final class Fixtures {
   static final String USER = "foo_user";
   static final Identity ROLE_IDENTITY = new Identity(ROLE, USER);
   static final String JOB_NAME = "job_foo";
-  static final IJobKey JOB_KEY = JobKeys.from(ROLE, "devel", JOB_NAME);
-  static final ILockKey LOCK_KEY = ILockKey.build(LockKey.job(JOB_KEY.newBuilder()));
-  static final ILock LOCK =
-      ILock.build(new Lock().setKey(LOCK_KEY.newBuilder()).setToken("token"));
+  static final JobKey JOB_KEY = JobKeys.from(ROLE, "devel", JOB_NAME);
+  static final LockKey LOCK_KEY = LockKey.build(LockKey.job(JOB_KEY.newBuilder()));
+  static final Lock LOCK =
+      Lock.build(new Lock().setKey(LOCK_KEY.newBuilder()).setToken("token"));
   static final JobConfiguration CRON_JOB = makeJob().setCronSchedule("* * * * *");
   static final String TASK_ID = "task_id";
   static final String UPDATE_ID = "82d6d790-3212-11e3-aa6e-0800200c9a74";
-  static final IJobUpdateKey UPDATE_KEY =
-      IJobUpdateKey.build(new JobUpdateKey(JOB_KEY.newBuilder(), UPDATE_ID));
+  static final JobUpdateKey UPDATE_KEY =
+      JobUpdateKey.build(new JobUpdateKey(JOB_KEY.newBuilder(), UPDATE_ID));
   static final UUID UU_ID = UUID.fromString(UPDATE_ID);
   private static final Function<String, ResponseDetail> MESSAGE_TO_DETAIL =
       new Function<String, ResponseDetail>() {
@@ -81,8 +81,8 @@ final class Fixtures {
         }
       };
   static final String CRON_SCHEDULE = "0 * * * *";
-  static final IResourceAggregate QUOTA =
-      IResourceAggregate.build(new ResourceAggregate(10.0, 1024, 2048));
+  static final ResourceAggregate QUOTA =
+      ResourceAggregate.build(new ResourceAggregate(10.0, 1024, 2048));
   static final QuotaCheckResult ENOUGH_QUOTA = new QuotaCheckResult(SUFFICIENT_QUOTA);
   static final QuotaCheckResult NOT_ENOUGH_QUOTA = new QuotaCheckResult(INSUFFICIENT_QUOTA);
 
@@ -143,7 +143,7 @@ final class Fixtures {
   }
 
   static Response okResponse(Result result) {
-    return response(OK, Optional.of(IResult.build(result).newBuilder()));
+    return response(OK, Optional.of(Result.build(result).newBuilder()));
   }
 
   static JobConfiguration makeProdJob() {
@@ -158,14 +158,14 @@ final class Fixtures {
     return makeJob(task, 1);
   }
 
-  static Iterable<IScheduledTask> makeDefaultScheduledTasks(int n) {
+  static Iterable<ScheduledTask> makeDefaultScheduledTasks(int n) {
     return makeDefaultScheduledTasks(n, defaultTask(true));
   }
 
-  static Iterable<IScheduledTask> makeDefaultScheduledTasks(int n, TaskConfig config) {
-    List<IScheduledTask> tasks = Lists.newArrayList();
+  static Iterable<ScheduledTask> makeDefaultScheduledTasks(int n, TaskConfig config) {
+    List<ScheduledTask> tasks = Lists.newArrayList();
     for (int i = 0; i < n; i++) {
-      tasks.add(IScheduledTask.build(new ScheduledTask()
+      tasks.add(ScheduledTask.build(new ScheduledTask()
           .setAssignedTask(new AssignedTask().setTask(config).setInstanceId(i))));
     }
 

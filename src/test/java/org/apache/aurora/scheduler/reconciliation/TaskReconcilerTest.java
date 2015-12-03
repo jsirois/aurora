@@ -26,7 +26,7 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.mesos.Driver;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeScheduledExecutor;
 import org.junit.Before;
@@ -77,7 +77,7 @@ public class TaskReconcilerTest extends EasyMockTest {
     expect(statsProvider.makeCounter(IMPLICIT_STAT_NAME)).andReturn(implicitRuns);
     clock = FakeScheduledExecutor.scheduleAtFixedRateExecutor(executorService, 2, 5);
 
-    IScheduledTask task = TaskTestUtil.makeTask("id1", TaskTestUtil.JOB);
+    ScheduledTask task = TaskTestUtil.makeTask("id1", TaskTestUtil.JOB);
     storageUtil.expectOperations();
     storageUtil.expectTaskFetch(Query.unscoped().byStatus(Tasks.SLAVE_ASSIGNED_STATES), task)
         .times(5);

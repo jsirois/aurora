@@ -41,8 +41,8 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -54,7 +54,7 @@ import static org.apache.aurora.gen.MaintenanceMode.DRAINING;
  * All state-changing functions return their results.  Additionally, all state-changing functions
  * will ignore requests to change state of unknown hosts and subsequently omit these hosts from
  * return values.
- * TODO(wfarner): Convert use of HostStatus in this API to IHostStatus (immutable).
+ * TODO(wfarner): Convert use of HostStatus in this API to HostStatus (immutable).
  */
 public interface MaintenanceController {
 
@@ -158,11 +158,11 @@ public interface MaintenanceController {
           public void execute(MutableStoreProvider store) {
             // If the task _was_ associated with a draining host, and it was the last task on the
             // host.
-            Optional<IHostAttributes> attributes =
+            Optional<HostAttributes> attributes =
                 store.getAttributeStore().getHostAttributes(host);
             if (attributes.isPresent() && attributes.get().getMode() == DRAINING) {
               Query.Builder builder = Query.slaveScoped(host).active();
-              Iterable<IScheduledTask> activeTasks = store.getTaskStore().fetchTasks(builder);
+              Iterable<ScheduledTask> activeTasks = store.getTaskStore().fetchTasks(builder);
               if (Iterables.isEmpty(activeTasks)) {
                 LOG.info(String.format("Moving host %s into DRAINED", host));
                 setMaintenanceMode(store, ImmutableSet.of(host), DRAINED);
@@ -201,19 +201,22 @@ public interface MaintenanceController {
       });
     }
 
-    private static final Function<IHostAttributes, String> HOST_NAME =
-        new Function<IHostAttributes, String>() {
+    private static final Function<HostAttributes, String> HOST_NAME =
+        new Function<HostAttributes, String>() {
           @Override
-          public String apply(IHostAttributes attributes) {
+          public String apply(HostAttributes attributes) {
             return attributes.getHost();
           }
         };
 
-    private static final Function<IHostAttributes, HostStatus> ATTRS_TO_STATUS =
-        new Function<IHostAttributes, HostStatus>() {
+    private static final Function<HostAttributes, HostStatus> ATTRS_TO_STATUS =
+        new Function<HostAttributes, HostStatus>() {
           @Override
-          public HostStatus apply(IHostAttributes attributes) {
-            return new HostStatus().setHost(attributes.getHost()).setMode(attributes.getMode());
+          public HostStatus apply(HostAttributes attributes) {
+            return HostStatus.builder()
+                .setHost(attributes.getHost())
+                .setMode(attributes.getMode())
+                .build();
           }
         };
 
@@ -271,11 +274,11 @@ public interface MaintenanceController {
       ImmutableSet.Builder<HostStatus> statuses = ImmutableSet.builder();
       for (String host : hosts) {
         LOG.info(String.format("Setting maintenance mode to %s for host %s", mode, host));
-        Optional<IHostAttributes> toSave = AttributeStore.Util.mergeMode(store, host, mode);
+        Optional<HostAttributes> toSave = AttributeStore.Util.mergeMode(store, host, mode);
         if (toSave.isPresent()) {
           store.saveHostAttributes(toSave.get());
           LOG.info("Updated host attributes: " + toSave.get());
-          HostStatus status = new HostStatus().setHost(host).setMode(mode);
+          HostStatus status = HostStatus.builder().setHost(host).setMode(mode).build();
           statuses.add(status);
         }
       }

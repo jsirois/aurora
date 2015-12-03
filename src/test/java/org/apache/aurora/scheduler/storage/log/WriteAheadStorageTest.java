@@ -42,9 +42,9 @@ import org.apache.aurora.scheduler.storage.LockStore;
 import org.apache.aurora.scheduler.storage.QuotaStore;
 import org.apache.aurora.scheduler.storage.SchedulerStore;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.ScheduledTask;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -101,9 +101,9 @@ public class WriteAheadStorageTest extends EasyMockTest {
 
   @Test
   public void testPruneHistory() {
-    Set<IJobUpdateKey> pruned = ImmutableSet.of(
-        IJobUpdateKey.build(new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), "a")),
-        IJobUpdateKey.build(
+    Set<JobUpdateKey> pruned = ImmutableSet.of(
+        JobUpdateKey.build(new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), "a")),
+        JobUpdateKey.build(
             new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), "b")));
     expect(jobUpdateStore.pruneHistory(1, 1)).andReturn(pruned);
     expectOp(Op.pruneJobUpdateHistory(new PruneJobUpdateHistory(1, 1)));
@@ -125,19 +125,19 @@ public class WriteAheadStorageTest extends EasyMockTest {
   @Test
   public void testMutate() {
     Query.Builder query = Query.taskScoped("a");
-    Function<IScheduledTask, IScheduledTask> mutator =
-        createMock(new Clazz<Function<IScheduledTask, IScheduledTask>>() { });
-    ImmutableSet<IScheduledTask> mutated = ImmutableSet.of(IScheduledTask.build(
+    Function<ScheduledTask, ScheduledTask> mutator =
+        createMock(new Clazz<Function<ScheduledTask, ScheduledTask>>() { });
+    ImmutableSet<ScheduledTask> mutated = ImmutableSet.of(ScheduledTask.build(
             new ScheduledTask().setAssignedTask(new AssignedTask().setTaskId("a"))));
 
     expect(taskStore.mutateTasks(query, mutator)).andReturn(mutated);
     expect(log.isLoggable(Level.FINE)).andReturn(false);
-    expectOp(Op.saveTasks(new SaveTasks(IScheduledTask.toBuildersSet(mutated))));
+    expectOp(Op.saveTasks(new SaveTasks(ScheduledTask.toBuildersSet(mutated))));
 
     // With increased logging.
     expect(taskStore.mutateTasks(query, mutator)).andReturn(mutated);
     expect(log.isLoggable(Level.FINE)).andReturn(true);
-    expectOp(Op.saveTasks(new SaveTasks(IScheduledTask.toBuildersSet(mutated))));
+    expectOp(Op.saveTasks(new SaveTasks(ScheduledTask.toBuildersSet(mutated))));
     log.fine(EasyMock.anyString());
 
     control.replay();
@@ -148,7 +148,7 @@ public class WriteAheadStorageTest extends EasyMockTest {
 
   @Test
   public void testSaveHostAttributes() {
-    IHostAttributes attributes = IHostAttributes.build(
+    HostAttributes attributes = HostAttributes.build(
         new HostAttributes()
             .setHost("a")
             .setMode(MaintenanceMode.DRAINING)

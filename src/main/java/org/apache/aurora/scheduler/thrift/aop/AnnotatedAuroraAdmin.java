@@ -13,9 +13,9 @@
  */
 package org.apache.aurora.scheduler.thrift.aop;
 
-import java.util.Set;
-
 import javax.annotation.Nullable;
+
+import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.gen.AddInstancesConfig;
 import org.apache.aurora.gen.AuroraAdmin;
@@ -29,7 +29,6 @@ import org.apache.aurora.gen.LockValidation;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.http.api.security.AuthorizingParam;
-import org.apache.thrift.TException;
 
 /**
  * Extension of the generated thrift interface with Java annotations, for example {@link Nullable}
@@ -39,80 +38,78 @@ import org.apache.thrift.TException;
  * annotations for them here as well.
  *
  * TODO(ksweeney): Investigate adding other (JSR303) validation annotations here as well.
- *
- * TODO(ksweeney): Consider disallowing throwing subclasses by removing {@code throws TException}.
  */
-public interface AnnotatedAuroraAdmin extends AuroraAdmin.Iface {
+public interface AnnotatedAuroraAdmin extends AuroraAdmin.Sync {
   @Override
   Response createJob(
       @AuthorizingParam @Nullable JobConfiguration description,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response scheduleCronJob(
       @AuthorizingParam @Nullable JobConfiguration description,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response descheduleCronJob(
       @AuthorizingParam @Nullable JobKey job,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response startCronJob(
-      @AuthorizingParam @Nullable JobKey job) throws TException;
+      @AuthorizingParam @Nullable JobKey job);
 
   @Override
   Response restartShards(
       @AuthorizingParam @Nullable JobKey job,
-      @Nullable Set<Integer> shardIds,
-      @Nullable Lock lock) throws TException;
+      @Nullable ImmutableSet<Integer> shardIds,
+      @Nullable Lock lock);
 
   @Override
   Response killTasks(
       @AuthorizingParam @Nullable TaskQuery query,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response addInstances(
       @AuthorizingParam @Nullable AddInstancesConfig config,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response acquireLock(
-      @AuthorizingParam @Nullable LockKey lockKey) throws TException;
+      @AuthorizingParam @Nullable LockKey lockKey);
 
   @Override
   Response releaseLock(
       @AuthorizingParam @Nullable Lock lock,
-      @Nullable LockValidation validation) throws TException;
+      @Nullable LockValidation validation);
 
   @Override
   Response replaceCronTemplate(
       @AuthorizingParam @Nullable JobConfiguration config,
-      @Nullable Lock lock) throws TException;
+      @Nullable Lock lock);
 
   @Override
   Response startJobUpdate(
       @AuthorizingParam @Nullable JobUpdateRequest request,
-      @Nullable String message) throws TException;
+      @Nullable String message);
 
   @Override
   Response pauseJobUpdate(
       @AuthorizingParam @Nullable JobUpdateKey key,
-      @Nullable String message) throws TException;
+      @Nullable String message);
 
   @Override
   Response resumeJobUpdate(
       @AuthorizingParam @Nullable JobUpdateKey key,
-      @Nullable String message) throws TException;
+      @Nullable String message);
 
   @Override
   Response abortJobUpdate(
       @AuthorizingParam @Nullable JobUpdateKey key,
-      @Nullable String message) throws TException;
+      @Nullable String message);
 
   @Override
   Response pulseJobUpdate(
-      @AuthorizingParam @Nullable JobUpdateKey key) throws TException;
+      @AuthorizingParam @Nullable JobUpdateKey key);
 }

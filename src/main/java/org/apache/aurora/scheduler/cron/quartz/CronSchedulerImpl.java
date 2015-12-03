@@ -26,7 +26,7 @@ import com.google.common.collect.Iterables;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.cron.CronScheduler;
 import org.apache.aurora.scheduler.cron.CrontabEntry;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
+import org.apache.aurora.gen.JobKey;
 import org.quartz.CronTrigger;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -46,7 +46,7 @@ class CronSchedulerImpl implements CronScheduler {
   }
 
   @Override
-  public Optional<CrontabEntry> getSchedule(IJobKey jobKey) throws IllegalStateException {
+  public Optional<CrontabEntry> getSchedule(JobKey jobKey) throws IllegalStateException {
     requireNonNull(jobKey);
 
     try {

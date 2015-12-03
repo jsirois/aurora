@@ -30,8 +30,8 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,13 +47,13 @@ public class DbAttributeStoreTest {
   private static final Attribute ATTR1 = new Attribute("attr1", ImmutableSet.of("a", "b", "c"));
   private static final Attribute ATTR2 = new Attribute("attr2", ImmutableSet.of("d", "e", "f"));
   private static final Attribute ATTR3 = new Attribute("attr3", ImmutableSet.of("a", "d", "g"));
-  private static final IHostAttributes HOST_A_ATTRS =
-      IHostAttributes.build(new HostAttributes(HOST_A, ImmutableSet.of(ATTR1, ATTR2))
+  private static final HostAttributes HOST_A_ATTRS =
+      HostAttributes.build(new HostAttributes(HOST_A, ImmutableSet.of(ATTR1, ATTR2))
           .setSlaveId(SLAVE_A)
           .setAttributes(ImmutableSet.of())
           .setMode(MaintenanceMode.NONE));
-  private static final IHostAttributes HOST_B_ATTRS =
-      IHostAttributes.build(new HostAttributes(HOST_B, ImmutableSet.of(ATTR2, ATTR3))
+  private static final HostAttributes HOST_B_ATTRS =
+      HostAttributes.build(new HostAttributes(HOST_B, ImmutableSet.of(ATTR2, ATTR3))
           .setSlaveId(SLAVE_B)
           .setAttributes(ImmutableSet.of())
           .setMode(MaintenanceMode.DRAINING));
@@ -79,13 +79,13 @@ public class DbAttributeStoreTest {
     assertEquals(Optional.of(HOST_B_ATTRS), read(HOST_B));
     assertEquals(ImmutableSet.of(HOST_A_ATTRS, HOST_B_ATTRS), readAll());
 
-    IHostAttributes updatedA = IHostAttributes.build(
+    HostAttributes updatedA = HostAttributes.build(
         HOST_A_ATTRS.newBuilder().setAttributes(ImmutableSet.of(ATTR1, ATTR3)));
     insert(updatedA);
     assertEquals(Optional.of(updatedA), read(HOST_A));
     assertEquals(ImmutableSet.of(updatedA, HOST_B_ATTRS), readAll());
 
-    IHostAttributes updatedMode = IHostAttributes.build(updatedA.newBuilder().setMode(DRAINED));
+    HostAttributes updatedMode = HostAttributes.build(updatedA.newBuilder().setMode(DRAINED));
     insert(updatedMode);
     assertEquals(Optional.of(updatedMode), read(HOST_A));
     assertEquals(ImmutableSet.of(updatedMode, HOST_B_ATTRS), readAll());
@@ -97,14 +97,14 @@ public class DbAttributeStoreTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testEmptyAttributeValues() {
-    IHostAttributes attributes = IHostAttributes.build(HOST_A_ATTRS.newBuilder()
+    HostAttributes attributes = HostAttributes.build(HOST_A_ATTRS.newBuilder()
         .setAttributes(ImmutableSet.of(new Attribute("attr1", ImmutableSet.of()))));
     insert(attributes);
   }
 
   @Test
   public void testNoAttributes() {
-    IHostAttributes attributes = IHostAttributes.build(
+    HostAttributes attributes = HostAttributes.build(
         HOST_A_ATTRS.newBuilder().setAttributes(ImmutableSet.of()));
     insert(attributes);
     assertEquals(Optional.of(attributes), read(HOST_A));
@@ -115,7 +115,7 @@ public class DbAttributeStoreTest {
     HostAttributes noMode = HOST_A_ATTRS.newBuilder();
     noMode.unsetMode();
 
-    insert(IHostAttributes.build(noMode));
+    insert(HostAttributes.build(noMode));
   }
 
   @Test
@@ -123,14 +123,14 @@ public class DbAttributeStoreTest {
     HostAttributes attributes = HOST_A_ATTRS.newBuilder();
     attributes.unsetAttributes();
 
-    insert(IHostAttributes.build(attributes));
-    assertEquals(Optional.of(IHostAttributes.build(attributes)), read(HOST_A));
+    insert(HostAttributes.build(attributes));
+    assertEquals(Optional.of(HostAttributes.build(attributes)), read(HOST_A));
   }
 
   @Test
   public void testSlaveIdChanges() {
     insert(HOST_A_ATTRS);
-    IHostAttributes updated = IHostAttributes.build(HOST_A_ATTRS.newBuilder().setSlaveId(SLAVE_B));
+    HostAttributes updated = HostAttributes.build(HOST_A_ATTRS.newBuilder().setSlaveId(SLAVE_B));
     insert(updated);
     assertEquals(Optional.of(updated), read(HOST_A));
   }
@@ -146,7 +146,7 @@ public class DbAttributeStoreTest {
     builder.getAssignedTask()
         .setSlaveHost(HOST_A_ATTRS.getHost())
         .setSlaveId(HOST_A_ATTRS.getSlaveId());
-    final IScheduledTask taskA = IScheduledTask.build(builder);
+    final ScheduledTask taskA = ScheduledTask.build(builder);
 
     storage.write(new MutateWork.NoResult.Quiet() {
       @Override
@@ -158,12 +158,12 @@ public class DbAttributeStoreTest {
     HostAttributes attributeBuilder = HOST_A_ATTRS.newBuilder()
         .setMode(MaintenanceMode.DRAINED);
     attributeBuilder.addToAttributes(new Attribute("newAttr", ImmutableSet.of("a", "b")));
-    IHostAttributes hostAUpdated = IHostAttributes.build(attributeBuilder);
+    HostAttributes hostAUpdated = HostAttributes.build(attributeBuilder);
     insert(hostAUpdated);
     assertEquals(Optional.of(hostAUpdated), read(HOST_A));
   }
 
-  private void insert(final IHostAttributes attributes) {
+  private void insert(final HostAttributes attributes) {
     storage.write(new MutateWork.NoResult.Quiet() {
       @Override
       public void execute(MutableStoreProvider storeProvider) {
@@ -172,19 +172,19 @@ public class DbAttributeStoreTest {
     });
   }
 
-  private Optional<IHostAttributes> read(final String host) {
-    return storage.read(new Work.Quiet<Optional<IHostAttributes>>() {
+  private Optional<HostAttributes> read(final String host) {
+    return storage.read(new Work.Quiet<Optional<HostAttributes>>() {
       @Override
-      public Optional<IHostAttributes> apply(StoreProvider storeProvider) {
+      public Optional<HostAttributes> apply(StoreProvider storeProvider) {
         return storeProvider.getAttributeStore().getHostAttributes(host);
       }
     });
   }
 
-  private Set<IHostAttributes> readAll() {
-    return storage.read(new Work.Quiet<Set<IHostAttributes>>() {
+  private Set<HostAttributes> readAll() {
+    return storage.read(new Work.Quiet<Set<HostAttributes>>() {
       @Override
-      public Set<IHostAttributes> apply(StoreProvider storeProvider) {
+      public Set<HostAttributes> apply(StoreProvider storeProvider) {
         return storeProvider.getAttributeStore().getHostAttributes();
       }
     });

@@ -35,15 +35,15 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConfig._Fields;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.base.JobKeys;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IContainer;
-import org.apache.aurora.scheduler.storage.entities.IIdentity;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.storage.entities.ITaskConstraint;
-import org.apache.aurora.scheduler.storage.entities.IValueConstraint;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.Container;
+import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.TaskConstraint;
+import org.apache.aurora.gen.ValueConstraint;
 
-import static org.apache.aurora.gen.apiConstants.GOOD_IDENTIFIER_PATTERN_JVM;
+import static org.apache.aurora.gen.Constants.GOOD_IDENTIFIER_PATTERN_JVM;
 
 /**
  * Manages translation from a string-mapped configuration to a concrete configuration type, and
@@ -136,7 +136,7 @@ public final class ConfigurationManager {
     }
   }
 
-  private static void assertOwnerValidity(IIdentity jobOwner) throws TaskDescriptionException {
+  private static void assertOwnerValidity(Identity jobOwner) throws TaskDescriptionException {
     requireNonNull(jobOwner, "No job owner specified!");
     requireNonNull(jobOwner.getRole(), "No job role specified!");
     requireNonNull(jobOwner.getUser(), "No job user specified!");
@@ -152,20 +152,20 @@ public final class ConfigurationManager {
     }
   }
 
-  private static String getRole(IValueConstraint constraint) {
+  private static String getRole(ValueConstraint constraint) {
     return Iterables.getOnlyElement(constraint.getValues()).split("/")[0];
   }
 
-  private static boolean isValueConstraint(ITaskConstraint taskConstraint) {
+  private static boolean isValueConstraint(TaskConstraint taskConstraint) {
     return taskConstraint.getSetField() == TaskConstraint._Fields.VALUE;
   }
 
-  public static boolean isDedicated(Iterable<IConstraint> taskConstraints) {
+  public static boolean isDedicated(Iterable<Constraint> taskConstraints) {
     return Iterables.any(taskConstraints, getConstraintByName(DEDICATED_ATTRIBUTE));
   }
 
   @Nullable
-  private static IConstraint getDedicatedConstraint(ITaskConfig task) {
+  private static Constraint getDedicatedConstraint(TaskConfig task) {
     return Iterables.find(task.getConstraints(), getConstraintByName(DEDICATED_ATTRIBUTE), null);
   }
 
@@ -174,47 +174,47 @@ public final class ConfigurationManager {
    * of the provided job configuration with default configuration values applied, and configuration
    * map values sanitized and applied to their respective struct fields.
    *
-   * @param job Job to validate and populate.
+   * @param rawJob Job to validate and populate.
    * @return A deep copy of {@code job} that has been populated.
    * @throws TaskDescriptionException If the job configuration is invalid.
    */
-  public static IJobConfiguration validateAndPopulate(IJobConfiguration job)
+  public static JobConfiguration validateAndPopulate(JobConfiguration rawJob)
       throws TaskDescriptionException {
 
-    Objects.requireNonNull(job);
+    Objects.requireNonNull(rawJob);
 
-    if (!job.isSetTaskConfig()) {
+    if (!rawJob.isSetTaskConfig()) {
       throw new TaskDescriptionException("Job configuration must have taskConfig set.");
     }
 
-    if (job.getInstanceCount() <= 0) {
+    if (rawJob.getInstanceCount() <= 0) {
       throw new TaskDescriptionException("Instance count must be positive.");
     }
 
-    JobConfiguration builder = job.newBuilder();
+    JobConfiguration.Builder builder = rawJob.toBuilder();
 
-    if (!JobKeys.isValid(job.getKey())) {
-      throw new TaskDescriptionException("Job key " + job.getKey() + " is invalid.");
+    if (!JobKeys.isValid(rawJob.getKey())) {
+      throw new TaskDescriptionException("Job key " + rawJob.getKey() + " is invalid.");
     }
 
-    if (job.isSetOwner()) {
-      assertOwnerValidity(job.getOwner());
+    if (rawJob.isSetOwner()) {
+      assertOwnerValidity(rawJob.getOwner());
 
-      if (!job.getKey().getRole().equals(job.getOwner().getRole())) {
+      if (!rawJob.getKey().getRole().equals(rawJob.getOwner().getRole())) {
         throw new TaskDescriptionException("Role in job key must match job owner.");
       }
     }
 
     builder.setTaskConfig(
-        validateAndPopulate(ITaskConfig.build(builder.getTaskConfig())).newBuilder());
+        validateAndPopulate(rawJob.getTaskConfig()));
 
+    JobConfiguration job = builder.build();
     // Only one of [service=true, cron_schedule] may be set.
-    if (!Strings.isNullOrEmpty(job.getCronSchedule()) && builder.getTaskConfig().isIsService()) {
+    if (!Strings.isNullOrEmpty(job.getCronSchedule()) && job.getTaskConfig().isIsService()) {
       throw new TaskDescriptionException(
           "A service task may not be run on a cron schedule: " + builder);
     }
-
-    return IJobConfiguration.build(builder);
+    return job;
   }
 
   /**
@@ -223,42 +223,38 @@ public final class ConfigurationManager {
    * map values sanitized and applied to their respective struct fields.
    *
    *
-   * @param config Task config to validate and populate.
+   * @param rawConfig Task config to validate and populate.
    * @return A reference to the modified {@code config} (for chaining).
    * @throws TaskDescriptionException If the task is invalid.
    */
-  public static ITaskConfig validateAndPopulate(ITaskConfig config)
+  public static TaskConfig validateAndPopulate(TaskConfig rawConfig)
       throws TaskDescriptionException {
 
-    TaskConfig builder = config.newBuilder();
+    TaskConfig.Builder builder = rawConfig.toBuilder();
 
-    if (!builder.isSetRequestedPorts()) {
-      builder.setRequestedPorts(ImmutableSet.of());
-    }
+    maybeFillLinks(builder, rawConfig);
 
-    maybeFillLinks(builder);
-
-    if (!isGoodIdentifier(config.getJobName())) {
+    if (!isGoodIdentifier(rawConfig.getJobName())) {
       throw new TaskDescriptionException(
-          "Job name contains illegal characters: " + config.getJobName());
+          "Job name contains illegal characters: " + rawConfig.getJobName());
     }
 
-    if (!isGoodIdentifier(config.getEnvironment())) {
+    if (!isGoodIdentifier(rawConfig.getEnvironment())) {
       throw new TaskDescriptionException(
-          "Environment contains illegal characters: " + config.getEnvironment());
+          "Environment contains illegal characters: " + rawConfig.getEnvironment());
     }
 
-    if (config.isSetTier() && !isGoodIdentifier(config.getTier())) {
-      throw new TaskDescriptionException("Tier contains illegal characters: " + config.getTier());
+    if (rawConfig.isSetTier() && !isGoodIdentifier(rawConfig.getTier())) {
+      throw new TaskDescriptionException("Tier contains illegal characters: " + rawConfig.getTier());
     }
 
-    if (config.isSetJob()) {
-      if (!JobKeys.isValid(config.getJob())) {
+    if (rawConfig.isSetJob()) {
+      if (!JobKeys.isValid(rawConfig.getJob())) {
         // Job key is set but invalid
-        throw new TaskDescriptionException("Job key " + config.getJob() + " is invalid.");
+        throw new TaskDescriptionException("Job key " + rawConfig.getJob() + " is invalid.");
       }
 
-      if (!config.getJob().getRole().equals(config.getOwner().getRole())) {
+      if (!rawConfig.getJob().getRole().equals(rawConfig.getOwner().getRole())) {
         // Both owner and job key are set but don't match
         throw new TaskDescriptionException("Role must match job owner.");
       }
@@ -266,68 +262,59 @@ public final class ConfigurationManager {
       // TODO(maxim): Make sure both key and owner are populated to support older clients.
       // Remove in 0.7.0. (AURORA-749).
       // Job key is not set -> populate from owner, environment and name
-      assertOwnerValidity(config.getOwner());
+      assertOwnerValidity(rawConfig.getOwner());
       builder.setJob(JobKeys.from(
-          config.getOwner().getRole(),
-          config.getEnvironment(),
-          config.getJobName()).newBuilder());
+          rawConfig.getOwner().getRole(),
+          rawConfig.getEnvironment(),
+          rawConfig.getJobName()));
     }
 
-    if (!builder.isSetExecutorConfig()) {
+    if (!rawConfig.isSetExecutorConfig()) {
       throw new TaskDescriptionException("Configuration may not be null");
     }
 
     // Maximize the usefulness of any thrown error message by checking required fields first.
+    TaskConfig validatable = builder.build();
     for (RequiredFieldValidator<?> validator : REQUIRED_FIELDS_VALIDATORS) {
-      validator.validate(builder);
+      validator.validate(validatable);
     }
 
-    IConstraint constraint = getDedicatedConstraint(config);
+    Constraint constraint = getDedicatedConstraint(rawConfig);
     if (constraint != null) {
       if (!isValueConstraint(constraint.getConstraint())) {
         throw new TaskDescriptionException("A dedicated constraint must be of value type.");
       }
 
-      IValueConstraint valueConstraint = constraint.getConstraint().getValue();
+      ValueConstraint valueConstraint = constraint.getConstraint().getValue();
 
       if (valueConstraint.getValues().size() != 1) {
         throw new TaskDescriptionException("A dedicated constraint must have exactly one value");
       }
 
       String dedicatedRole = getRole(valueConstraint);
-      if (!config.getOwner().getRole().equals(dedicatedRole)) {
+      if (!rawConfig.getOwner().getRole().equals(dedicatedRole)) {
         throw new TaskDescriptionException(
             "Only " + dedicatedRole + " may use hosts dedicated for that role.");
       }
     }
 
-    Optional<Container._Fields> containerType;
-    if (config.isSetContainer()) {
-      IContainer containerConfig = config.getContainer();
-      containerType = Optional.of(containerConfig.getSetField());
-      if (containerConfig.isSetDocker()) {
-        if (!containerConfig.getDocker().isSetImage()) {
-          throw new TaskDescriptionException("A container must specify an image");
-        }
-        if (containerConfig.getDocker().isSetParameters()
-            && !containerConfig.getDocker().getParameters().isEmpty()
-            && !ENABLE_DOCKER_PARAMETERS.get()) {
-          throw new TaskDescriptionException("Docker parameters not allowed.");
-        }
+    Container containerConfig = rawConfig.getContainer();
+    Optional<Container._Fields> containerType = Optional.of(containerConfig.getSetField());
+    if (containerConfig.isSetDocker()) {
+      if (!containerConfig.getDocker().isSetImage()) {
+        throw new TaskDescriptionException("A container must specify an image");
       }
-    } else {
-      // Default to mesos container type if unset.
-      containerType = Optional.of(Container._Fields.MESOS);
-    }
-    if (!containerType.isPresent()) {
-      throw new TaskDescriptionException("A job must have a container type.");
+      if (!containerConfig.getDocker().getParameters().isEmpty()
+          && !ENABLE_DOCKER_PARAMETERS.get()) {
+        throw new TaskDescriptionException("Docker parameters not allowed.");
+      }
     }
     if (!ALLOWED_CONTAINER_TYPES.get().contains(containerType.get())) {
       throw new TaskDescriptionException(
           "The container type " + containerType.get().toString() + " is not allowed");
     }
 
-    return ITaskConfig.build(builder);
+    return builder.build();
   }
 
   /**
@@ -336,12 +323,12 @@ public final class ConfigurationManager {
    * @param name The name of the constraint.
    * @return A filter that matches the constraint.
    */
-  public static Predicate<IConstraint> getConstraintByName(final String name) {
+  public static Predicate<Constraint> getConstraintByName(final String name) {
     return constraint -> constraint.getName().equals(name);
   }
 
-  private static void maybeFillLinks(TaskConfig task) {
-    if (task.getTaskLinksSize() == 0) {
+  private static void maybeFillLinks(TaskConfig.Builder builder, TaskConfig task) {
+    if (task.getTaskLinks().isEmpty()) {
       ImmutableMap.Builder<String, String> links = ImmutableMap.builder();
       if (task.getRequestedPorts().contains("health")) {
         links.put("health", "http://%host%:%port:health%");
@@ -349,7 +336,7 @@ public final class ConfigurationManager {
       if (task.getRequestedPorts().contains("http")) {
         links.put("http", "http://%host%:%port:http%");
       }
-      task.setTaskLinks(links.build());
+      builder.setTaskLinks(links.build());
     }
   }
 

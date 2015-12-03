@@ -18,7 +18,7 @@ import java.util.List;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskEvent;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 
 public final class DbScheduledTask {
   private DbAssignedTask assignedTask;
@@ -30,13 +30,13 @@ public final class DbScheduledTask {
   private DbScheduledTask() {
   }
 
-  public IScheduledTask toImmutable() {
-    return IScheduledTask.build(
-        new ScheduledTask()
-            .setAssignedTask(assignedTask.toThrift())
-            .setStatus(status)
-            .setFailureCount(failureCount)
-            .setTaskEvents(taskEvents)
-            .setAncestorId(ancestorId));
+  public ScheduledTask toImmutable() {
+    return ScheduledTask.builder()
+        .setAssignedTask(assignedTask.toThrift())
+        .setStatus(status)
+        .setFailureCount(failureCount)
+        .setTaskEvents(taskEvents)
+        .setAncestorId(ancestorId)
+        .build();
   }
 }

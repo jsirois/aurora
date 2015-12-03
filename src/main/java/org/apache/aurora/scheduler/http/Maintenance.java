@@ -35,8 +35,8 @@ import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static org.apache.aurora.gen.MaintenanceMode.DRAINED;
 import static org.apache.aurora.gen.MaintenanceMode.DRAINING;
@@ -64,7 +64,7 @@ public class Maintenance {
             Multimaps.transformValues(
               Multimaps.index(
                   storeProvider.getAttributeStore().getHostAttributes(),
-                  IHostAttributes::getMode),
+                  HostAttributes::getMode),
               HOST_NAME);
 
         Map<MaintenanceMode, Object> hosts = Maps.newHashMap();
@@ -77,17 +77,17 @@ public class Maintenance {
   }
 
   private Multimap<String, String> getTasksByHosts(StoreProvider provider, Iterable<String> hosts) {
-    ImmutableSet.Builder<IScheduledTask> drainingTasks = ImmutableSet.builder();
+    ImmutableSet.Builder<ScheduledTask> drainingTasks = ImmutableSet.builder();
     drainingTasks.addAll(provider.getTaskStore().fetchTasks(Query.slaveScoped(hosts).active()));
     return Multimaps.transformValues(
         Multimaps.index(drainingTasks.build(), Tasks::scheduledToSlaveHost),
         Tasks::id);
   }
 
-  private static final Function<IHostAttributes, String> HOST_NAME =
-      new Function<IHostAttributes, String>() {
+  private static final Function<HostAttributes, String> HOST_NAME =
+      new Function<HostAttributes, String>() {
         @Override
-        public String apply(IHostAttributes attributes) {
+        public String apply(HostAttributes attributes) {
           return attributes.getHost();
         }
       };

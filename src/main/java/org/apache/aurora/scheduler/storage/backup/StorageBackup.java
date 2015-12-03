@@ -40,6 +40,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.common.io.Files;
 
+import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.Stats;
@@ -170,13 +171,15 @@ public interface StorageBackup {
 
         TTransport transport = new TIOStreamTransport(tempFileStream);
         TProtocol protocol = new TBinaryProtocol(transport);
-        snapshot.write(protocol);
+        ThriftBinaryCodec.codecForType(Snapshot.class).write(snapshot, protocol);
         Files.move(tempFile, new File(config.dir, backupName));
         successes.incrementAndGet();
       } catch (IOException e) {
         failures.incrementAndGet();
         LOG.log(Level.SEVERE, "Failed to prepare backup " + backupName + ": " + e, e);
-      } catch (TException e) {
+      // TODO(John Sirois): XXX Encapsulate  ThriftBinaryCodec.codecForType(...).write and raise
+      // a narrower exception
+      } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
         LOG.log(Level.SEVERE, "Failed to encode backup " + backupName + ": " + e, e);
         failures.incrementAndGet();
       } finally {

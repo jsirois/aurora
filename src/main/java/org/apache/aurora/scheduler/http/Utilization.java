@@ -43,8 +43,8 @@ import org.apache.aurora.scheduler.stats.ResourceCounter;
 import org.apache.aurora.scheduler.stats.ResourceCounter.GlobalMetric;
 import org.apache.aurora.scheduler.stats.ResourceCounter.Metric;
 import org.apache.aurora.scheduler.stats.ResourceCounter.MetricType;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.ServerInfo;
+import org.apache.aurora.gen.TaskConfig;
 
 /**
  * A servlet to give an aggregate view of cluster resources consumed, grouped by category.
@@ -57,7 +57,7 @@ public class Utilization {
   private final StringTemplateHelper templateHelper;
 
   @Inject
-  Utilization(ResourceCounter counter, IServerInfo serverInfo) {
+  Utilization(ResourceCounter counter, ServerInfo serverInfo) {
     templateHelper = new StringTemplateHelper(getClass(), "utilization", true);
     this.counter = Objects.requireNonNull(counter);
     this.clusterName = MorePreconditions.checkNotBlank(serverInfo.getClusterName());
@@ -197,9 +197,9 @@ public class Utilization {
   public Response aggregateRoles(@PathParam("metric") final String metric) {
     final MetricType type = getTypeByName(metric);
 
-    Function<ITaskConfig, Display> toKey = new Function<ITaskConfig, Display>() {
+    Function<TaskConfig, Display> toKey = new Function<TaskConfig, Display>() {
       @Override
-      public Display apply(ITaskConfig task) {
+      public Display apply(TaskConfig task) {
         String role = task.getJob().getRole();
         return new Display(role, metric + "/" + role);
       }
@@ -224,9 +224,9 @@ public class Utilization {
       @PathParam("role") String role) {
 
     MetricType type = getTypeByName(metric);
-    Function<ITaskConfig, Display> toKey = new Function<ITaskConfig, Display>() {
+    Function<TaskConfig, Display> toKey = new Function<TaskConfig, Display>() {
       @Override
-      public Display apply(ITaskConfig task) {
+      public Display apply(TaskConfig task) {
         return new Display(task.getJobName(), null);
       }
     };

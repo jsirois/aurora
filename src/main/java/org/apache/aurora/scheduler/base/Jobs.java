@@ -15,8 +15,7 @@ package org.apache.aurora.scheduler.base;
 
 import org.apache.aurora.gen.JobStats;
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.storage.entities.IJobStats;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 
 /**
  * Convenience methods related to jobs.
@@ -33,44 +32,60 @@ public final class Jobs {
    * @param tasks a collection of tasks for which statistics are sought
    * @return an JobStats object containing the statistics about the tasks.
    */
-  public static IJobStats getJobStats(Iterable<IScheduledTask> tasks) {
-    JobStats stats = new JobStats();
-    for (IScheduledTask task : tasks) {
-      updateStats(stats, task.getStatus());
+  public static JobStats getJobStats(Iterable<ScheduledTask> tasks) {
+    Stats stats = new Stats();
+    for (ScheduledTask task : tasks) {
+      stats.accumulate(task.getStatus());
     }
-    return IJobStats.build(stats);
+    return stats.toJobStats();
   }
 
-  private static void updateStats(JobStats stats, ScheduleStatus status) {
-    switch (status) {
-      case INIT:
-      case PENDING:
-      case THROTTLED:
-        stats.setPendingTaskCount(stats.getPendingTaskCount() + 1);
-        break;
+  static class Stats {
+    int pending;
+    int active;
+    int finished;
+    int failed;
 
-      case ASSIGNED:
-      case STARTING:
-      case RESTARTING:
-      case RUNNING:
-      case KILLING:
-      case DRAINING:
-      case PREEMPTING:
-        stats.setActiveTaskCount(stats.getActiveTaskCount() + 1);
-        break;
+    void accumulate(ScheduleStatus status) {
+      switch (status) {
+        case INIT:
+        case PENDING:
+        case THROTTLED:
+          pending++;
+          break;
 
-      case KILLED:
-      case FINISHED:
-        stats.setFinishedTaskCount(stats.getFinishedTaskCount() + 1);
-        break;
+        case ASSIGNED:
+        case STARTING:
+        case RESTARTING:
+        case RUNNING:
+        case KILLING:
+        case DRAINING:
+        case PREEMPTING:
+          active++;
+          break;
 
-      case LOST:
-      case FAILED:
-        stats.setFailedTaskCount(stats.getFailedTaskCount() + 1);
-        break;
+        case KILLED:
+        case FINISHED:
+          finished++;
+          break;
 
-      default:
-        throw new IllegalArgumentException("Unsupported status: " + status);
+        case LOST:
+        case FAILED:
+          failed++;
+          break;
+
+        default:
+          throw new IllegalArgumentException("Unsupported status: " + status);
+      }
+    }
+
+    JobStats toJobStats() {
+      return JobStats.builder()
+          .setPendingTaskCount(pending)
+          .setActiveTaskCount(active)
+          .setFinishedTaskCount(finished)
+          .setFailedTaskCount(failed)
+          .build();
     }
   }
 }

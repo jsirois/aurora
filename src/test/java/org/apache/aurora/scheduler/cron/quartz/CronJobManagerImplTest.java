@@ -30,8 +30,8 @@ import org.apache.aurora.scheduler.cron.CrontabEntry;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -161,7 +161,7 @@ public class CronJobManagerImplTest extends EasyMockTest {
   @Test
   public void testNoRunOverlap() throws Exception {
     SanitizedCronJob runOverlapJob = SanitizedCronJob.fromUnsanitized(
-        IJobConfiguration.build(QuartzTestUtil.JOB.newBuilder()
+        JobConfiguration.build(QuartzTestUtil.JOB.newBuilder()
             .setCronCollisionPolicy(CronCollisionPolicy.RUN_OVERLAP)));
 
     control.replay();
@@ -216,7 +216,7 @@ public class CronJobManagerImplTest extends EasyMockTest {
 
     control.replay();
 
-    Map<IJobKey, CrontabEntry> scheduledJobs = cronJobManager.getScheduledJobs();
+    Map<JobKey, CrontabEntry> scheduledJobs = cronJobManager.getScheduledJobs();
     assertEquals(CrontabEntry.parse("* * * * *"), scheduledJobs.get(QuartzTestUtil.AURORA_JOB_KEY));
   }
 
@@ -254,10 +254,10 @@ public class CronJobManagerImplTest extends EasyMockTest {
     });
   }
 
-  private Optional<IJobConfiguration> fetchFromStorage() {
-    return storage.read(new Storage.Work.Quiet<Optional<IJobConfiguration>>() {
+  private Optional<JobConfiguration> fetchFromStorage() {
+    return storage.read(new Storage.Work.Quiet<Optional<JobConfiguration>>() {
       @Override
-      public Optional<IJobConfiguration> apply(Storage.StoreProvider storeProvider) {
+      public Optional<JobConfiguration> apply(Storage.StoreProvider storeProvider) {
         return storeProvider.getCronJobStore().fetchJob(QuartzTestUtil.AURORA_JOB_KEY);
       }
     });

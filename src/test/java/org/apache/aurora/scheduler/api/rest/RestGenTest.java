@@ -369,8 +369,7 @@ public class RestGenTest extends EasyMockTest {
   public void testByteBuffer() throws Exception {
     control.replay();
 
-    byte[] bytes = {0xC, 0xA, 0xF, 0xE, 0xB, 0xA, 0xB, 0xE};
-    ByteBuffer deflatedEntry = ByteBuffer.wrap(bytes);
+    byte[] deflatedEntry = {0xC, 0xA, 0xF, 0xE, 0xB, 0xA, 0xB, 0xE};
     LogEntry logEntry = new LogEntry(deflatedEntry);
 
     ThriftCodecManager codecManager = createManager();
@@ -383,7 +382,7 @@ public class RestGenTest extends EasyMockTest {
     traditionalLogEntry.read(new TBinaryProtocol(buffer));
 
     assertEquals(logEntry.isSetDeflatedEntry(), traditionalLogEntry.isSetDeflatedEntry());
-    assertArrayEquals(bytes, traditionalLogEntry.getDeflatedEntry());
+    assertArrayEquals(deflatedEntry, traditionalLogEntry.getDeflatedEntry());
     assertEquals(logEntry.getDeflatedEntry(), traditionalLogEntry.bufferForDeflatedEntry());
   }
 

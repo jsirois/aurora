@@ -16,7 +16,7 @@ package org.apache.aurora.scheduler.quota;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
+import org.apache.aurora.gen.ResourceAggregate;
 
 import static java.util.Objects.requireNonNull;
 
@@ -86,7 +86,7 @@ public class QuotaCheckResult {
     return details;
   }
 
-  static QuotaCheckResult greaterOrEqual(IResourceAggregate a, IResourceAggregate b) {
+  static QuotaCheckResult greaterOrEqual(ResourceAggregate a, ResourceAggregate b) {
     StringBuilder details = new StringBuilder();
     boolean result = compare(a.getNumCpus(), b.getNumCpus(), Resource.CPU, details)
         & compare(a.getRamMb(), b.getRamMb(), Resource.RAM, details)

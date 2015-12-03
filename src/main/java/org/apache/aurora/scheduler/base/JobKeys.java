@@ -25,8 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
+import org.apache.aurora.gen.JobConfiguration;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -38,7 +37,7 @@ public final class JobKeys {
     // Utility class.
   }
 
-  public static String getRole(IJobConfiguration jobConfiguration) {
+  public static String getRole(JobConfiguration jobConfiguration) {
     return jobConfiguration.getKey().getRole();
   }
 
@@ -48,7 +47,7 @@ public final class JobKeys {
    * @param jobKey The jobKey to validate.
    * @return {@code true} if the jobKey validates.
    */
-  public static boolean isValid(@Nullable IJobKey jobKey) {
+  public static boolean isValid(@Nullable JobKey jobKey) {
     return jobKey != null
         && ConfigurationManager.isGoodIdentifier(jobKey.getRole())
         && ConfigurationManager.isGoodIdentifier(jobKey.getEnvironment())
@@ -62,7 +61,7 @@ public final class JobKeys {
    * @return The validated jobKey argument.
    * @throws IllegalArgumentException if the key struct fails to validate.
    */
-  public static IJobKey assertValid(IJobKey jobKey) throws IllegalArgumentException {
+  public static JobKey assertValid(JobKey jobKey) throws IllegalArgumentException {
     checkArgument(isValid(jobKey));
 
     return jobKey;
@@ -77,13 +76,10 @@ public final class JobKeys {
    * @return A valid JobKey if it can be created.
    * @throws IllegalArgumentException if the key fails to validate.
    */
-  public static IJobKey from(String role, String environment, String name)
+  public static JobKey from(String role, String environment, String name)
       throws IllegalArgumentException {
 
-    IJobKey job = IJobKey.build(new JobKey()
-        .setRole(role)
-        .setEnvironment(environment)
-        .setName(name));
+    JobKey job = JobKey.create(role, environment, name);
     return assertValid(job);
   }
 
@@ -96,7 +92,7 @@ public final class JobKeys {
    * @param jobKey Key to represent.
    * @return Canonical "/"-delimited representation of the key.
    */
-  public static String canonicalString(IJobKey jobKey) {
+  public static String canonicalString(JobKey jobKey) {
     return String.join("/", jobKey.getRole(), jobKey.getEnvironment(), jobKey.getName());
   }
 
@@ -105,12 +101,12 @@ public final class JobKeys {
    *
    * It is guaranteed that {@code k.equals(JobKeys.parse(JobKeys.canonicalString(k))}.
    *
-   * @see #canonicalString(IJobKey)
+   * @see #canonicalString(JobKey)
    * @param string Input to parse.
    * @return Parsed representation.
    * @throws IllegalArgumentException when the string fails to parse.
    */
-  public static IJobKey parse(String string) throws IllegalArgumentException {
+  public static JobKey parse(String string) throws IllegalArgumentException {
     List<String> components = Splitter.on("/").splitToList(string);
     checkArgument(components.size() == 3);
     return from(components.get(0), components.get(1), components.get(2));
@@ -122,10 +118,10 @@ public final class JobKeys {
    * @param query Query to extract the keys from.
    * @return A present if keys can be extracted, absent otherwise.
    */
-  public static Optional<Set<IJobKey>> from(Query.Builder query) {
+  public static Optional<Set<JobKey>> from(Query.Builder query) {
     if (Query.isJobScoped(query)) {
       TaskQuery taskQuery = query.get();
-      ImmutableSet.Builder<IJobKey> builder = ImmutableSet.builder();
+      ImmutableSet.Builder<JobKey> builder = ImmutableSet.builder();
 
       if (taskQuery.isSetJobName()) {
         builder.add(from(
@@ -134,19 +130,17 @@ public final class JobKeys {
             taskQuery.getJobName()));
       }
 
-      if (taskQuery.isSetJobKeys()) {
-        builder.addAll(IJobKey.setFromBuilders(taskQuery.getJobKeys()));
-      }
+      builder.addAll(taskQuery.getJobKeys());
       return Optional.of(assertValid(builder.build()));
     } else {
       return Optional.absent();
     }
   }
 
-  private static Set<IJobKey> assertValid(Set<IJobKey> jobKeys)
+  private static Set<JobKey> assertValid(Set<JobKey> jobKeys)
       throws IllegalArgumentException {
 
-    for (IJobKey jobKey : jobKeys) {
+    for (JobKey jobKey : jobKeys) {
       checkArgument(isValid(jobKey), "Invalid job key format:" + jobKey);
     }
 

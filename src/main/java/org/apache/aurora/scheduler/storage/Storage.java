@@ -22,8 +22,8 @@ import javax.inject.Qualifier;
 
 import org.apache.aurora.scheduler.base.Query.Builder;
 import org.apache.aurora.scheduler.base.SchedulerException;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.ScheduledTask;
 
 /**
  * Manages scheduler storage operations providing an interface to perform atomic changes.
@@ -291,19 +291,19 @@ public interface Storage {
      * @param query Builder of the query to perform.
      * @return Tasks returned from the query.
      */
-    public static Iterable<IScheduledTask> fetchTasks(Storage storage, final Builder query) {
-      return storage.read(new Work.Quiet<Iterable<IScheduledTask>>() {
+    public static Iterable<ScheduledTask> fetchTasks(Storage storage, final Builder query) {
+      return storage.read(new Work.Quiet<Iterable<ScheduledTask>>() {
         @Override
-        public Iterable<IScheduledTask> apply(StoreProvider storeProvider) {
+        public Iterable<ScheduledTask> apply(StoreProvider storeProvider) {
           return storeProvider.getTaskStore().fetchTasks(query);
         }
       });
     }
 
-    public static Iterable<IJobConfiguration> fetchCronJobs(Storage storage) {
-      return storage.read(new Work.Quiet<Iterable<IJobConfiguration>>() {
+    public static Iterable<JobConfiguration> fetchCronJobs(Storage storage) {
+      return storage.read(new Work.Quiet<Iterable<JobConfiguration>>() {
         @Override
-        public Iterable<IJobConfiguration> apply(Storage.StoreProvider storeProvider) {
+        public Iterable<JobConfiguration> apply(Storage.StoreProvider storeProvider) {
           return storeProvider.getCronJobStore().fetchJobs();
         }
       });

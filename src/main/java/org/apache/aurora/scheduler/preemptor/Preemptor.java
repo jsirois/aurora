@@ -25,7 +25,7 @@ import org.apache.aurora.scheduler.filter.AttributeAggregate;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.mesos.Protos.SlaveID;
 
 import static java.util.Objects.requireNonNull;
@@ -46,7 +46,7 @@ public interface Preemptor {
    * @return ID of the slave where preemption occurred.
    */
   Optional<String> attemptPreemptionFor(
-      IAssignedTask task,
+      AssignedTask task,
       AttributeAggregate jobState,
       MutableStoreProvider storeProvider);
 
@@ -74,7 +74,7 @@ public interface Preemptor {
 
     @Override
     public Optional<String> attemptPreemptionFor(
-        IAssignedTask pendingTask,
+        AssignedTask pendingTask,
         AttributeAggregate jobState,
         MutableStoreProvider store) {
 

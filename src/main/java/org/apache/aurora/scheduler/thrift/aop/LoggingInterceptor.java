@@ -28,6 +28,7 @@ import org.aopalliance.intercept.MethodInvocation;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.ResponseCode;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.thrift.Responses;
 import org.apache.shiro.ShiroException;
@@ -45,10 +46,16 @@ class LoggingInterceptor implements MethodInterceptor {
           new Function<Object, String>() {
             @Override
             public String apply(Object input) {
-              JobConfiguration configuration = ((JobConfiguration) input).deepCopy();
+              JobConfiguration configuration = (JobConfiguration) input;
               if (configuration.isSetTaskConfig()) {
-                configuration.getTaskConfig().setExecutorConfig(
-                    new ExecutorConfig("BLANKED", "BLANKED"));
+                TaskConfig taskConfig = configuration.getTaskConfig();
+                configuration =
+                    configuration.toBuilder()
+                        .setTaskConfig(
+                            taskConfig.toBuilder()
+                                .setExecutorConfig(ExecutorConfig.create("BLANKED", "BLANKED"))
+                                .build())
+                        .build();
               }
               return configuration.toString();
             }

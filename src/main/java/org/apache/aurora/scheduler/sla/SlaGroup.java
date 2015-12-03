@@ -27,8 +27,8 @@ import com.google.common.collect.Range;
 
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static org.apache.aurora.scheduler.ResourceAggregates.EMPTY;
 import static org.apache.aurora.scheduler.ResourceAggregates.LARGE;
@@ -47,7 +47,7 @@ interface SlaGroup {
    * @param tasks Set of tasks to generate named groups for.
    * @return Multimap of group names and relevant tasks.
    */
-  Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks);
+  Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks);
 
   /**
    * Pre-configured SLA groupings.
@@ -62,9 +62,9 @@ interface SlaGroup {
             "sla_cpu_large_", Range.openClosed(MEDIUM.getNumCpus(), LARGE.getNumCpus()),
             "sla_cpu_xlarge_", Range.openClosed(LARGE.getNumCpus(), XLARGE.getNumCpus()),
             "sla_cpu_xxlarge_", Range.greaterThan(XLARGE.getNumCpus())),
-        new Function<IScheduledTask, Double>() {
+        new Function<ScheduledTask, Double>() {
           @Override
-          public Double apply(IScheduledTask task) {
+          public Double apply(ScheduledTask task) {
             return task.getAssignedTask().getTask().getNumCpus();
           }
         }
@@ -76,9 +76,9 @@ interface SlaGroup {
             "sla_ram_large_", Range.openClosed(MEDIUM.getRamMb(), LARGE.getRamMb()),
             "sla_ram_xlarge_", Range.openClosed(LARGE.getRamMb(), XLARGE.getRamMb()),
             "sla_ram_xxlarge_", Range.greaterThan(XLARGE.getRamMb())),
-        new Function<IScheduledTask, Long>() {
+        new Function<ScheduledTask, Long>() {
           @Override
-          public Long apply(IScheduledTask task) {
+          public Long apply(ScheduledTask task) {
             return task.getAssignedTask().getTask().getRamMb();
           }
         }
@@ -90,9 +90,9 @@ interface SlaGroup {
             "sla_disk_large_", Range.openClosed(MEDIUM.getDiskMb(), LARGE.getDiskMb()),
             "sla_disk_xlarge_", Range.openClosed(LARGE.getDiskMb(), XLARGE.getDiskMb()),
             "sla_disk_xxlarge_", Range.greaterThan(XLARGE.getDiskMb())),
-        new Function<IScheduledTask, Long>() {
+        new Function<ScheduledTask, Long>() {
           @Override
-          public Long apply(IScheduledTask task) {
+          public Long apply(ScheduledTask task) {
             return task.getAssignedTask().getTask().getDiskMb();
           }
         }
@@ -113,10 +113,10 @@ interface SlaGroup {
    */
   class Job implements SlaGroup {
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
-      return Multimaps.index(tasks, Functions.compose(new Function<IJobKey, String>() {
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
+      return Multimaps.index(tasks, Functions.compose(new Function<JobKey, String>() {
         @Override
-        public String apply(IJobKey jobKey) {
+        public String apply(JobKey jobKey) {
           return "sla_" + JobKeys.canonicalString(jobKey) + "_";
         }
       }, Tasks::getJob));
@@ -128,10 +128,10 @@ interface SlaGroup {
    */
   class Cluster implements SlaGroup {
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
-      return Multimaps.index(tasks, new Function<IScheduledTask, String>() {
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
+      return Multimaps.index(tasks, new Function<ScheduledTask, String>() {
         @Override
-        public String apply(IScheduledTask task) {
+        public String apply(ScheduledTask task) {
           return "sla_cluster_";
         }
       });
@@ -146,22 +146,22 @@ interface SlaGroup {
   final class Resource<T extends Number & Comparable<T>> implements SlaGroup {
 
     private final Map<String, Range<T>> map;
-    private final Function<IScheduledTask, T> function;
+    private final Function<ScheduledTask, T> function;
 
-    private Resource(Map<String, Range<T>> map, Function<IScheduledTask, T> function) {
+    private Resource(Map<String, Range<T>> map, Function<ScheduledTask, T> function) {
       this.map = map;
       this.function = function;
     }
 
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
-      ImmutableListMultimap.Builder<String, IScheduledTask> result =
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
+      ImmutableListMultimap.Builder<String, ScheduledTask> result =
           ImmutableListMultimap.builder();
 
       for (final Map.Entry<String, Range<T>> entry : map.entrySet()) {
-        result.putAll(entry.getKey(), Iterables.filter(tasks, new Predicate<IScheduledTask>() {
+        result.putAll(entry.getKey(), Iterables.filter(tasks, new Predicate<ScheduledTask>() {
           @Override
-          public boolean apply(IScheduledTask task) {
+          public boolean apply(ScheduledTask task) {
             return entry.getValue().contains(function.apply(task));
           }
         }));

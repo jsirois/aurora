@@ -30,7 +30,6 @@ import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.TaskState;
@@ -108,7 +107,7 @@ public final class Conversions {
     @Override
     public Attribute apply(Entry<String, Collection<Protos.Attribute>> entry) {
       // Convert values and filter any that were ignored.
-      return new Attribute(
+      return Attribute.create(
           entry.getKey(),
           FluentIterable.from(entry.getValue())
               .transform(VALUE_CONVERTER)
@@ -123,17 +122,17 @@ public final class Conversions {
    * @param offer Resource offer.
    * @return Equivalent thrift host attributes.
    */
-  public static IHostAttributes getAttributes(Offer offer) {
+  public static HostAttributes getAttributes(Offer offer) {
     // Group by attribute name.
     Multimap<String, Protos.Attribute> valuesByName =
         Multimaps.index(offer.getAttributesList(), ATTRIBUTE_NAME);
 
-    return IHostAttributes.build(new HostAttributes(
-        offer.getHostname(),
-        FluentIterable.from(valuesByName.asMap().entrySet())
-            .transform(ATTRIBUTE_CONVERTER)
-            .toSet())
-        .setSlaveId(offer.getSlaveId().getValue()));
+    return HostAttributes.builder()
+        .setHost(offer.getHostname())
+        .setAttributes(FluentIterable.from(valuesByName.asMap().entrySet())
+            .transform(ATTRIBUTE_CONVERTER))
+        .setSlaveId(offer.getSlaveId().getValue())
+        .build();
   }
 
   /**

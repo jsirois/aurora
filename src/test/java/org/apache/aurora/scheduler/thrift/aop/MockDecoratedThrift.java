@@ -49,6 +49,6 @@ public class MockDecoratedThrift extends ForwardingThrift {
     binder.bind(AnnotatedAuroraAdmin.class).annotatedWith(MockThrift.class).toInstance(mockThrift);
 
     binder.bind(AnnotatedAuroraAdmin.class).to(MockDecoratedThrift.class);
-    binder.bind(AuroraAdmin.Iface.class).to(MockDecoratedThrift.class);
+    binder.bind(AuroraAdmin.Sync.class).to(MockDecoratedThrift.class);
   }
 }

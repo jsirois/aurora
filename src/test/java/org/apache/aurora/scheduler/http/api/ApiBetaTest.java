@@ -49,9 +49,9 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IResponse;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.Response;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,7 +84,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
     );
   }
 
-  private static final ITaskConfig TASK_CONFIG = ITaskConfig.build(
+  private static final TaskConfig TASK_CONFIG = TaskConfig.build(
       new TaskConfig()
           .setOwner(new Identity().setUser("user").setRole("role"))
           .setEnvironment("test")
@@ -100,7 +100,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
               new ExecutorConfig()
                   .setData("executor config data")
                   .setName("executor name")));
-  private static final IJobConfiguration JOB_CONFIG = IJobConfiguration.build(
+  private static final JobConfiguration JOB_CONFIG = JobConfiguration.build(
       new JobConfiguration()
           .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
           .setKey(new JobKey("role", "env", "name"))
@@ -124,7 +124,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
             ImmutableMap.of("description", job, "lock", lock),
             MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test
@@ -161,7 +161,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
     Response actualResponse = getRequestBuilder("/apibeta/getJobSummary")
         .entity(ImmutableMap.of("role", "roleA"), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test
@@ -187,7 +187,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
     Response actualResponse = getRequestBuilder("/apibeta/getTasksStatus")
         .entity(ImmutableMap.of("query", query), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test

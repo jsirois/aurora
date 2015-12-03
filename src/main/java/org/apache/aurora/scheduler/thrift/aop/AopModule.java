@@ -95,14 +95,14 @@ public class AopModule extends AbstractModule {
       protected void configure() {
         // Ensure that the provided methods exist on the decorated interface.
         List<Method> methods =
-            ImmutableList.copyOf(AuroraSchedulerManager.Iface.class.getMethods());
+            ImmutableList.copyOf(AuroraSchedulerManager.Sync.class.getMethods());
         for (String toggledMethod : toggledMethods.keySet()) {
           Preconditions.checkArgument(
               Iterables.any(methods,
                   Predicates.compose(Predicates.equalTo(toggledMethod), GET_NAME)),
               String.format("Method %s was not found in class %s",
                   toggledMethod,
-                  AuroraSchedulerManager.Iface.class));
+                  AuroraSchedulerManager.Sync.class));
         }
 
         bind(new TypeLiteral<Map<String, Boolean>>() { }).toInstance(toggledMethods);

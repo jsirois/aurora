@@ -78,7 +78,7 @@ public interface EntrySerializer {
       final int chunks = (int) Math.ceil(entry.length / (double) maxEntrySizeBytes);
 
       final byte[] header = encode(
-          Frame.header(new FrameHeader(chunks, ByteBuffer.wrap(checksum(entry)))));
+          Frame.header(FrameHeader.create(chunks, ByteBuffer.wrap(checksum(entry)))));
 
       return new Iterable<byte[]>() {
         @Override
@@ -102,7 +102,7 @@ public interface EntrySerializer {
             ByteBuffer chunk =
                 ByteBuffer.wrap(entry, offset, Math.min(maxEntrySizeBytes, entry.length - offset));
             try {
-              result = encode(Frame.chunk(new FrameChunk(chunk)));
+              result = encode(Frame.chunk(FrameChunk.create(chunk)));
             } catch (CodingException e) {
               throw Throwables.propagate(e);
             }

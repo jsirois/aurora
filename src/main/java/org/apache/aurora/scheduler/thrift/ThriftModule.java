@@ -28,7 +28,7 @@ public class ThriftModule extends AbstractModule {
   @Override
   protected void configure() {
     install(new ReadOnly());
-    bind(AuroraAdmin.Iface.class).to(SchedulerThriftInterface.class);
+    bind(AuroraAdmin.Sync.class).to(SchedulerThriftInterface.class);
     bind(AnnotatedAuroraAdmin.class).to(SchedulerThriftInterface.class);
 
     // Promote to an explicit binding so it's created in the servlet container child injector.
@@ -43,7 +43,7 @@ public class ThriftModule extends AbstractModule {
   public static class ReadOnly extends AbstractModule {
     @Override
     protected void configure() {
-      bind(ReadOnlyScheduler.Iface.class).to(ReadOnlySchedulerImpl.class);
+      bind(ReadOnlyScheduler.Sync.class).to(ReadOnlySchedulerImpl.class);
     }
   }
 }

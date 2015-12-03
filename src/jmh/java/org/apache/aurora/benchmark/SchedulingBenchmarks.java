@@ -56,8 +56,8 @@ import org.apache.aurora.scheduler.scheduling.TaskScheduler.TaskSchedulerImpl.Re
 import org.apache.aurora.scheduler.state.StateModule;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -180,7 +180,7 @@ public class SchedulingBenchmarks {
       saveTasks(settings.getTasks());
     }
 
-    private Set<IScheduledTask> buildClusterTasks(int numOffers) {
+    private Set<ScheduledTask> buildClusterTasks(int numOffers) {
       int numOffersToFill = (int) Math.round(numOffers * settings.getClusterUtilization());
       return new Tasks.Builder()
           .setRole("victim")
@@ -189,14 +189,14 @@ public class SchedulingBenchmarks {
     }
 
     private void fillUpCluster(int numOffers) {
-      Set<IScheduledTask> tasksToAssign = buildClusterTasks(numOffers);
+      Set<ScheduledTask> tasksToAssign = buildClusterTasks(numOffers);
       saveTasks(tasksToAssign);
-      for (IScheduledTask scheduledTask : tasksToAssign) {
+      for (ScheduledTask scheduledTask : tasksToAssign) {
         taskScheduler.schedule(scheduledTask.getAssignedTask().getTaskId());
       }
     }
 
-    private void saveTasks(final Set<IScheduledTask> tasks) {
+    private void saveTasks(final Set<ScheduledTask> tasks) {
       storage.write(new Storage.MutateWork.NoResult.Quiet() {
         @Override
         public void execute(Storage.MutableStoreProvider storeProvider) {
@@ -205,11 +205,11 @@ public class SchedulingBenchmarks {
       });
     }
 
-    private void saveHostAttributes(final Set<IHostAttributes> hostAttributesToSave) {
+    private void saveHostAttributes(final Set<HostAttributes> hostAttributesToSave) {
       storage.write(new Storage.MutateWork.NoResult.Quiet() {
         @Override
         public void execute(Storage.MutableStoreProvider storeProvider) {
-          for (IHostAttributes attributes : hostAttributesToSave) {
+          for (HostAttributes attributes : hostAttributesToSave) {
             storeProvider.getAttributeStore().saveHostAttributes(attributes);
           }
         }
@@ -228,7 +228,7 @@ public class SchedulingBenchmarks {
     @Benchmark
     public boolean runBenchmark() {
       boolean result = false;
-      for (IScheduledTask task : settings.getTasks()) {
+      for (ScheduledTask task : settings.getTasks()) {
         result = taskScheduler.schedule(task.getAssignedTask().getTaskId());
       }
       return result;

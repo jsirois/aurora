@@ -16,6 +16,7 @@ package org.apache.aurora.scheduler.http.api.security;
 import com.google.common.base.Optional;
 
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGetter;
+import org.apache.aurora.thrift.ThriftStruct;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TFieldIdEnum;
 import org.apache.thrift.meta_data.FieldMetaData;
@@ -27,7 +28,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  * Retrieves an optional struct-type field from a struct.
  */
-class ThriftFieldGetter<T extends TBase<T, F>, F extends TFieldIdEnum, V extends TBase<V, ?>>
+class ThriftFieldGetter<
+    T extends ThriftStruct<F>,
+    F extends ThriftStruct.ThriftFields,
+    V extends ThriftStruct<?>>
     extends AbstractFieldGetter<T, V> {
 
   private final F fieldId;
@@ -35,20 +39,13 @@ class ThriftFieldGetter<T extends TBase<T, F>, F extends TFieldIdEnum, V extends
   ThriftFieldGetter(Class<T> structClass, F fieldId, Class<V> valueClass) {
     super(structClass, valueClass);
 
-    FieldValueMetaData fieldValueMetaData = FieldMetaData
-        .getStructMetaDataMap(structClass)
-        .get(fieldId)
-        .valueMetaData;
-
-    checkArgument(fieldValueMetaData instanceof StructMetaData);
-    StructMetaData structMetaData = (StructMetaData) fieldValueMetaData;
     checkArgument(
-        valueClass.equals(structMetaData.structClass),
+        valueClass.equals(fieldId.getFieldType()),
         "Value class "
             + valueClass.getName()
             + " does not match field metadata for "
             + fieldId
-            + " (expected " + structMetaData.structClass
+            + " (expected " + fieldId.getFieldType()
             + ").");
 
     this.fieldId = fieldId;

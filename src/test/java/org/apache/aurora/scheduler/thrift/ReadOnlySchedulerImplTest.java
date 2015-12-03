@@ -73,16 +73,16 @@ import org.apache.aurora.scheduler.metadata.NearestFit;
 import org.apache.aurora.scheduler.quota.QuotaInfo;
 import org.apache.aurora.scheduler.quota.QuotaManager;
 import org.apache.aurora.scheduler.state.LockManager;
-import org.apache.aurora.scheduler.storage.entities.IConfigSummaryResult;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IResponse;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.ConfigSummaryResult;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.Response;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -123,7 +123,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   private QuotaManager quotaManager;
   private LockManager lockManager;
 
-  private ReadOnlyScheduler.Iface thrift;
+  private ReadOnlyScheduler.Sync thrift;
 
   @Before
   public void setUp() {
@@ -153,7 +153,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     JobConfiguration ownedCronJob = makeJob()
         .setCronSchedule(CRON_SCHEDULE)
         .setTaskConfig(ownedCronJobTask);
-    IScheduledTask ownedCronJobScheduledTask = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask ownedCronJobScheduledTask = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(ownedCronJobTask))
         .setStatus(ScheduleStatus.ASSIGNED));
     Identity otherOwner = new Identity("other", "other");
@@ -180,7 +180,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     Set<JobConfiguration> unownedCronJobOnly = ImmutableSet.of(unownedCronJob);
     Set<JobConfiguration> bothCronJobs = ImmutableSet.of(ownedCronJob, unownedCronJob);
 
-    IScheduledTask ownedImmediateTask = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask ownedImmediateTask = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(ownedImmediateTaskInfo))
         .setStatus(ScheduleStatus.ASSIGNED));
     JobConfiguration ownedImmediateJob = new JobConfiguration()
@@ -199,15 +199,15 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
     storageUtil.expectTaskFetch(query);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(ownedCronJobOnly));
+        .andReturn(JobConfiguration.setFromBuilders(ownedCronJobOnly));
 
     storageUtil.expectTaskFetch(query);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(bothCronJobs));
+        .andReturn(JobConfiguration.setFromBuilders(bothCronJobs));
 
     storageUtil.expectTaskFetch(query, ownedImmediateTask);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(unownedCronJobOnly));
+        .andReturn(JobConfiguration.setFromBuilders(unownedCronJobOnly));
 
     storageUtil.expectTaskFetch(query);
     expect(storageUtil.jobStore.fetchJobs()).andReturn(ImmutableSet.of());
@@ -215,7 +215,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     // Handle the case where a cron job has a running task (same JobKey present in both stores).
     storageUtil.expectTaskFetch(query, ownedCronJobScheduledTask);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(ImmutableSet.of(ownedCronJob)));
+        .andReturn(JobConfiguration.setFromBuilders(ImmutableSet.of(ownedCronJob)));
 
     control.replay();
 
@@ -226,7 +226,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     Response jobSummaryResponse = thrift.getJobSummary(ROLE);
     assertEquals(
         jobSummaryResponse(ownedImmedieteJobSummaryOnly),
-        IResponse.build(jobSummaryResponse).newBuilder());
+        Response.build(jobSummaryResponse).newBuilder());
 
     assertEquals(jobSummaryResponse(ImmutableSet.of()), thrift.getJobSummary(ROLE));
 
@@ -244,14 +244,14 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
         Veto.constraintMismatch("first"),
         Veto.constraintMismatch("second"));
 
-    ITaskConfig taskConfig = ITaskConfig.build(defaultTask(true));
-    IScheduledTask pendingTask1 = IScheduledTask.build(new ScheduledTask()
+    TaskConfig taskConfig = TaskConfig.build(defaultTask(true));
+    ScheduledTask pendingTask1 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask()
             .setTaskId(taskId1)
             .setTask(taskConfig.newBuilder()))
         .setStatus(ScheduleStatus.PENDING));
 
-    IScheduledTask pendingTask2 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask pendingTask2 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask()
             .setTaskId(taskId2)
             .setTask(taskConfig.newBuilder()))
@@ -273,7 +273,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
   @Test
   public void testPopulateJobConfig() throws Exception {
-    IJobConfiguration job = IJobConfiguration.build(makeJob());
+    JobConfiguration job = JobConfiguration.build(makeJob());
     SanitizedConfiguration sanitized = SanitizedConfiguration.fromUnsanitized(job);
     control.replay();
 
@@ -286,7 +286,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
   @Test
   public void testPopulateJobConfigFails() throws Exception {
-    IJobConfiguration job = IJobConfiguration.build(makeJob(null));
+    JobConfiguration job = JobConfiguration.build(makeJob(null));
     control.replay();
 
     assertResponse(INVALID_REQUEST, thrift.populateJobConfig(job.newBuilder()));
@@ -333,7 +333,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
     control.replay();
 
-    ImmutableList<ScheduledTask> expected = IScheduledTask.toBuildersList(makeDefaultScheduledTasks(
+    ImmutableList<ScheduledTask> expected = ScheduledTask.toBuildersList(makeDefaultScheduledTasks(
         10,
         defaultTask(true).setExecutorConfig(null)));
 
@@ -365,7 +365,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
         .setJob(JOB_KEY.newBuilder().setName("immediate"))
         .setJobName("immediate")
         .setOwner(ROLE_IDENTITY);
-    IScheduledTask immediateTask = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask immediateTask = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(immediateTaskConfig))
         .setStatus(ScheduleStatus.ASSIGNED));
     JobConfiguration immediateJob = new JobConfiguration()
@@ -375,7 +375,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
         .setTaskConfig(immediateTaskConfig);
 
     Set<JobConfiguration> crons = ImmutableSet.of(cronJobOne, cronJobTwo);
-    expect(storageUtil.jobStore.fetchJobs()).andReturn(IJobConfiguration.setFromBuilders(crons));
+    expect(storageUtil.jobStore.fetchJobs()).andReturn(JobConfiguration.setFromBuilders(crons));
     storageUtil.expectTaskFetch(Query.unscoped().active(), immediateTask);
 
     control.replay();
@@ -383,8 +383,8 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     Set<JobConfiguration> allJobs =
         ImmutableSet.<JobConfiguration>builder().addAll(crons).add(immediateJob).build();
     assertEquals(
-        IJobConfiguration.setFromBuilders(allJobs),
-        IJobConfiguration.setFromBuilders(
+        JobConfiguration.setFromBuilders(allJobs),
+        JobConfiguration.setFromBuilders(
             thrift.getJobs(null).getResult().getGetJobsResult().getConfigs()));
   }
 
@@ -397,7 +397,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     JobConfiguration ownedCronJob = makeJob()
         .setCronSchedule(CRON_SCHEDULE)
         .setTaskConfig(ownedCronJobTask);
-    IScheduledTask ownedCronJobScheduledTask = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask ownedCronJobScheduledTask = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(ownedCronJobTask))
         .setStatus(ScheduleStatus.ASSIGNED));
     Identity otherOwner = new Identity("other", "other");
@@ -413,7 +413,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     Set<JobConfiguration> ownedCronJobOnly = ImmutableSet.of(ownedCronJob);
     Set<JobConfiguration> unownedCronJobOnly = ImmutableSet.of(unownedCronJob);
     Set<JobConfiguration> bothCronJobs = ImmutableSet.of(ownedCronJob, unownedCronJob);
-    IScheduledTask ownedImmediateTask = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask ownedImmediateTask = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(ownedImmediateTaskInfo))
         .setStatus(ScheduleStatus.ASSIGNED));
     JobConfiguration ownedImmediateJob = new JobConfiguration()
@@ -425,15 +425,15 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
     storageUtil.expectTaskFetch(query);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(ownedCronJobOnly));
+        .andReturn(JobConfiguration.setFromBuilders(ownedCronJobOnly));
 
     storageUtil.expectTaskFetch(query);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(bothCronJobs));
+        .andReturn(JobConfiguration.setFromBuilders(bothCronJobs));
 
     storageUtil.expectTaskFetch(query, ownedImmediateTask);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(unownedCronJobOnly));
+        .andReturn(JobConfiguration.setFromBuilders(unownedCronJobOnly));
 
     expect(storageUtil.jobStore.fetchJobs()).andReturn(ImmutableSet.of());
     storageUtil.expectTaskFetch(query);
@@ -441,7 +441,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     // Handle the case where a cron job has a running task (same JobKey present in both stores).
     storageUtil.expectTaskFetch(query, ownedCronJobScheduledTask);
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(IJobConfiguration.setFromBuilders(ImmutableSet.of(ownedCronJob)));
+        .andReturn(JobConfiguration.setFromBuilders(ImmutableSet.of(ownedCronJob)));
 
     control.replay();
 
@@ -455,8 +455,8 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
         thrift.getJobs(ROLE).getResult().getGetJobsResult().getConfigs();
     assertJobsEqual(ownedImmediateJob, Iterables.getOnlyElement(queryResult3));
     assertEquals(
-        ITaskConfig.build(ownedImmediateTaskInfo),
-        ITaskConfig.build(Iterables.getOnlyElement(queryResult3).getTaskConfig()));
+        TaskConfig.build(ownedImmediateTaskInfo),
+        TaskConfig.build(Iterables.getOnlyElement(queryResult3).getTaskConfig()));
 
     assertTrue(thrift.getJobs(ROLE)
         .getResult().getGetJobsResult().getConfigs().isEmpty());
@@ -466,12 +466,12 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   }
 
   private static void assertJobsEqual(JobConfiguration expected, JobConfiguration actual) {
-    assertEquals(IJobConfiguration.build(expected), IJobConfiguration.build(actual));
+    assertEquals(JobConfiguration.build(expected), JobConfiguration.build(actual));
   }
 
   @Test
   public void testGetTasksStatusPagination() throws Exception {
-    Iterable<IScheduledTask> tasks = makeDefaultScheduledTasks(10);
+    Iterable<ScheduledTask> tasks = makeDefaultScheduledTasks(10);
 
     TaskQuery page1Query = setupPaginatedQuery(tasks, 0, 4);
     TaskQuery page2Query = setupPaginatedQuery(tasks, 4, 4);
@@ -495,7 +495,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     assertEquals(Lists.newArrayList(8, 9), page3Ids);
   }
 
-  private TaskQuery setupPaginatedQuery(Iterable<IScheduledTask> tasks, int offset, int limit) {
+  private TaskQuery setupPaginatedQuery(Iterable<ScheduledTask> tasks, int offset, int limit) {
     TaskQuery query = new TaskQuery().setOffset(offset).setLimit(limit);
     Builder builder = Query.arbitrary(query);
     storageUtil.expectTaskFetch(builder, ImmutableSet.copyOf(tasks));
@@ -513,18 +513,18 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
   @Test
   public void testGetConfigSummary() throws Exception {
-    IJobKey key = JobKeys.from("test", "test", "test");
+    JobKey key = JobKeys.from("test", "test", "test");
 
     TaskConfig firstGroupTask = defaultTask(true);
     TaskConfig secondGroupTask = defaultTask(true).setNumCpus(2);
 
-    IScheduledTask first1 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask first1 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(firstGroupTask).setInstanceId(0)));
 
-    IScheduledTask first2 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask first2 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(firstGroupTask).setInstanceId(1)));
 
-    IScheduledTask second = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask second = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(secondGroupTask).setInstanceId(2)));
 
     storageUtil.expectTaskFetch(Query.jobScoped(key).active(), first1, first2, second);
@@ -532,11 +532,11 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     ConfigGroup group1 = new ConfigGroup()
         .setConfig(firstGroupTask)
         .setInstanceIds(Sets.newHashSet(0, 1))
-        .setInstances(IRange.toBuildersSet(convertRanges(toRanges(ImmutableSet.of(0, 1)))));
+        .setInstances(Range.toBuildersSet(convertRanges(toRanges(ImmutableSet.of(0, 1)))));
     ConfigGroup group2 = new ConfigGroup()
         .setConfig(secondGroupTask)
         .setInstanceIds(Sets.newHashSet(2))
-        .setInstances(IRange.toBuildersSet(convertRanges(toRanges(ImmutableSet.of(2)))));
+        .setInstances(Range.toBuildersSet(convertRanges(toRanges(ImmutableSet.of(2)))));
 
     ConfigSummary summary = new ConfigSummary()
         .setKey(key.newBuilder())
@@ -548,19 +548,19 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
     Response response = assertOkResponse(thrift.getConfigSummary(key.newBuilder()));
     assertEquals(
-        IConfigSummaryResult.build(expected),
-        IConfigSummaryResult.build(response.getResult().getConfigSummaryResult()));
+        ConfigSummaryResult.build(expected),
+        ConfigSummaryResult.build(response.getResult().getConfigSummaryResult()));
   }
 
   @Test
   public void testGetTasksStatus() throws Exception {
     Builder query = Query.unscoped();
-    Iterable<IScheduledTask> tasks = makeDefaultScheduledTasks(10);
+    Iterable<ScheduledTask> tasks = makeDefaultScheduledTasks(10);
     storageUtil.expectTaskFetch(query, ImmutableSet.copyOf(tasks));
 
     control.replay();
 
-    ImmutableList<ScheduledTask> expected = IScheduledTask.toBuildersList(tasks);
+    ImmutableList<ScheduledTask> expected = ScheduledTask.toBuildersList(tasks);
     Response response = assertOkResponse(thrift.getTasksStatus(new TaskQuery()));
     assertEquals(expected, response.getResult().getScheduleStatusResult().getTasks());
   }
@@ -578,8 +578,8 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   public void testGetJobUpdateSummaries() throws Exception {
     JobUpdateQuery query = new JobUpdateQuery().setRole(ROLE);
     List<JobUpdateSummary> summaries = createJobUpdateSummaries(5);
-    expect(storageUtil.jobUpdateStore.fetchJobUpdateSummaries(IJobUpdateQuery.build(query)))
-        .andReturn(IJobUpdateSummary.listFromBuilders(summaries));
+    expect(storageUtil.jobUpdateStore.fetchJobUpdateSummaries(JobUpdateQuery.build(query)))
+        .andReturn(JobUpdateSummary.listFromBuilders(summaries));
 
     control.replay();
 
@@ -593,14 +593,14 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   public void testGetJobUpdateDetails() throws Exception {
     JobUpdateDetails details = createJobUpdateDetails();
     expect(storageUtil.jobUpdateStore.fetchJobUpdateDetails(UPDATE_KEY))
-        .andReturn(Optional.of(IJobUpdateDetails.build(details)));
+        .andReturn(Optional.of(JobUpdateDetails.build(details)));
 
     control.replay();
 
     Response response = assertOkResponse(thrift.getJobUpdateDetails(UPDATE_KEY.newBuilder()));
     assertEquals(
-        IJobUpdateDetails.build(details),
-        IJobUpdateDetails.build(response.getResult().getGetJobUpdateDetailsResult().getDetails()));
+        JobUpdateDetails.build(details),
+        JobUpdateDetails.build(response.getResult().getGetJobUpdateDetailsResult().getDetails()));
   }
 
   private static List<JobUpdateSummary> createJobUpdateSummaries(int count) {
@@ -644,30 +644,30 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
         .setJob(JOB_KEY.newBuilder().setName("immediate"))
         .setJobName("immediate")
         .setOwner(ROLE_IDENTITY);
-    IScheduledTask task1 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask task1 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(immediateTaskConfig)));
-    IScheduledTask task2 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask task2 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(immediateTaskConfig.setNumCpus(2))));
 
     TaskConfig immediateTaskConfigTwo = defaultTask(false)
         .setJob(JOB_KEY.newBuilder().setRole(BAZ_ROLE_IDENTITY.getRole()).setName("immediateTwo"))
         .setJobName("immediateTwo")
         .setOwner(BAZ_ROLE_IDENTITY);
-    IScheduledTask task3 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask task3 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(immediateTaskConfigTwo)));
 
     TaskConfig immediateTaskConfigThree = defaultTask(false)
         .setJob(JOB_KEY.newBuilder().setRole(BAZ_ROLE_IDENTITY.getRole()).setName("immediateThree"))
         .setJobName("immediateThree")
         .setOwner(BAZ_ROLE_IDENTITY);
-    IScheduledTask task4 = IScheduledTask.build(new ScheduledTask()
+    ScheduledTask task4 = ScheduledTask.build(new ScheduledTask()
         .setAssignedTask(new AssignedTask().setTask(immediateTaskConfigThree)));
 
     expect(storageUtil.taskStore.getJobKeys()).andReturn(
         FluentIterable.from(ImmutableSet.of(task1, task2, task3, task4))
             .transform(Tasks::getJob)
             .toSet());
-    expect(storageUtil.jobStore.fetchJobs()).andReturn(IJobConfiguration.setFromBuilders(crons));
+    expect(storageUtil.jobStore.fetchJobs()).andReturn(JobConfiguration.setFromBuilders(crons));
 
     RoleSummaryResult expectedResult = new RoleSummaryResult();
     expectedResult.addToSummaries(
@@ -683,7 +683,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
   @Test
   public void testEmptyConfigSummary() throws Exception {
-    IJobKey key = JobKeys.from("test", "test", "test");
+    JobKey key = JobKeys.from("test", "test", "test");
 
     storageUtil.expectTaskFetch(Query.jobScoped(key).active(), ImmutableSet.of());
 
@@ -717,7 +717,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     TaskConfig task4 = defaultTask(false).setNumCpus(4.0);
     TaskConfig task5 = defaultTask(false).setNumCpus(5.0);
 
-    ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
+    ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
     makeTasks(0, 10, task1, tasks);
     makeTasks(10, 20, task2, tasks);
     makeTasks(20, 30, task3, tasks);
@@ -756,7 +756,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
     TaskConfig task2 = defaultTask(false).setNumCpus(2.0);
     TaskConfig task3 = defaultTask(false).setNumCpus(3.0);
 
-    ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
+    ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
     makeTasks(0, 10, task1, tasks);
     makeTasks(10, 20, task2, tasks);
     makeTasks(20, 30, task3, tasks);
@@ -810,7 +810,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   @Test
   public void testGetJobUpdateDiffNoCron() throws Exception {
     expect(storageUtil.jobStore.fetchJob(JOB_KEY))
-        .andReturn(Optional.of(IJobConfiguration.build(CRON_JOB)));
+        .andReturn(Optional.of(JobConfiguration.build(CRON_JOB)));
 
     control.replay();
 
@@ -827,10 +827,10 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
       int start,
       int end,
       TaskConfig config,
-      ImmutableSet.Builder<IScheduledTask> builder) {
+      ImmutableSet.Builder<ScheduledTask> builder) {
 
     for (int i = start; i < end; i++) {
-      builder.add(IScheduledTask.build(new ScheduledTask()
+      builder.add(ScheduledTask.build(new ScheduledTask()
           .setAssignedTask(new AssignedTask().setTask(config).setInstanceId(i))));
     }
   }
@@ -838,7 +838,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
   private static ConfigGroup group(TaskConfig task, Range range) {
     return new ConfigGroup()
         .setConfig(task)
-        .setInstanceIds(rangesToInstanceIds(ImmutableSet.of(IRange.build(range))))
+        .setInstanceIds(rangesToInstanceIds(ImmutableSet.of(Range.build(range))))
         .setInstances(ImmutableSet.of(range));
   }
 }

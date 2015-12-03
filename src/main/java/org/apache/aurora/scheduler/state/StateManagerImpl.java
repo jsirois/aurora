@@ -55,9 +55,9 @@ import org.apache.aurora.scheduler.state.SideEffect.Action;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.TaskStore;
 import org.apache.aurora.scheduler.storage.TaskStore.Mutable.TaskMutation;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.mesos.Protos.SlaveID;
 
 import static java.util.Objects.requireNonNull;
@@ -99,20 +99,25 @@ public class StateManagerImpl implements StateManager {
     this.rescheduleCalculator = requireNonNull(rescheduleCalculator);
   }
 
-  private IScheduledTask createTask(int instanceId, ITaskConfig template) {
-    AssignedTask assigned = new AssignedTask()
+  private ScheduledTask createTask(int instanceId, TaskConfig template) {
+    return createTaskBuilder(instanceId, template).build();
+  }
+
+  private ScheduledTask.Builder createTaskBuilder(int instanceId, TaskConfig template) {
+    AssignedTask assigned = AssignedTask.builder()
         .setTaskId(taskIdGenerator.generate(template, instanceId))
         .setInstanceId(instanceId)
-        .setTask(template.newBuilder());
-    return IScheduledTask.build(new ScheduledTask()
+        .setTask(template)
+        .build();
+    return ScheduledTask.builder()
         .setStatus(INIT)
-        .setAssignedTask(assigned));
+        .setAssignedTask(assigned);
   }
 
   @Override
   public void insertPendingTasks(
       MutableStoreProvider storeProvider,
-      final ITaskConfig task,
+      final TaskConfig task,
       Set<Integer> instanceIds) {
 
     requireNonNull(storeProvider);
@@ -120,15 +125,15 @@ public class StateManagerImpl implements StateManager {
     checkNotBlank(instanceIds);
 
     // Done outside the write transaction to minimize the work done inside a transaction.
-    Set<IScheduledTask> scheduledTasks = FluentIterable.from(instanceIds)
-        .transform(new Function<Integer, IScheduledTask>() {
+    Set<ScheduledTask> scheduledTasks = FluentIterable.from(instanceIds)
+        .transform(new Function<Integer, ScheduledTask>() {
           @Override
-          public IScheduledTask apply(Integer instanceId) {
+          public ScheduledTask apply(Integer instanceId) {
             return createTask(instanceId, task);
           }
         }).toSet();
 
-    Iterable<IScheduledTask> existingTasks = storeProvider.getTaskStore().fetchTasks(
+    Iterable<ScheduledTask> existingTasks = storeProvider.getTaskStore().fetchTasks(
         Query.jobScoped(task.getJob()).active());
 
     Set<Integer> existingInstanceIds =
@@ -140,7 +145,7 @@ public class StateManagerImpl implements StateManager {
 
     storeProvider.getUnsafeTaskStore().saveTasks(scheduledTasks);
 
-    for (IScheduledTask scheduledTask : scheduledTasks) {
+    for (ScheduledTask scheduledTask : scheduledTasks) {
       updateTaskAndExternalState(
           storeProvider.getUnsafeTaskStore(),
           Tasks.id(scheduledTask),
@@ -167,7 +172,7 @@ public class StateManagerImpl implements StateManager {
   }
 
   @Override
-  public IAssignedTask assignTask(
+  public AssignedTask assignTask(
       MutableStoreProvider storeProvider,
       String taskId,
       final String slaveHost,
@@ -182,15 +187,16 @@ public class StateManagerImpl implements StateManager {
     Query.Builder query = Query.taskScoped(taskId);
 
     storeProvider.getUnsafeTaskStore().mutateTasks(query,
-        new Function<IScheduledTask, IScheduledTask>() {
+        new Function<ScheduledTask, ScheduledTask>() {
           @Override
-          public IScheduledTask apply(IScheduledTask task) {
-            ScheduledTask builder = task.newBuilder();
-            builder.getAssignedTask()
-                .setAssignedPorts(assignedPorts)
-                .setSlaveHost(slaveHost)
-                .setSlaveId(slaveId.getValue());
-            return IScheduledTask.build(builder);
+          public ScheduledTask apply(ScheduledTask task) {
+            return task.toBuilder().setAssignedTask(
+                task.getAssignedTask().toBuilder()
+                    .setAssignedPorts(assignedPorts)
+                    .setSlaveHost(slaveHost)
+                    .setSlaveId(slaveId.getValue())
+                    .build())
+                .build();
           }
         });
 
@@ -208,7 +214,7 @@ public class StateManagerImpl implements StateManager {
     return Iterables.getOnlyElement(
         Iterables.transform(
             storeProvider.getTaskStore().fetchTasks(query),
-            IScheduledTask::getAssignedTask));
+            ScheduledTask::getAssignedTask));
   }
 
   @VisibleForTesting
@@ -232,7 +238,7 @@ public class StateManagerImpl implements StateManager {
       ScheduleStatus targetState,
       Optional<String> transitionMessage) {
 
-    Optional<IScheduledTask> task = Optional.fromNullable(Iterables.getOnlyElement(
+    Optional<ScheduledTask> task = Optional.fromNullable(Iterables.getOnlyElement(
         taskStore.fetchTasks(Query.taskScoped(taskId)),
         null));
 
@@ -286,7 +292,7 @@ public class StateManagerImpl implements StateManager {
       // This is because using the captured value within the storage operation below is
       // highly-risky, since it doesn't necessarily represent the value in storage.
       // As a result, it would be easy to accidentally clobber mutations.
-      Optional<IScheduledTask> task,
+      Optional<ScheduledTask> task,
       final Optional<ScheduleStatus> targetState,
       final Optional<String> transitionMessage) {
 
@@ -304,16 +310,15 @@ public class StateManagerImpl implements StateManager {
     Query.Builder query = Query.taskScoped(taskId);
 
     for (SideEffect sideEffect : ACTION_ORDER.sortedCopy(result.getSideEffects())) {
-      Optional<IScheduledTask> upToDateTask = Optional.fromNullable(
+      Optional<ScheduledTask> upToDateTask = Optional.fromNullable(
           Iterables.getOnlyElement(taskStore.fetchTasks(query), null));
 
       switch (sideEffect.getAction()) {
         case INCREMENT_FAILURES:
           taskStore.mutateTasks(query, new TaskMutation() {
             @Override
-            public IScheduledTask apply(IScheduledTask task) {
-              return IScheduledTask.build(
-                  task.newBuilder().setFailureCount(task.getFailureCount() + 1));
+            public ScheduledTask apply(ScheduledTask task) {
+              return task.toBuilder().setFailureCount(task.getFailureCount() + 1).build();
             }
           });
           break;
@@ -325,15 +330,16 @@ public class StateManagerImpl implements StateManager {
 
           taskStore.mutateTasks(query, new TaskMutation() {
             @Override
-            public IScheduledTask apply(IScheduledTask task) {
-              ScheduledTask mutableTask = task.newBuilder();
-              mutableTask.setStatus(targetState.get());
-              mutableTask.addToTaskEvents(new TaskEvent()
-                  .setTimestamp(clock.nowMillis())
+            public ScheduledTask apply(ScheduledTask task) {
+              return task.toBuilder()
                   .setStatus(targetState.get())
-                  .setMessage(transitionMessage.orNull())
-                  .setScheduler(LOCAL_HOST_SUPPLIER.get()));
-              return IScheduledTask.build(mutableTask);
+                  .addToTaskEvents(TaskEvent.builder()
+                      .setTimestamp(clock.nowMillis())
+                      .setStatus(targetState.get())
+                      .setMessage(transitionMessage.orNull())
+                      .setScheduler(LOCAL_HOST_SUPPLIER.get())
+                      .build())
+                  .build();
             }
           });
           events.add(
@@ -360,12 +366,12 @@ public class StateManagerImpl implements StateManager {
             auditMessage = "Rescheduled";
           }
 
-          IScheduledTask newTask = IScheduledTask.build(createTask(
-              upToDateTask.get().getAssignedTask().getInstanceId(),
-              upToDateTask.get().getAssignedTask().getTask())
-              .newBuilder()
-              .setFailureCount(upToDateTask.get().getFailureCount())
-              .setAncestorId(taskId));
+          AssignedTask assignedTask = upToDateTask.get().getAssignedTask();
+          ScheduledTask newTask =
+              createTaskBuilder(assignedTask.getInstanceId(), assignedTask.getTask())
+                  .setFailureCount(upToDateTask.get().getFailureCount())
+                  .setAncestorId(taskId)
+                  .build();
           taskStore.saveTasks(ImmutableSet.of(newTask));
           updateTaskAndExternalState(
               taskStore,
@@ -406,11 +412,11 @@ public class StateManagerImpl implements StateManager {
 
   @Override
   public void deleteTasks(MutableStoreProvider storeProvider, final Set<String> taskIds) {
-    Map<String, IScheduledTask> tasks = Maps.uniqueIndex(
+    Map<String, ScheduledTask> tasks = Maps.uniqueIndex(
         storeProvider.getTaskStore().fetchTasks(Query.taskScoped(taskIds)),
         Tasks::id);
 
-    for (Map.Entry<String, IScheduledTask> entry : tasks.entrySet()) {
+    for (Map.Entry<String, ScheduledTask> entry : tasks.entrySet()) {
       updateTaskAndExternalState(
           storeProvider.getUnsafeTaskStore(),
           entry.getKey(),
@@ -421,7 +427,7 @@ public class StateManagerImpl implements StateManager {
   }
 
   private static PubsubEvent deleteTasks(TaskStore.Mutable taskStore, Set<String> taskIds) {
-    Iterable<IScheduledTask> tasks = taskStore.fetchTasks(Query.taskScoped(taskIds));
+    Iterable<ScheduledTask> tasks = taskStore.fetchTasks(Query.taskScoped(taskIds));
     taskStore.deleteTasks(taskIds);
     return new PubsubEvent.TasksDeleted(ImmutableSet.copyOf(tasks));
   }

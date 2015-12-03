@@ -38,9 +38,9 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.mesos.MesosTaskFactory;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.state.TaskAssigner.TaskAssignerImpl;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.mesos.Protos.FrameworkID;
 import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.Resource;
@@ -81,9 +81,9 @@ public class TaskAssignerImplTest extends EasyMockTest {
               Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
       .build();
   private static final HostOffer OFFER =
-      new HostOffer(MESOS_OFFER, IHostAttributes.build(new HostAttributes()));
+      new HostOffer(MESOS_OFFER, HostAttributes.build(new HostAttributes()));
   private static final String PORT_NAME = "http";
-  private static final IScheduledTask TASK = IScheduledTask.build(
+  private static final ScheduledTask TASK = ScheduledTask.build(
       new ScheduledTask()
           .setAssignedTask(new AssignedTask()
               .setTaskId("taskId")
@@ -229,7 +229,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
         TaskGroupKey.from(TASK.getAssignedTask().getTask()),
         Tasks.id(TASK),
         ImmutableMap.of(SLAVE_ID, TaskGroupKey.from(
-            ITaskConfig.build(new TaskConfig().setJob(new JobKey("other", "e", "n")))))));
+            TaskConfig.build(new TaskConfig().setJob(new JobKey("other", "e", "n")))))));
   }
 
   @Test
@@ -249,7 +249,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
                 .setRanges(
                     Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
             .build(),
-        IHostAttributes.build(new HostAttributes()));
+        HostAttributes.build(new HostAttributes()));
 
     expect(offerManager.getOffers(GROUP_KEY)).andReturn(ImmutableSet.of(offer, OFFER));
     expect(tierManager.getTier(TASK.getAssignedTask().getTask())).andReturn(DEFAULT);
@@ -290,7 +290,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
                 .setRanges(
                     Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
             .build(),
-        IHostAttributes.build(new HostAttributes()));
+        HostAttributes.build(new HostAttributes()));
 
     expect(offerManager.getOffers(GROUP_KEY)).andReturn(ImmutableSet.of(mismatched, OFFER));
     expect(tierManager.getTier(TASK.getAssignedTask().getTask())).andReturn(DEFAULT).times(2);

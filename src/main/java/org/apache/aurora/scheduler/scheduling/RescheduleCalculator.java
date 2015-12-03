@@ -36,8 +36,8 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
 
 import static java.util.Objects.requireNonNull;
 
@@ -56,7 +56,7 @@ public interface RescheduleCalculator {
    * @param task Task to calculate delay for.
    * @return Delay in msec.
    */
-  long getStartupScheduleDelayMs(IScheduledTask task);
+  long getStartupScheduleDelayMs(ScheduledTask task);
 
   /**
    * Calculates the penalty, in milliseconds, that a task should be penalized before being
@@ -65,7 +65,7 @@ public interface RescheduleCalculator {
    * @param task Task to calculate delay for.
    * @return Delay in msec.
    */
-  long getFlappingPenaltyMs(IScheduledTask task);
+  long getFlappingPenaltyMs(ScheduledTask task);
 
   class RescheduleCalculatorImpl implements RescheduleCalculator {
 
@@ -82,29 +82,29 @@ public interface RescheduleCalculator {
     private static final Set<ScheduleStatus> INTERRUPTED_TASK_STATES =
         EnumSet.of(RESTARTING, KILLING, DRAINING);
 
-    private final Predicate<IScheduledTask> flapped = new Predicate<IScheduledTask>() {
+    private final Predicate<ScheduledTask> flapped = new Predicate<ScheduledTask>() {
       @Override
-      public boolean apply(IScheduledTask task) {
-        if (!task.isSetTaskEvents()) {
+      public boolean apply(ScheduledTask task) {
+        if (task.getTaskEvents().isEmpty()) {
           return false;
         }
 
-        List<ITaskEvent> events = Lists.reverse(task.getTaskEvents());
+        List<TaskEvent> events = Lists.reverse(task.getTaskEvents());
 
         // Avoid penalizing tasks that were interrupted by outside action, such as a user
         // restarting them.
-        if (Iterables.any(Iterables.transform(events, ITaskEvent::getStatus),
+        if (Iterables.any(Iterables.transform(events, TaskEvent::getStatus),
             Predicates.in(INTERRUPTED_TASK_STATES))) {
           return false;
         }
 
-        ITaskEvent terminalEvent = Iterables.get(events, 0);
+        TaskEvent terminalEvent = Iterables.get(events, 0);
         ScheduleStatus terminalState = terminalEvent.getStatus();
         Preconditions.checkState(Tasks.isTerminated(terminalState));
 
-        ITaskEvent activeEvent = Iterables.find(
+        TaskEvent activeEvent = Iterables.find(
             events,
-            Predicates.compose(IS_ACTIVE_STATUS, ITaskEvent::getStatus));
+            Predicates.compose(IS_ACTIVE_STATUS, TaskEvent::getStatus));
 
         long thresholdMs = settings.flappingTaskThreashold.as(Time.MILLISECONDS);
 
@@ -136,25 +136,25 @@ public interface RescheduleCalculator {
     }
 
     @Override
-    public long getStartupScheduleDelayMs(IScheduledTask task) {
+    public long getStartupScheduleDelayMs(ScheduledTask task) {
       return random.nextInt(settings.maxStartupRescheduleDelay.as(Time.MILLISECONDS).intValue())
           + getFlappingPenaltyMs(task);
     }
 
-    private Optional<IScheduledTask> getTaskAncestor(IScheduledTask task) {
+    private Optional<ScheduledTask> getTaskAncestor(ScheduledTask task) {
       if (!task.isSetAncestorId()) {
         return Optional.absent();
       }
 
-      Iterable<IScheduledTask> res =
+      Iterable<ScheduledTask> res =
           Storage.Util.fetchTasks(storage, Query.taskScoped(task.getAncestorId()));
 
       return Optional.fromNullable(Iterables.getOnlyElement(res, null));
     }
 
     @Override
-    public long getFlappingPenaltyMs(IScheduledTask task) {
-      Optional<IScheduledTask> curTask = getTaskAncestor(task);
+    public long getFlappingPenaltyMs(ScheduledTask task) {
+      Optional<ScheduledTask> curTask = getTaskAncestor(task);
       long penaltyMs = 0;
       while (curTask.isPresent() && flapped.apply(curTask.get())) {
         LOG.info(

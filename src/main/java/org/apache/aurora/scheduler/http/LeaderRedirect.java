@@ -73,11 +73,9 @@ public class LeaderRedirect {
       return Optional.absent();
     }
 
-    if (leadingScheduler.isSetAdditionalEndpoints()) {
-      Endpoint leaderHttp = leadingScheduler.getAdditionalEndpoints().get(HTTP_PORT_NAME);
-      if (leaderHttp != null && leaderHttp.isSetHost() && leaderHttp.isSetPort()) {
-        return Optional.of(HostAndPort.fromParts(leaderHttp.getHost(), leaderHttp.getPort()));
-      }
+    Endpoint leaderHttp = leadingScheduler.getAdditionalEndpoints().get(HTTP_PORT_NAME);
+    if (leaderHttp != null && leaderHttp.isSetHost() && leaderHttp.getPort() > 0) {
+      return Optional.of(HostAndPort.fromParts(leaderHttp.getHost(), leaderHttp.getPort()));
     }
 
     LOG.warning("Leader service instance seems to be incomplete: " + leadingScheduler);

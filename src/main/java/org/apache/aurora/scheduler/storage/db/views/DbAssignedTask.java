@@ -31,12 +31,13 @@ public final class DbAssignedTask {
   }
 
   AssignedTask toThrift() {
-    return new AssignedTask()
+    return AssignedTask.builder()
         .setTaskId(taskId)
         .setSlaveId(slaveId)
         .setSlaveHost(slaveHost)
         .setTask(task.toThrift())
         .setAssignedPorts(Pairs.toMap(assignedPorts))
-        .setInstanceId(instanceId);
+        .setInstanceId(instanceId)
+        .build();
   }
 }

@@ -958,7 +958,7 @@ public class ThriftRestGenTask extends DefaultTask {
       TypeSpec.Builder structInterfaceBuilder =
           TypeSpec.interfaceBuilder(thriftStructSimpleName)
               .addTypeVariable(fieldsType)
-              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addModifiers(Modifier.PUBLIC)
               .addType(thriftFields)
               .addMethod(
                   MethodSpec.methodBuilder("isSet")
@@ -1102,7 +1102,10 @@ public class ThriftRestGenTask extends DefaultTask {
     }
   }
 
+  @NotThreadSafe
   static class ServiceVisior extends BaseVisitor<Service> {
+    private TypeName thriftServiceInterface;
+
     ServiceVisior(
         Logger logger,
         File outdir,
@@ -1118,45 +1121,161 @@ public class ThriftRestGenTask extends DefaultTask {
           TypeSpec.interfaceBuilder(service.getName())
               .addModifiers(Modifier.PUBLIC);
 
+      ParameterizedTypeName methodMapType =
+          ParameterizedTypeName.get(
+              ClassName.get(ImmutableMap.class),
+              ClassName.get(String.class),
+              ParameterizedTypeName.get(
+                  ClassName.get(ImmutableMap.class),
+                  ClassName.get(String.class),
+                  ClassName.get(Type.class)));
+
+      CodeBlock.Builder methodMapInitializerCode =
+          CodeBlock.builder()
+            .add(
+                "$[$T.<$T, $T<$T, $T>>builder()",
+                ImmutableMap.class,
+                String.class,
+                ImmutableMap.class,
+                String.class,
+                Type.class);
+
       TypeSpec.Builder asyncServiceBuilder = createServiceBuilder(service, "Async");
       TypeSpec.Builder syncServiceBuilder = createServiceBuilder(service, "Sync");
 
       Optional<String> parent = service.getParent();
       if (parent.isPresent()) {
+        methodMapInitializerCode.add("\n.putAll($T._METHODS)", getClassName(parent.get()));
         asyncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Async"));
         syncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Sync"));
       }
 
       for (ThriftMethod method : service.getMethods()) {
+        methodMapInitializerCode
+            .add("\n.put($S,\n", method.getName())
+            .indent()
+            .indent()
+            .add(renderParameterMapInitializer(method))
+            .unindent()
+            .unindent()
+            .add(")");
+
         asyncServiceBuilder.addMethod(
             renderMethod(
                 method, parameterizedTypeName(ListenableFuture.class, method.getReturnType())));
         syncServiceBuilder.addMethod(renderMethod(method, typeName(method.getReturnType())));
       }
 
+      CodeBlock methodMapInitializer =
+          methodMapInitializerCode
+              .add("\n.build()$]")
+              .build();
+
+      FieldSpec methodsField =
+          FieldSpec.builder(methodMapType, "_METHODS")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+              .initializer(methodMapInitializer)
+              .build();
+      serviceContainerBuilder.addField(methodsField);
+
+      MethodSpec getThriftMethods =
+          MethodSpec.methodBuilder("getThriftMethods")
+              .addAnnotation(Override.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+              .returns(methodMapType)
+              .addStatement("return $N", methodsField)
+              .build();
+
+      asyncServiceBuilder.addMethod(getThriftMethods);
       serviceContainerBuilder.addType(asyncServiceBuilder.build());
+
+      syncServiceBuilder.addMethod(getThriftMethods);
       serviceContainerBuilder.addType(syncServiceBuilder.build());
+
       writeType(serviceContainerBuilder);
     }
 
-    private TypeSpec.Builder createServiceBuilder(Service service, String typeName) {
+    private CodeBlock renderParameterMapInitializer(ThriftMethod method) {
+      if (method.getArguments().isEmpty()) {
+        return CodeBlock.builder().add("$T.of()", ImmutableMap.class).build();
+      }
+
+      CodeBlock.Builder parameterMapInitializerCode =
+          CodeBlock.builder()
+              .add("$T.<$T, $T>builder()", ImmutableMap.class, String.class, Type.class)
+              .indent()
+              .indent();
+
+      for (ThriftField field : method.getArguments()) {
+        TypeName fieldType = typeName(field.getType());
+        if (fieldType instanceof ParameterizedTypeName) {
+          ParameterizedTypeName typeToken =
+              ParameterizedTypeName.get(ClassName.get(TypeToken.class), fieldType);
+          parameterMapInitializerCode.add(
+              "\n.put($S, new $T() {}.getType())", field.getName(), typeToken);
+        } else {
+          parameterMapInitializerCode.add("\n.put($S, $T.class)", field.getName(), fieldType);
+        }
+      }
+
+      return parameterMapInitializerCode
+          .add("\n.build()")
+          .unindent()
+          .unindent()
+          .build();
+    }
+
+    private TypeSpec.Builder createServiceBuilder(Service service, String typeName)
+        throws IOException {
+
       return TypeSpec.interfaceBuilder(typeName)
           .addAnnotation(
               AnnotationSpec.builder(com.facebook.swift.service.ThriftService.class)
                   .addMember("value", "$S", service.getName())
                   .build())
           .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-          .addSuperinterface(AutoCloseable.class)
+          .addSuperinterface(getThriftServiceInterface())
           .addMethod(MethodSpec.methodBuilder("close")
               .addAnnotation(Override.class)
               .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
               .build());
     }
 
+
+    private TypeName getThriftServiceInterface() throws IOException {
+      if (thriftServiceInterface == null) {
+        thriftServiceInterface = createThriftServiceInterface();
+      }
+      return thriftServiceInterface;
+    }
+
+    private TypeName createThriftServiceInterface() throws IOException {
+      ParameterizedTypeName methodMapType =
+          ParameterizedTypeName.get(
+              ClassName.get(ImmutableMap.class),
+              ClassName.get(String.class),
+              ParameterizedTypeName.get(
+                  ClassName.get(ImmutableMap.class),
+                  ClassName.get(String.class),
+                  ClassName.get(Type.class)));
+
+      TypeSpec.Builder thriftService =
+          TypeSpec.interfaceBuilder("ThriftService")
+              .addModifiers(Modifier.PUBLIC)
+              .addSuperinterface(AutoCloseable.class)
+              .addMethod(
+                  MethodSpec.methodBuilder("getThriftMethods")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(methodMapType)
+                      .build());
+      writeType(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, thriftService);
+      return ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, "ThriftService");
+    }
+
     private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {
       if (!method.getThrowsFields().isEmpty()) {
-        throw new UnsupportedFeatureException("Service methods that declare throw exceptions are " +
-            "not supported, given " + method);
+        throw new UnsupportedFeatureException("Service methods that declare exceptions are not " +
+            "supported, given " + method);
       }
 
       MethodSpec.Builder methodBuilder =

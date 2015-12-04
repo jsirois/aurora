@@ -1104,6 +1104,15 @@ public class ThriftRestGenTask extends DefaultTask {
 
   @NotThreadSafe
   static class ServiceVisior extends BaseVisitor<Service> {
+    private static final ParameterizedTypeName METHODS_MAP_TYPE =
+        ParameterizedTypeName.get(
+        ClassName.get(ImmutableMap.class),
+        ClassName.get(String.class),
+        ParameterizedTypeName.get(
+            ClassName.get(ImmutableMap.class),
+            ClassName.get(String.class),
+            ClassName.get(Type.class)));
+
     private TypeName thriftServiceInterface;
 
     ServiceVisior(
@@ -1121,16 +1130,7 @@ public class ThriftRestGenTask extends DefaultTask {
           TypeSpec.interfaceBuilder(service.getName())
               .addModifiers(Modifier.PUBLIC);
 
-      ParameterizedTypeName methodMapType =
-          ParameterizedTypeName.get(
-              ClassName.get(ImmutableMap.class),
-              ClassName.get(String.class),
-              ParameterizedTypeName.get(
-                  ClassName.get(ImmutableMap.class),
-                  ClassName.get(String.class),
-                  ClassName.get(Type.class)));
-
-      CodeBlock.Builder methodMapInitializerCode =
+      CodeBlock.Builder methodsMapInitializerCode =
           CodeBlock.builder()
             .add(
                 "$[$T.<$T, $T<$T, $T>>builder()",
@@ -1145,13 +1145,13 @@ public class ThriftRestGenTask extends DefaultTask {
 
       Optional<String> parent = service.getParent();
       if (parent.isPresent()) {
-        methodMapInitializerCode.add("\n.putAll($T._METHODS)", getClassName(parent.get()));
+        methodsMapInitializerCode.add("\n.putAll($T._METHODS)", getClassName(parent.get()));
         asyncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Async"));
         syncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Sync"));
       }
 
       for (ThriftMethod method : service.getMethods()) {
-        methodMapInitializerCode
+        methodsMapInitializerCode
             .add("\n.put($S,\n", method.getName())
             .indent()
             .indent()
@@ -1167,12 +1167,12 @@ public class ThriftRestGenTask extends DefaultTask {
       }
 
       CodeBlock methodMapInitializer =
-          methodMapInitializerCode
+          methodsMapInitializerCode
               .add("\n.build()$]")
               .build();
 
       FieldSpec methodsField =
-          FieldSpec.builder(methodMapType, "_METHODS")
+          FieldSpec.builder(METHODS_MAP_TYPE, "_METHODS")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
               .initializer(methodMapInitializer)
               .build();
@@ -1182,7 +1182,7 @@ public class ThriftRestGenTask extends DefaultTask {
           MethodSpec.methodBuilder("getThriftMethods")
               .addAnnotation(Override.class)
               .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-              .returns(methodMapType)
+              .returns(METHODS_MAP_TYPE)
               .addStatement("return $N", methodsField)
               .build();
 
@@ -1250,15 +1250,6 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     private TypeName createThriftServiceInterface() throws IOException {
-      ParameterizedTypeName methodMapType =
-          ParameterizedTypeName.get(
-              ClassName.get(ImmutableMap.class),
-              ClassName.get(String.class),
-              ParameterizedTypeName.get(
-                  ClassName.get(ImmutableMap.class),
-                  ClassName.get(String.class),
-                  ClassName.get(Type.class)));
-
       TypeSpec.Builder thriftService =
           TypeSpec.interfaceBuilder("ThriftService")
               .addModifiers(Modifier.PUBLIC)
@@ -1266,7 +1257,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .addMethod(
                   MethodSpec.methodBuilder("getThriftMethods")
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                      .returns(methodMapType)
+                      .returns(METHODS_MAP_TYPE)
                       .build());
       writeType(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, thriftService);
       return ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, "ThriftService");

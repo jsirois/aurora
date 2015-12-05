@@ -39,8 +39,6 @@ import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEvent.TasksDeleted;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoGroup;
-import org.apache.aurora.gen.HostAttributes;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
@@ -121,7 +119,7 @@ public class TaskVarsTest extends EasyMockTest {
 
   private void changeState(ScheduledTask task, ScheduleStatus status) {
     vars.taskChangedState(TaskStateChange.transition(
-        ScheduledTask.build(task.newBuilder().setStatus(status)),
+        task.toBuilder().setStatus(status).build(),
         task.getStatus()));
   }
 
@@ -139,20 +137,23 @@ public class TaskVarsTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String job, ScheduleStatus status, String host) {
-    ScheduledTask task = new ScheduledTask()
-        .setStatus(status)
-        .setAssignedTask(new AssignedTask()
-            .setTaskId(TASK_ID)
-            .setTask(new TaskConfig()
-                .setJob(new JobKey(ROLE_A, ENV, job))
-                .setJobName(job)
-                .setEnvironment(ENV)
-                .setOwner(new Identity(ROLE_A, ROLE_A + "-user"))));
+    AssignedTask.Builder assignedTask = AssignedTask.builder()
+        .setTaskId(TASK_ID)
+        .setTask(TaskConfig.builder()
+            .setJob(JobKey.create(ROLE_A, ENV, job))
+            .setJobName(job)
+            .setEnvironment(ENV)
+            .setOwner(Identity.create(ROLE_A, ROLE_A + "-user"))
+            .build());
     if (Tasks.SLAVE_ASSIGNED_STATES.contains(status) || Tasks.isTerminated(status)) {
-      task.getAssignedTask().setSlaveHost(host);
+      assignedTask.setSlaveHost(host);
     }
+    ScheduledTask task = ScheduledTask.builder()
+        .setStatus(status)
+        .setAssignedTask(assignedTask.build())
+        .build();
 
-    return ScheduledTask.build(task);
+    return task;
   }
 
   private ScheduledTask makeTask(String job, ScheduleStatus status) {
@@ -182,7 +183,7 @@ public class TaskVarsTest extends EasyMockTest {
     // No variables should be exported since schedulerActive is never called.
     ScheduledTask taskA = makeTask(JOB_A, INIT);
     changeState(taskA, PENDING);
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(PENDING)), ASSIGNED);
+    changeState(taskA.toBuilder().setStatus(PENDING).build(), ASSIGNED);
   }
 
   private int getValue(String name) {
@@ -206,19 +207,19 @@ public class TaskVarsTest extends EasyMockTest {
 
     changeState(makeTask(JOB_A, INIT), PENDING);
     assertEquals(1, getValue(PENDING));
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(PENDING)), ASSIGNED);
+    changeState(taskA.toBuilder().setStatus(PENDING).build(), ASSIGNED);
     assertEquals(0, getValue(PENDING));
     assertEquals(1, getValue(ASSIGNED));
     taskA = makeTask(JOB_A, ASSIGNED, "hostA");
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(ASSIGNED)), RUNNING);
+    changeState(taskA.toBuilder().setStatus(ASSIGNED).build(), RUNNING);
     assertEquals(0, getValue(ASSIGNED));
     assertEquals(1, getValue(RUNNING));
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(RUNNING)), FINISHED);
+    changeState(taskA.toBuilder().setStatus(RUNNING).build(), FINISHED);
     assertEquals(0, getValue(RUNNING));
     assertEquals(1, getValue(FINISHED));
     assertEquals(0, getValue(rackStatName("rackA")));
     vars.tasksDeleted(new TasksDeleted(ImmutableSet.of(
-        ScheduledTask.build(taskA.newBuilder().setStatus(FINISHED)))));
+        taskA.toBuilder().setStatus(FINISHED).build())));
     assertAllZero();
   }
 
@@ -294,10 +295,11 @@ public class TaskVarsTest extends EasyMockTest {
   }
 
   private IExpectationSetters<?> expectGetHostRack(String host, String rackToReturn) {
-    HostAttributes attributes = HostAttributes.build(new HostAttributes()
+    HostAttributes attributes = HostAttributes.builder()
         .setHost(host)
         .setAttributes(ImmutableSet.of(
-            new Attribute().setName("rack").setValues(ImmutableSet.of(rackToReturn)))));
+            Attribute.create("rack", ImmutableSet.of(rackToReturn))))
+        .build();
     return expect(storageUtil.attributeStore.getHostAttributes(host))
         .andReturn(Optional.of(attributes));
   }

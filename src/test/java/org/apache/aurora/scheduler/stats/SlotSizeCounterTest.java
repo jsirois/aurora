@@ -25,7 +25,6 @@ import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.scheduler.ResourceAggregates;
 import org.apache.aurora.scheduler.stats.SlotSizeCounter.MachineResource;
 import org.apache.aurora.scheduler.stats.SlotSizeCounter.MachineResourceProvider;
-import org.apache.aurora.gen.ResourceAggregate;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -35,7 +34,7 @@ import static org.junit.Assert.assertEquals;
 public class SlotSizeCounterTest extends EasyMockTest {
 
   private static final ResourceAggregate SMALL =
-      ResourceAggregate.build(new ResourceAggregate(1.0, 1024, 4096));
+      ResourceAggregate.create(1.0, 1024, 4096);
   private static final ResourceAggregate LARGE = ResourceAggregates.scale(SMALL, 4);
 
   private static final Map<String, ResourceAggregate> SLOT_SIZES = ImmutableMap.of(
@@ -107,7 +106,7 @@ public class SlotSizeCounterTest extends EasyMockTest {
   public void testTinyOffers() {
     expectStatExport();
     expectGetSlots(new MachineResource(
-        ResourceAggregate.build(new ResourceAggregate(0.1, 1, 1)), false, false));
+        ResourceAggregate.create(0.1, 1, 1), false, false));
 
     control.replay();
 
@@ -127,7 +126,7 @@ public class SlotSizeCounterTest extends EasyMockTest {
     expectStatExport();
     expectGetSlots(
         new MachineResource(
-            ResourceAggregate.build(new ResourceAggregate(1000, 16384, 1)), false, false));
+            ResourceAggregate.create(1000, 16384, 1), false, false));
 
     control.replay();
 
@@ -152,7 +151,7 @@ public class SlotSizeCounterTest extends EasyMockTest {
         new MachineResource(LARGE, false, true),
         new MachineResource(LARGE, true, true),
         new MachineResource(ResourceAggregates.scale(LARGE, 4), false, false),
-        new MachineResource(ResourceAggregate.build(new ResourceAggregate(1, 1, 1)), false, false),
+        new MachineResource(ResourceAggregate.create(1, 1, 1), false, false),
         new MachineResource(SMALL, true, false),
         new MachineResource(SMALL, true, false),
         new MachineResource(ResourceAggregates.scale(SMALL, 2), true, false));

@@ -98,9 +98,10 @@ public class KillRetryTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(String id, ScheduleStatus status) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(status)
-        .setAssignedTask(new AssignedTask().setTaskId(id)));
+        .setAssignedTask(AssignedTask.builder().setTaskId(id).build())
+        .build();
   }
 
   private void moveToKilling(String taskId) {

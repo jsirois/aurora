@@ -30,8 +30,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
-import org.apache.aurora.gen.AssignedTask;
-import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -42,13 +40,15 @@ public class MnameTest extends JettyServerModuleTest {
   private static final int PORT = 50000;
   private static final String APP_URI = "http://" + SLAVE_HOST + ":" + PORT + "/";
 
-  private static final ScheduledTask TASK = ScheduledTask.build(
-      new ScheduledTask()
+  private static final ScheduledTask TASK =
+      ScheduledTask.builder()
           .setStatus(ScheduleStatus.RUNNING)
           .setAssignedTask(
-              new AssignedTask()
+              AssignedTask.builder()
                   .setSlaveHost("fakehost")
-                  .setAssignedPorts(ImmutableMap.of("http", 50000))));
+                  .setAssignedPorts(ImmutableMap.of("http", 50000))
+                  .build())
+          .build();
   private static final Query.Builder TASK_QUERY =
       Query.instanceScoped(JobKeys.from("myrole", "test", "myjob"), 1).active();
 
@@ -117,7 +117,7 @@ public class MnameTest extends JettyServerModuleTest {
     storage.expectOperations();
 
     ScheduledTask pending =
-        ScheduledTask.build(TASK.newBuilder().setStatus(ScheduleStatus.PENDING));
+        TASK.toBuilder().setStatus(ScheduleStatus.PENDING).build();
 
     storage.expectTaskFetch(TASK_QUERY, pending);
 
@@ -132,9 +132,11 @@ public class MnameTest extends JettyServerModuleTest {
   public void testInstanceNoHttp() {
     storage.expectOperations();
 
-    ScheduledTask builder = TASK.newBuilder();
-    builder.getAssignedTask().setAssignedPorts(ImmutableMap.of("telnet", 80));
-    ScheduledTask noHttp = ScheduledTask.build(builder);
+    ScheduledTask noHttp = TASK.toBuilder()
+        .setAssignedTask(TASK.getAssignedTask().toBuilder()
+            .setAssignedPorts(ImmutableMap.of("telnet", 80))
+            .build())
+        .build();
 
     storage.expectTaskFetch(TASK_QUERY, noHttp);
 
@@ -149,7 +151,6 @@ public class MnameTest extends JettyServerModuleTest {
   public void testRedirectPort() {
     replayAndStart();
 
-    assertEquals(Optional.absent(), getRedirectPort(null));
     assertEquals(Optional.absent(), getRedirectPort(ImmutableMap.of()));
     assertEquals(Optional.absent(), getRedirectPort(ImmutableMap.of("thrift", 5)));
     assertEquals(Optional.of(5), getRedirectPort(ImmutableMap.of("health", 5, "http", 6)));
@@ -160,6 +161,6 @@ public class MnameTest extends JettyServerModuleTest {
   }
 
   private Optional<Integer> getRedirectPort(Map<String, Integer> ports) {
-    return Mname.getRedirectPort(AssignedTask.build(new AssignedTask().setAssignedPorts(ports)));
+    return Mname.getRedirectPort(AssignedTask.builder().setAssignedPorts(ports).build());
   }
 }

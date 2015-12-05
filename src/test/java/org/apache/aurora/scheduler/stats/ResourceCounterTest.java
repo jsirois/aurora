@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
@@ -34,10 +35,6 @@ import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -121,9 +118,9 @@ public class ResourceCounterTest {
       @Override
       public void execute(Storage.MutableStoreProvider storeProvider) {
         storeProvider.getQuotaStore()
-            .saveQuota("a", ResourceAggregate.build(new ResourceAggregate(1, 1, 1)));
+            .saveQuota("a", ResourceAggregate.create(1, 1, 1));
         storeProvider.getQuotaStore()
-            .saveQuota("b", ResourceAggregate.build(new ResourceAggregate(2, 3, 4)));
+            .saveQuota("b", ResourceAggregate.create(2, 3, 4));
       }
     });
 
@@ -166,21 +163,20 @@ public class ResourceCounterTest {
       ScheduleStatus status,
       Optional<String> dedicated) {
 
-    ScheduledTask task = TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job)).newBuilder();
-    TaskConfig config = task.getAssignedTask().getTask()
+    ScheduledTask task = TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job));
+    TaskConfig.Builder config = task.getAssignedTask().getTask().toBuilder()
         .setNumCpus(numCpus)
         .setRamMb(ramMb)
         .setDiskMb(diskMb)
         .setProduction(production);
 
     if (dedicated.isPresent()) {
-      config.addToConstraints(new Constraint(
+      config.addToConstraints(Constraint.create(
           ConfigurationManager.DEDICATED_ATTRIBUTE,
-          TaskConstraint.value(new ValueConstraint(false, ImmutableSet.of(dedicated.get())))));
+          TaskConstraint.value(ValueConstraint.create(false, ImmutableSet.of(dedicated.get())))));
     }
 
-    task.setStatus(status);
-    return ScheduledTask.build(task);
+    return task.toBuilder().setStatus(status).build();
   }
 
   private void insertTasks(final ScheduledTask... tasks) {

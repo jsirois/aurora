@@ -51,7 +51,7 @@ public class ApiIT extends JettyServerModuleTest {
 
   @Test
   public void testGzipFilterApplied() throws Exception {
-    expect(thrift.getRoleSummary()).andReturn(new Response());
+    expect(thrift.getRoleSummary()).andReturn(Response.builder().build());
 
     replayAndStart();
 

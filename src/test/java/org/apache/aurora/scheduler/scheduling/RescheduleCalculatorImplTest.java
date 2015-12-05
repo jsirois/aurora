@@ -33,7 +33,6 @@ import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.scheduling.RescheduleCalculator.RescheduleCalculatorImpl;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -155,34 +154,41 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String taskId) {
-    return ScheduledTask.build(new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
             .setInstanceId(0)
             .setTaskId(taskId)
-            .setTask(new TaskConfig()
+            .setTask(TaskConfig.builder()
                 .setJobName("job-" + taskId)
-                .setOwner(new Identity().setRole("role-" + taskId).setUser("user-" + taskId))
-                .setEnvironment("env-" + taskId))));
+                .setOwner(Identity.create("role-" + taskId, "user-" + taskId))
+                .setEnvironment("env-" + taskId)
+                .build())
+            .build())
+        .build();
   }
 
   private ScheduledTask makeTask(String taskId, ScheduleStatus status) {
-    return ScheduledTask.build(makeTask(taskId).newBuilder().setStatus(status));
+    return makeTask(taskId).toBuilder().setStatus(status).build();
   }
 
   private ScheduledTask setAncestor(ScheduledTask task, String ancestorId) {
-    return ScheduledTask.build(task.newBuilder().setAncestorId(ancestorId));
+    return task.toBuilder().setAncestorId(ancestorId).build();
   }
 
   private static final Function<Map.Entry<ScheduleStatus, Long>, TaskEvent> TO_EVENT =
       new Function<Entry<ScheduleStatus, Long>, TaskEvent>() {
         @Override
         public TaskEvent apply(Entry<ScheduleStatus, Long> input) {
-          return new TaskEvent().setStatus(input.getKey()).setTimestamp(input.getValue());
+          return TaskEvent.builder()
+              .setStatus(input.getKey())
+              .setTimestamp(input.getValue())
+              .build();
         }
       };
 
   private ScheduledTask setEvents(ScheduledTask task, Map<ScheduleStatus, Long> events) {
-    return ScheduledTask.build(task.newBuilder().setTaskEvents(
-        FluentIterable.from(events.entrySet()).transform(TO_EVENT).toList()));
+    return task.toBuilder().setTaskEvents(
+        FluentIterable.from(events.entrySet()).transform(TO_EVENT).toList())
+        .build();
   }
 }

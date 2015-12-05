@@ -40,8 +40,6 @@ import org.apache.aurora.scheduler.events.EventSink;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEventModule;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.gen.HostAttributes;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.junit.Before;
@@ -91,16 +89,19 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(String host, String taskId) {
-    return new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(RUNNING)
         .setAssignedTask(
-            new AssignedTask()
+            AssignedTask.builder()
                 .setSlaveHost(host)
                 .setTaskId(taskId)
                 .setTask(
-                    new TaskConfig()
+                    TaskConfig.builder()
                         .setJobName("jobName")
-                        .setOwner(new Identity().setRole("role").setUser("role"))));
+                        .setOwner(Identity.create("role", "role"))
+                        .build())
+                .build())
+        .build();
   }
 
   @Test
@@ -114,7 +115,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     expectTaskDraining(task2);
     expectMaintenanceModeChange(HOST_A, DRAINING);
     HostAttributes attributes =
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(DRAINING));
+        HostAttributes.builder().setHost(HOST_A).setMode(DRAINING).build();
 
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A))
         .andReturn(Optional.of(attributes)).times(2);
@@ -132,9 +133,9 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     assertStatus(HOST_A, DRAINING, maintenance.drain(A));
     assertStatus(HOST_A, DRAINING, maintenance.getStatus(A));
     eventSink.post(
-        TaskStateChange.transition(ScheduledTask.build(task1.setStatus(KILLED)), RUNNING));
+        TaskStateChange.transition(task1.toBuilder().setStatus(KILLED).build(), RUNNING));
     eventSink.post(
-        TaskStateChange.transition(ScheduledTask.build(task2.setStatus(KILLED)), RUNNING));
+        TaskStateChange.transition(task2.toBuilder().setStatus(KILLED).build(), RUNNING));
     assertStatus(HOST_A, NONE, maintenance.endMaintenance(A));
   }
 
@@ -166,7 +167,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     expectMaintenanceModeChange(HOST_A, SCHEDULED);
     expectMaintenanceModeChange(HOST_A, NONE);
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A)).andReturn(Optional.of(
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(NONE))));
+        HostAttributes.builder().setHost(HOST_A).setMode(NONE).build()));
 
     control.replay();
 
@@ -178,13 +179,13 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     // Make sure a later transition on the host does not cause any ill effects that could surface
     // from stale internal state.
     eventSink.post(TaskStateChange.transition(
-        ScheduledTask.build(makeTask(HOST_A, "taskA").setStatus(KILLED)), RUNNING));
+        makeTask(HOST_A, "taskA").toBuilder().setStatus(KILLED).build(), RUNNING));
   }
 
   @Test
   public void testGetMode() {
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A)).andReturn(Optional.of(
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(DRAINING))));
+        HostAttributes.builder().setHost(HOST_A).setMode(DRAINING).build()));
     expect(storageUtil.attributeStore.getHostAttributes("unknown")).andReturn(Optional.absent());
 
     control.replay();
@@ -204,20 +205,19 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   }
 
   private void expectFetchTasksByHost(String hostName, ImmutableSet<ScheduledTask> tasks) {
-    expect(storageUtil.taskStore.fetchTasks(Query.slaveScoped(hostName).active()))
-        .andReturn(ScheduledTask.setFromBuilders(tasks));
+    expect(storageUtil.taskStore.fetchTasks(Query.slaveScoped(hostName).active())).andReturn(tasks);
   }
 
   private void expectMaintenanceModeChange(String hostName, MaintenanceMode mode) {
-    HostAttributes attributes = HostAttributes.build(new HostAttributes().setHost(hostName));
+    HostAttributes attributes = HostAttributes.builder().setHost(hostName).build();
 
     expect(storageUtil.attributeStore.getHostAttributes(hostName))
         .andReturn(Optional.of(attributes));
-    HostAttributes updated = HostAttributes.build(attributes.newBuilder().setMode(mode));
+    HostAttributes updated = attributes.toBuilder().setMode(mode).build();
     expect(storageUtil.attributeStore.saveHostAttributes(updated)).andReturn(true);
   }
 
   private void assertStatus(String host, MaintenanceMode mode, Set<HostStatus> statuses) {
-    assertEquals(ImmutableSet.of(new HostStatus(host, mode)), statuses);
+    assertEquals(ImmutableSet.of(HostStatus.create(host, mode)), statuses);
   }
 }

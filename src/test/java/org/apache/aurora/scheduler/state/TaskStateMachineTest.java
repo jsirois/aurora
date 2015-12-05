@@ -33,7 +33,6 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.state.SideEffect.Action;
 import org.apache.aurora.scheduler.state.TaskStateMachine.TaskState;
-import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,7 +71,7 @@ public class TaskStateMachineTest {
   }
 
   private TaskStateMachine makeStateMachine(ScheduledTask builder) {
-    return new TaskStateMachine(ScheduledTask.build(builder));
+    return new TaskStateMachine(builder);
   }
 
   @Test
@@ -238,15 +237,22 @@ public class TaskStateMachineTest {
 
   @Test
   public void testHonorsMaxFailures() {
-    ScheduledTask task = makeTask(false);
-    task.getAssignedTask().getTask().setMaxTaskFailures(10);
-    task.setFailureCount(8);
+    ScheduledTask scheduledTask = makeTask(false);
+    ScheduledTask task = scheduledTask.toBuilder()
+        .setAssignedTask(scheduledTask.getAssignedTask().toBuilder()
+            .setTask(scheduledTask.getAssignedTask().getTask().toBuilder()
+                .setMaxTaskFailures(10)
+                .build())
+            .build())
+        .setFailureCount(8)
+        .build();
     stateMachine = makeStateMachine(task);
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
     legalTransition(FAILED, Action.SAVE_STATE, Action.RESCHEDULE, Action.INCREMENT_FAILURES);
 
-    ScheduledTask rescheduled = task.deepCopy();
-    rescheduled.setFailureCount(9);
+    ScheduledTask rescheduled = task.toBuilder()
+        .setFailureCount(9)
+        .build();
     stateMachine = makeStateMachine(rescheduled);
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
     legalTransition(FAILED, Action.SAVE_STATE, Action.INCREMENT_FAILURES);
@@ -254,9 +260,15 @@ public class TaskStateMachineTest {
 
   @Test
   public void testHonorsUnlimitedFailures() {
-    ScheduledTask task = makeTask(false);
-    task.getAssignedTask().getTask().setMaxTaskFailures(-1);
-    task.setFailureCount(1000);
+    ScheduledTask scheduledTask = makeTask(false);
+    ScheduledTask task = scheduledTask.toBuilder()
+        .setAssignedTask(scheduledTask.getAssignedTask().toBuilder()
+            .setTask(scheduledTask.getAssignedTask().getTask().toBuilder()
+                .setMaxTaskFailures(-1)
+                .build())
+            .build())
+        .setFailureCount(1000)
+        .build();
     stateMachine = makeStateMachine(task);
 
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
@@ -318,16 +330,19 @@ public class TaskStateMachineTest {
   }
 
   private static ScheduledTask makeTask(boolean service) {
-    return new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(INIT.getStatus().get())
         .setAssignedTask(
-            new AssignedTask()
+            AssignedTask.builder()
                 .setTaskId("test")
                 .setTask(
-                    new TaskConfig()
-                        .setOwner(new Identity().setRole("roleA"))
+                    TaskConfig.builder()
+                        .setOwner(Identity.builder().setRole("roleA").build())
                         .setJobName("jobA")
-                        .setIsService(service)));
+                        .setIsService(service)
+                        .build())
+                .build())
+        .build();
   }
 
   private static final TransitionResult SAVE = new TransitionResult(
@@ -551,7 +566,7 @@ public class TaskStateMachineTest {
             boolean expectException = from == DELETED;
             try {
               machine = new TaskStateMachine(
-                  ScheduledTask.build(makeTask(false).setStatus(from.getStatus().get())));
+                  makeTask(false).toBuilder().setStatus(from.getStatus().get()).build());
               if (expectException) {
                 fail();
               }

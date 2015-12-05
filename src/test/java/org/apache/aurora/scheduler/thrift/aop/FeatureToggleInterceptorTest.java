@@ -60,9 +60,10 @@ public class FeatureToggleInterceptorTest extends EasyMockTest {
 
   @Test
   public void testPredicatePass() throws Exception {
-    TaskQuery query = new TaskQuery();
-    Response response = new Response()
-        .setResponseCode(ResponseCode.OK);
+    TaskQuery query = TaskQuery.builder().build();
+    Response response = Response.builder()
+        .setResponseCode(ResponseCode.OK)
+        .build();
 
     expect(predicate.apply(EasyMock.anyObject())).andReturn(true);
     expect(realThrift.getTasksStatus(query)).andReturn(response);
@@ -74,7 +75,7 @@ public class FeatureToggleInterceptorTest extends EasyMockTest {
 
   @Test
   public void testPredicateDeny() throws Exception {
-    TaskQuery query = new TaskQuery();
+    TaskQuery query = TaskQuery.builder().build();
     expect(predicate.apply(EasyMock.anyObject())).andReturn(false);
 
     control.replay();

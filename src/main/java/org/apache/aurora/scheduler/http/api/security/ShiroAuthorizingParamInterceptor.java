@@ -59,7 +59,6 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGe
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGetter;
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
-import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.thrift.Responses;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
@@ -94,7 +93,7 @@ import static com.google.common.base.Preconditions.checkState;
 class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   @VisibleForTesting
   static final FieldGetter<TaskQuery, JobKey> QUERY_TO_JOB_KEY =
-      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class, JobKey.class) {
+      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class) {
         @Override
         public Optional<JobKey> apply(TaskQuery input) {
           Optional<Set<JobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));

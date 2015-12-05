@@ -28,6 +28,7 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeClock;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
@@ -39,10 +40,6 @@ import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.filter.AttributeAggregate;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.stats.CachedCounters;
-import org.apache.aurora.gen.HostAttributes;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos;
@@ -234,7 +231,7 @@ public class PendingTaskProcessorTest extends EasyMockTest {
     builder.setHostname(slaveId);
     return new HostOffer(
         builder.build(),
-        HostAttributes.build(new HostAttributes().setMode(MaintenanceMode.NONE)));
+        HostAttributes.builder().setMode(MaintenanceMode.NONE).build());
   }
 
   private void expectOffers(HostOffer... offers) {
@@ -274,16 +271,18 @@ public class PendingTaskProcessorTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(JobKey key, @Nullable String slaveId, String taskId) {
-    ScheduledTask task = new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
             .setSlaveId(slaveId)
             .setTaskId(taskId)
-            .setTask(new TaskConfig()
+            .setTask(TaskConfig.builder()
                 .setPriority(1)
                 .setProduction(true)
-                .setJob(key.newBuilder())));
-    task.addToTaskEvents(new TaskEvent(0, PENDING));
-    return ScheduledTask.build(task);
+                .setJob(key)
+                .build())
+            .build())
+        .addToTaskEvents(TaskEvent.create(0, PENDING))
+        .build();
   }
 
   private void expectGetPendingTasks(ScheduledTask... returnedTasks) {

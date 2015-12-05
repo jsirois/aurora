@@ -81,8 +81,9 @@ public class ServletFilterTest extends JettyServerModuleTest {
   }
 
   private void setLeadingScheduler(String host, int port) {
-    ServiceInstance instance = new ServiceInstance()
-        .setAdditionalEndpoints(ImmutableMap.of("http", new Endpoint(host, port)));
+    ServiceInstance instance = ServiceInstance.builder()
+        .setAdditionalEndpoints(ImmutableMap.of("http", Endpoint.create(host, port)))
+        .build();
     schedulerWatcher.getValue().onChange(ImmutableSet.of(instance));
   }
 

@@ -24,7 +24,6 @@ import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.mesos.Protos;
 import org.junit.Test;
 
@@ -50,11 +49,12 @@ public class ResourceSlotTest {
       new ResourceSlot(2.0, Amount.of(2L, Data.MB), Amount.of(2L, Data.MB), 2);
   private static final ResourceSlot THREE =
       new ResourceSlot(3.0, Amount.of(3L, Data.MB), Amount.of(3L, Data.MB), 3);
-  private static final TaskConfig TASK = TaskConfig.build(new TaskConfig()
+  private static final TaskConfig TASK = TaskConfig.builder()
       .setNumCpus(1.0)
       .setRamMb(1024)
       .setDiskMb(2048)
-      .setRequestedPorts(ImmutableSet.of("http", "debug")));
+      .setRequestedPorts(ImmutableSet.of("http", "debug"))
+      .build();
 
   @Test
   public void testMaxElements() {

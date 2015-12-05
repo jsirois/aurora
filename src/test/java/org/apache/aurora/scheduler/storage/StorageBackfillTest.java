@@ -23,7 +23,6 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,8 +71,12 @@ public class StorageBackfillTest {
   }
 
   private static ScheduledTask setMesosContainer(ScheduledTask task) {
-    ScheduledTask builder = task.newBuilder();
-    builder.getAssignedTask().getTask().setContainer(Container.mesos(new MesosContainer()));
-    return ScheduledTask.build(builder);
+    return task.toBuilder()
+        .setAssignedTask(task.getAssignedTask().toBuilder()
+            .setTask(task.getAssignedTask().getTask().toBuilder()
+                .setContainer(Container.mesos(MesosContainer.create()))
+                .build())
+            .build())
+        .build();
   }
 }

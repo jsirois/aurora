@@ -13,7 +13,6 @@
  */
 package org.apache.aurora.scheduler.thrift.aop;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -60,9 +59,12 @@ public class ThriftStatsExporterInterceptorTest extends EasyMockTest {
 
   @Test
   public void testIncrementStat() throws Exception {
-    Response response = new Response().setResponseCode(OK)
-        .setResult(Result.getJobsResult(new GetJobsResult()
-        .setConfigs(ImmutableSet.of())));
+    Response response = Response.builder()
+        .setResponseCode(OK)
+        .setResult(Result.getJobsResult(GetJobsResult.builder()
+            .setConfigs()
+            .build()))
+        .build();
 
     expect(realThrift.getJobs(ROLE)).andReturn(response);
     control.replay();

@@ -48,9 +48,10 @@ public class LeaderRedirectTest extends EasyMockTest {
       new Function<HostAndPort, ServiceInstance>() {
         @Override
         public ServiceInstance apply(HostAndPort endpoint) {
-          return new ServiceInstance()
+          return ServiceInstance.builder()
               .setAdditionalEndpoints(ImmutableMap.of(HTTP_PORT_NAME,
-                  new Endpoint(endpoint.getHostText(), endpoint.getPort())));
+                  Endpoint.create(endpoint.getHostText(), endpoint.getPort())))
+              .build();
         }
       };
 
@@ -126,8 +127,9 @@ public class LeaderRedirectTest extends EasyMockTest {
   public void testBadServiceInstance() throws Exception {
     replayAndMonitor();
 
-    ServiceInstance badLocal = new ServiceInstance()
-        .setAdditionalEndpoints(ImmutableMap.of("foo", new Endpoint("localhost", 500)));
+    ServiceInstance badLocal = ServiceInstance.builder()
+        .setAdditionalEndpoints(ImmutableMap.of("foo", Endpoint.create("localhost", 500)))
+        .build();
 
     publishSchedulers(ImmutableSet.of(badLocal));
 

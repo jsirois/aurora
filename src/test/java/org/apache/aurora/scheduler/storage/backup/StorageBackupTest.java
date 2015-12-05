@@ -170,18 +170,22 @@ public class StorageBackupTest extends EasyMockTest {
   }
 
   private Snapshot makeSnapshot() {
-    Snapshot snapshot = new Snapshot();
-    snapshot.setTimestamp(clock.nowMillis());
-    snapshot.setHostAttributes(ImmutableSet.of(
-        new HostAttributes(
-            "hostA",
-            ImmutableSet.of(new Attribute("attr", ImmutableSet.of("value"))))));
-    snapshot.setCronJobs(ImmutableSet.of(
-        new StoredCronJob(new JobConfiguration().setKey(new JobKey("owner", "env", "jobA")))));
-    snapshot.setQuotaConfigurations(
-        ImmutableSet.of(new QuotaConfiguration("roleA", new ResourceAggregate(10, 1024, 1024))));
-    snapshot.setSchedulerMetadata(new SchedulerMetadata().setFrameworkId("frameworkId"));
-    snapshot.setTasks(ImmutableSet.of(new ScheduledTask()));
-    return snapshot;
+    return Snapshot.builder()
+        .setTimestamp(clock.nowMillis())
+        .setHostAttributes(
+            HostAttributes.builder()
+                .setHost("hostA")
+                .setAttributes(Attribute.create("attr", ImmutableSet.of("value")))
+                .build())
+        .setCronJobs(
+            StoredCronJob.create(
+                JobConfiguration.builder()
+                    .setKey(JobKey.create("owner", "env", "jobA"))
+                    .build()))
+        .setQuotaConfigurations(
+            QuotaConfiguration.create("roleA", ResourceAggregate.create(10, 1024, 1024)))
+        .setSchedulerMetadata(SchedulerMetadata.builder().setFrameworkId("frameworkId").build())
+        .setTasks(ScheduledTask.builder().build())
+        .build();
   }
 }

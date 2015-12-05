@@ -18,7 +18,6 @@ import com.google.common.base.Optional;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.TierManager.TierManagerImpl;
 import org.apache.aurora.scheduler.TierManager.TierManagerImpl.TierConfig;
-import org.apache.aurora.gen.TaskConfig;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.SchedulerModule.parseTierConfig;
@@ -34,7 +33,7 @@ public class TierManagerTest {
         parseTierConfig(Optional.of("{\"tiers\":{\"revocable\": {\"revocable\": true}}}")));
     assertEquals(
         REVOCABLE_TIER,
-        manager.getTier(TaskConfig.build(new TaskConfig().setTier("revocable"))));
+        manager.getTier(TaskConfig.builder().setTier("revocable").build()));
   }
 
   @Test
@@ -43,7 +42,7 @@ public class TierManagerTest {
         parseTierConfig(Optional.of("{\"tiers\":{\"revocable\": {\"revocable\": true}}}")));
     assertEquals(
         DEFAULT,
-        manager.getTier(TaskConfig.build(new TaskConfig().setTier("Revocable"))));
+        manager.getTier(TaskConfig.builder().setTier("Revocable").build()));
   }
 
   @Test
@@ -51,7 +50,7 @@ public class TierManagerTest {
     TierManager manager = new TierManagerImpl(TierConfig.EMPTY);
     assertEquals(
         DEFAULT,
-        manager.getTier(TaskConfig.build(new TaskConfig().setTier("revocable"))));
+        manager.getTier(TaskConfig.builder().setTier("revocable").build()));
   }
 
   @Test
@@ -59,6 +58,6 @@ public class TierManagerTest {
     TierManager manager = new TierManagerImpl(TierConfig.EMPTY);
     assertEquals(
         DEFAULT,
-        manager.getTier(TaskConfig.build(new TaskConfig())));
+        manager.getTier(TaskConfig.builder().build()));
   }
 }

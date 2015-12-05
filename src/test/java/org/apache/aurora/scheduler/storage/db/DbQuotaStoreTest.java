@@ -25,7 +25,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.scheduler.storage.testing.StorageEntityUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,9 +36,9 @@ public class DbQuotaStoreTest {
   private static final String ROLE_A = "roleA";
   private static final String ROLE_B = "roleB";
   private static final ResourceAggregate QUOTA_A =
-      ResourceAggregate.build(new ResourceAggregate(1.0D, 2, 3));
+      ResourceAggregate.create(1.0D, 2, 3);
   private static final ResourceAggregate QUOTA_B =
-      ResourceAggregate.build(new ResourceAggregate(2.0D, 4, 6));
+      ResourceAggregate.create(2.0D, 4, 6);
 
   private Storage storage;
 

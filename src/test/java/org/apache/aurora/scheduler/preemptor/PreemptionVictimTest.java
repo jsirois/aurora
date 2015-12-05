@@ -18,7 +18,6 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.AssignedTask;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -40,10 +39,11 @@ public class PreemptionVictimTest {
   }
 
   private PreemptionVictim makeVictim(String taskId) {
-    return PreemptionVictim.fromTask(AssignedTask.build(new AssignedTask()
+    return PreemptionVictim.fromTask(AssignedTask.builder()
         .setTaskId(taskId)
         .setSlaveId(taskId + "slave")
         .setSlaveHost(taskId + "host")
-        .setTask(new TaskConfig().setJob(new JobKey("role", "env", "job")))));
+        .setTask(TaskConfig.builder().setJob(JobKey.create("role", "env", "job")).build())
+        .build());
   }
 }

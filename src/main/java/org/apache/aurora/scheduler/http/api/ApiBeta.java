@@ -40,6 +40,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -95,7 +96,7 @@ public class ApiBeta {
    * @return Parsed method parameters.
    * @throws WebApplicationException If a parameter could not be parsed.
    */
-  private Object[] readParams(JsonObject json, Map<String, Type> fields)
+  private Object[] readParams(JsonObject json, ImmutableMap<String, Type> fields)
       throws WebApplicationException {
 
     List<Object> params = Lists.newArrayList();
@@ -111,7 +112,7 @@ public class ApiBeta {
     return params.toArray();
   }
 
-  private Method getApiMethod(String name, Map<String, Type> metadata) {
+  private Method getApiMethod(String name, ImmutableMap<String, Type> metadata) {
     try {
       return AuroraAdmin.Sync.class.getMethod(name, metadata.values().toArray(new Class<?>[0]));
     } catch (NoSuchMethodException e) {
@@ -128,8 +129,7 @@ public class ApiBeta {
     }
 
     // First, verify that this is a valid method on the interface.
-    // TODO(John Sirois): XXX FIXME!
-    Map<String, Type> methodMetadata = null; // AuroraAdminMetadata.METHODS.get(methodName);
+    ImmutableMap<String, Type> methodMetadata = api.getThriftMethods().get(methodName);
     if (methodMetadata == null) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }

@@ -14,9 +14,9 @@
 package org.apache.aurora.scheduler.storage.log;
 
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
@@ -44,28 +44,33 @@ public class SnapshotDeduplicatorImplTest {
       "task3", makeConfig("b"));
 
   private TaskConfig makeConfig(String data) {
-    return new TaskConfig()
-        .setExecutorConfig(new ExecutorConfig()
-            .setData(data));
+    return TaskConfig.builder()
+        .setExecutorConfig(ExecutorConfig.builder()
+            .setData(data)
+            .build())
+        .build();
   }
 
   private ScheduledTask makeTask(String taskId, TaskConfig config) {
-    return new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
             .setTaskId(taskId)
-            .setTask(config));
+            .setTask(config)
+            .build())
+        .build();
   }
 
   private Snapshot makeSnapshot() {
-    Snapshot snapshot = new Snapshot()
-        .setSchedulerMetadata(new SchedulerMetadata()
-            .setFrameworkId("test"));
+    Set<ScheduledTask> tasks = taskIdToConfig.entrySet().stream()
+        .map(entry -> makeTask(entry.getKey(), entry.getValue()))
+        .collect(Collectors.toSet());
 
-    for (Entry<String, TaskConfig> entry : taskIdToConfig.entrySet()) {
-      snapshot.addToTasks(makeTask(entry.getKey(), entry.getValue()));
-    }
-
-    return snapshot;
+    return Snapshot.builder()
+        .setSchedulerMetadata(SchedulerMetadata.builder()
+            .setFrameworkId("test")
+            .build())
+        .setTasks(tasks)
+        .build();
   }
 
   @Test
@@ -84,12 +89,12 @@ public class SnapshotDeduplicatorImplTest {
     assertEquals(
         "The tasks field of the partial snapshot should be empty.",
         0,
-        deduplicatedSnapshot.getPartialSnapshot().getTasksSize());
+        deduplicatedSnapshot.getPartialSnapshot().getTasks().size());
 
     assertEquals(
         "The total number of task configs should be equal to the number of unique task configs.",
         2,
-        deduplicatedSnapshot.getTaskConfigsSize());
+        deduplicatedSnapshot.getTaskConfigs().size());
 
     assertEquals(
         ImmutableSet.of(makeConfig("a"), makeConfig("b")),
@@ -109,20 +114,23 @@ public class SnapshotDeduplicatorImplTest {
 
   @Test(expected = CodingException.class)
   public void testReduplicateFailure() throws Exception {
-    DeduplicatedSnapshot corrupt = new DeduplicatedSnapshot()
-        .setPartialSnapshot(new Snapshot().setSchedulerMetadata(new SchedulerMetadata()))
-        .setPartialTasks(ImmutableList.of(
-            new DeduplicatedScheduledTask()
-                .setPartialScheduledTask(new ScheduledTask())
-                .setTaskConfigId(1)))
-        .setTaskConfigs(ImmutableList.of(new TaskConfig()));
+    DeduplicatedSnapshot corrupt = DeduplicatedSnapshot.builder()
+        .setPartialSnapshot(
+            Snapshot.builder().setSchedulerMetadata(SchedulerMetadata.builder().build()).build())
+        .setPartialTasks(
+            DeduplicatedScheduledTask.builder()
+                .setPartialScheduledTask(ScheduledTask.builder().build())
+                .setTaskConfigId(1)
+                .build())
+        .setTaskConfigs(TaskConfig.builder().build())
+        .build();
 
     snapshotDeduplicator.reduplicate(corrupt);
   }
 
   @Test
   public void testEmptyRoundTrip() throws Exception {
-    Snapshot snapshot = new Snapshot();
+    Snapshot snapshot = Snapshot.builder().build();
 
     assertEquals(
         snapshot,

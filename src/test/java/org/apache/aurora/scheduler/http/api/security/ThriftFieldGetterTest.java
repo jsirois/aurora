@@ -25,11 +25,11 @@ import static org.junit.Assert.assertSame;
 public class ThriftFieldGetterTest {
   @Test
   public void testStructFieldGetter() {
-    JobKey jobKey = new JobKey();
+    JobKey jobKey = JobKey.builder().build();
     FieldGetter<JobConfiguration, JobKey> fieldGetter =
         new ThriftFieldGetter<>(JobConfiguration.class, _Fields.KEY, JobKey.class);
 
-    JobConfiguration jobConfiguration = new JobConfiguration().setKey(jobKey);
+    JobConfiguration jobConfiguration = JobConfiguration.builder().setKey(jobKey).build();
 
     assertSame(jobKey, fieldGetter.apply(jobConfiguration).orNull());
   }
@@ -39,7 +39,7 @@ public class ThriftFieldGetterTest {
     FieldGetter<JobConfiguration, TaskConfig> fieldGetter =
         new ThriftFieldGetter<>(JobConfiguration.class, _Fields.TASK_CONFIG, TaskConfig.class);
 
-    JobConfiguration jobConfiguration = new JobConfiguration().setInstanceCount(5);
+    JobConfiguration jobConfiguration = JobConfiguration.builder().setInstanceCount(5).build();
 
     assertNull(fieldGetter.apply(jobConfiguration).orNull());
   }

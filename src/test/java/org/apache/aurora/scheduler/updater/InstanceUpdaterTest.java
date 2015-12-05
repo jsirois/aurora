@@ -29,8 +29,6 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.junit.Test;
 
 import static org.apache.aurora.gen.ScheduleStatus.ASSIGNED;
@@ -51,8 +49,8 @@ import static org.junit.Assert.assertEquals;
 public class InstanceUpdaterTest {
   private static final Optional<TaskConfig> NO_CONFIG = Optional.absent();
 
-  private static final TaskConfig OLD = TaskConfig.build(new TaskConfig().setNumCpus(1.0));
-  private static final TaskConfig NEW = TaskConfig.build(new TaskConfig().setNumCpus(2.0));
+  private static final TaskConfig OLD = TaskConfig.builder().setNumCpus(1.0).build();
+  private static final TaskConfig NEW = TaskConfig.builder().setNumCpus(2.0).build();
 
   private static final Amount<Long, Time> MIN_RUNNING_TIME = Amount.of(1L, Time.MINUTES);
   private static final Amount<Long, Time> A_LONG_TIME = Amount.of(1L, Time.DAYS);
@@ -82,14 +80,17 @@ public class InstanceUpdaterTest {
     }
 
     private Result changeStatusAndEvaluate(ScheduleStatus status) {
-      ScheduledTask builder = task.get().newBuilder();
-      if (builder.getStatus() != status) {
+      ScheduledTask.Builder builder = task.get().toBuilder();
+      if (task.get().getStatus() != status) {
         // Only add a task event if this is a state change.
-        builder.addToTaskEvents(new TaskEvent().setTimestamp(clock.nowMillis()).setStatus(status));
+        builder.addToTaskEvents(TaskEvent.builder()
+            .setTimestamp(clock.nowMillis())
+            .setStatus(status)
+            .build());
       }
       builder.setStatus(status);
 
-      task = Optional.of(ScheduledTask.build(builder));
+      task = Optional.of(builder.build());
       return updater.evaluate(task);
     }
 
@@ -234,8 +235,8 @@ public class InstanceUpdaterTest {
   public void testInvalidInput() {
     TestFixture f = new TestFixture(NEW, 1);
     ScheduledTask noEvents = new TaskUtil(new FakeClock())
-        .makeTask(OLD, RUNNING).newBuilder().setTaskEvents(ImmutableList.of());
-    f.updater.evaluate(Optional.of(ScheduledTask.build(noEvents)));
+        .makeTask(OLD, RUNNING).toBuilder().setTaskEvents().build();
+    f.updater.evaluate(Optional.of(noEvents));
   }
 
   @Test
@@ -280,22 +281,24 @@ public class InstanceUpdaterTest {
     ScheduledTask makeTask(TaskConfig config, ScheduleStatus status) {
       List<TaskEvent> events = Lists.newArrayList();
       if (status != PENDING) {
-        events.add(new TaskEvent().setTimestamp(clock.nowMillis()).setStatus(PENDING));
+        events.add(TaskEvent.builder().setTimestamp(clock.nowMillis()).setStatus(PENDING).build());
       }
       if (Tasks.isTerminated(status) || status == KILLING) {
-        events.add(new TaskEvent().setTimestamp(clock.nowMillis()).setStatus(ASSIGNED));
-        events.add(new TaskEvent().setTimestamp(clock.nowMillis()).setStatus(RUNNING));
+        events.add(TaskEvent.builder().setTimestamp(clock.nowMillis()).setStatus(ASSIGNED).build());
+        events.add(TaskEvent.builder().setTimestamp(clock.nowMillis()).setStatus(RUNNING).build());
       }
 
-      events.add(new TaskEvent().setTimestamp(clock.nowMillis()).setStatus(status));
+      events.add(TaskEvent.builder().setTimestamp(clock.nowMillis()).setStatus(status).build());
 
-      return ScheduledTask.build(
-          new ScheduledTask()
-              .setStatus(status)
-              .setTaskEvents(ImmutableList.copyOf(events))
-              .setAssignedTask(
-                  new AssignedTask()
-                      .setTask(config.newBuilder())));
+      return ScheduledTask.builder()
+          .setStatus(status)
+          .setTaskEvents(ImmutableList.copyOf(events))
+          .setAssignedTask(
+              AssignedTask.builder()
+                  .setTask(config)
+                  .build())
+
+          .build();
     }
   }
 }

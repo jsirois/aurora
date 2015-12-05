@@ -20,41 +20,40 @@ import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobKey;
-import org.quartz.JobKey;
 
 /**
  * Fixtures used across quartz tests.
  */
 final class QuartzTestUtil {
   static final JobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
-  static final JobConfiguration JOB = JobConfiguration.build(
-      new JobConfiguration()
-          .setCronSchedule("* * * * SUN")
-          .setInstanceCount(10)
-          .setOwner(new Identity("role", "user"))
-          .setKey(AURORA_JOB_KEY.newBuilder())
-          .setTaskConfig(new TaskConfig()
-              .setJob(AURORA_JOB_KEY.newBuilder())
-              .setOwner(new Identity("role", "user"))
-              .setJobName(AURORA_JOB_KEY.getName())
-              .setEnvironment(AURORA_JOB_KEY.getEnvironment())
-              .setDiskMb(3)
-              .setRamMb(4)
-              .setNumCpus(5)
-              .setMetadata(ImmutableSet.<Metadata>of())
-              .setExecutorConfig(new ExecutorConfig()
-                  .setName("cmd.exe")
-                  .setData("echo hello world")))
-  );
-  static final JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
+  static final JobConfiguration JOB = JobConfiguration.builder()
+      .setCronSchedule("* * * * SUN")
+      .setInstanceCount(10)
+      .setOwner(Identity.create("role", "user"))
+      .setKey(AURORA_JOB_KEY)
+      .setTaskConfig(TaskConfig.builder()
+          .setJob(AURORA_JOB_KEY)
+          .setOwner(Identity.create("role", "user"))
+          .setJobName(AURORA_JOB_KEY.getName())
+          .setEnvironment(AURORA_JOB_KEY.getEnvironment())
+          .setDiskMb(3)
+          .setRamMb(4)
+          .setNumCpus(5)
+          .setMetadata(ImmutableSet.<Metadata>of())
+          .setExecutorConfig(ExecutorConfig.builder()
+              .setName("cmd.exe")
+              .setData("echo hello world")
+              .build())
+          .build())
+      .build();
+  static final org.quartz.JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
 
   private QuartzTestUtil() {
     // Utility class.
@@ -63,7 +62,7 @@ final class QuartzTestUtil {
   static SanitizedCronJob makeSanitizedCronJob(CronCollisionPolicy collisionPolicy) {
     try {
       return SanitizedCronJob.fromUnsanitized(
-          JobConfiguration.build(JOB.newBuilder().setCronCollisionPolicy(collisionPolicy)));
+          JOB.toBuilder().setCronCollisionPolicy(collisionPolicy).build());
     } catch (CronException | ConfigurationManager.TaskDescriptionException e) {
       throw Throwables.propagate(e);
     }
@@ -75,6 +74,6 @@ final class QuartzTestUtil {
 
   static SanitizedCronJob makeUpdatedJob() throws Exception {
     return SanitizedCronJob.fromUnsanitized(
-        JobConfiguration.build(JOB.newBuilder().setCronSchedule("* * 1 * *")));
+        JOB.toBuilder().setCronSchedule("* * 1 * *").build());
   }
 }

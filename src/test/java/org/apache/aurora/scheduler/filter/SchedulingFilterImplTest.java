@@ -42,9 +42,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoGroup;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoType;
 import org.apache.aurora.scheduler.mesos.Offers;
 import org.apache.aurora.scheduler.mesos.TaskExecutors;
-import org.apache.aurora.gen.Attribute;
-import org.apache.aurora.gen.HostAttributes;
-import org.apache.aurora.gen.TaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,11 +69,11 @@ public class SchedulingFilterImplTest extends EasyMockTest {
 
   private static final String ROLE_A = "roleA";
   private static final String USER_A = "userA";
-  private static final Identity OWNER_A = new Identity(ROLE_A, USER_A);
+  private static final Identity OWNER_A = Identity.create(ROLE_A, USER_A);
 
   private static final String ROLE_B = "roleB";
   private static final String USER_B = "userB";
-  private static final Identity OWNER_B = new Identity(ROLE_B, USER_B);
+  private static final Identity OWNER_B = Identity.create(ROLE_B, USER_B);
 
   private static final int DEFAULT_CPUS = 4;
   private static final long DEFAULT_RAM = 1000;
@@ -109,18 +106,22 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     ResourceSlot twoPorts = Resources.from(
         Offers.createOffer(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK, Pair.of(80, 81))).slot();
 
-    TaskConfig noPortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
-        .setRequestedPorts(ImmutableSet.of()));
-    TaskConfig onePortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
-        .setRequestedPorts(ImmutableSet.of("one")));
-    TaskConfig twoPortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
-        .setRequestedPorts(ImmutableSet.of("one", "two")));
-    TaskConfig threePortTask = TaskConfig.build(makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
-        .setRequestedPorts(ImmutableSet.of("one", "two", "three")));
+    TaskConfig noPortTask = makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .toBuilder()
+        .setRequestedPorts()
+        .build();
+    TaskConfig onePortTask = makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .toBuilder()
+        .setRequestedPorts(ImmutableSet.of("one"))
+        .build();
+    TaskConfig twoPortTask = makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .toBuilder()
+        .setRequestedPorts(ImmutableSet.of("one", "two"))
+        .build();
+    TaskConfig threePortTask = makeTask(DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .toBuilder()
+        .setRequestedPorts(ImmutableSet.of("one", "two", "three"))
+        .build();
 
     Set<Veto> none = ImmutableSet.of();
     HostAttributes hostA = hostAttributes(HOST_A, host(HOST_A), rack(RACK_A));
@@ -178,7 +179,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     HostAttributes hostA = hostAttributes(HOST_A, dedicated(dedicated1, dedicated2));
     assertNoVetoes(
         checkConstraint(
-            new Identity().setRole("userA"),
+            Identity.builder().setRole("userA").build(),
             "jobA",
             hostA,
             DEDICATED_ATTRIBUTE,
@@ -187,7 +188,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
         hostA);
     assertNoVetoes(
         checkConstraint(
-            new Identity().setRole("kestrel"),
+            Identity.builder().setRole("kestrel").build(),
             "kestrel",
             hostA,
             DEDICATED_ATTRIBUTE,
@@ -409,10 +410,18 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             new UnusedResource(DEFAULT_OFFER, hostA),
             new ResourceRequest(task, EMPTY)));
 
-    Constraint jvmNegated = jvmConstraint.deepCopy();
-    jvmNegated.getConstraint().getValue().setNegated(true);
-    Constraint zoneNegated = jvmConstraint.deepCopy();
-    zoneNegated.getConstraint().getValue().setNegated(true);
+    Constraint jvmNegated = jvmConstraint.toBuilder()
+        .setConstraint(TaskConstraint.value(jvmConstraint.getConstraint().getValue().toBuilder()
+            .setNegated(true)
+            .build()))
+        .build();
+
+    Constraint zoneNegated = zoneConstraint.toBuilder()
+        .setConstraint(TaskConstraint.value(jvmConstraint.getConstraint().getValue().toBuilder()
+            .setNegated(true)
+            .build()))
+        .build();
+
     assertVetoes(
         makeTask(OWNER_A, JOB_A, jvmNegated, zoneNegated),
         hostA,
@@ -502,7 +511,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
         hostAttributes,
         constraintName,
         expected,
-        new ValueConstraint(false,
+        ValueConstraint.create(false,
             ImmutableSet.<String>builder().add(value).addAll(Arrays.asList(vs)).build()));
   }
 
@@ -515,7 +524,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
       boolean expected,
       ValueConstraint value) {
 
-    Constraint constraint = new Constraint(constraintName, TaskConstraint.value(value));
+    Constraint constraint = Constraint.create(constraintName, TaskConstraint.value(value));
     TaskConfig task = makeTask(owner, jobName, constraint);
     assertEquals(
         expected,
@@ -524,8 +533,11 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             new ResourceRequest(task, aggregate))
             .isEmpty());
 
-    Constraint negated = constraint.deepCopy();
-    negated.getConstraint().getValue().setNegated(!value.isNegated());
+    Constraint negated = constraint.toBuilder()
+        .setConstraint(TaskConstraint.value(value.toBuilder()
+            .setNegated(!value.isNegated())
+            .build()))
+        .build();
     TaskConfig negatedTask = makeTask(owner, jobName, negated);
     assertEquals(
         !expected,
@@ -570,11 +582,11 @@ public class SchedulingFilterImplTest extends EasyMockTest {
       MaintenanceMode mode,
       Attribute... attributes) {
 
-    return HostAttributes.build(
-        new HostAttributes()
-            .setHost(host)
-            .setMode(mode)
-            .setAttributes(Attribute.toBuildersSet(ImmutableSet.copyOf(attributes))));
+    return HostAttributes.builder()
+        .setHost(host)
+        .setMode(mode)
+        .setAttributes(attributes)
+        .build();
   }
 
   private static HostAttributes hostAttributes(
@@ -585,25 +597,26 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   }
 
   private Attribute valueAttribute(String name, String string, String... strings) {
-    return Attribute.build(new Attribute(name,
-        ImmutableSet.<String>builder().add(string).addAll(Arrays.asList(strings)).build()));
+    return Attribute.create(name,
+        ImmutableSet.<String>builder().add(string).addAll(Arrays.asList(strings)).build());
   }
 
   private static Constraint makeConstraint(String name, String... values) {
-    return new Constraint(name,
-        TaskConstraint.value(new ValueConstraint(false, ImmutableSet.copyOf(values))));
+    return Constraint.create(name,
+        TaskConstraint.value(ValueConstraint.create(false, ImmutableSet.copyOf(values))));
   }
 
   private Constraint limitConstraint(String name, int value) {
-    return new Constraint(name, TaskConstraint.limit(new LimitConstraint(value)));
+    return Constraint.create(name, TaskConstraint.limit(LimitConstraint.create(value)));
   }
 
   private TaskConfig makeTask(Identity owner, String jobName, Constraint... constraint) {
-    return TaskConfig.build(makeTask(OWNER_A, JOB_A, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
+    return makeTask(OWNER_A, JOB_A, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .toBuilder()
         .setOwner(owner)
         .setJobName(jobName)
-        .setConstraints(Sets.newHashSet(constraint)));
+        .setConstraints(Sets.newHashSet(constraint))
+        .build();
   }
 
   private TaskConfig hostLimitTask(Identity owner, String jobName, int maxPerHost) {
@@ -625,13 +638,14 @@ public class SchedulingFilterImplTest extends EasyMockTest {
       long ramMb,
       long diskMb) {
 
-    return TaskConfig.build(new TaskConfig()
+    return TaskConfig.builder()
         .setOwner(owner)
         .setJobName(jobName)
         .setNumCpus(cpus)
         .setRamMb(ramMb)
         .setDiskMb(diskMb)
-        .setExecutorConfig(new ExecutorConfig("aurora", "config")));
+        .setExecutorConfig(ExecutorConfig.create("aurora", "config"))
+        .build();
   }
 
   private TaskConfig makeTask(int cpus, long ramMb, long diskMb) {

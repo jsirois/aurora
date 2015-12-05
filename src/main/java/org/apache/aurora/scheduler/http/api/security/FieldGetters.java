@@ -15,8 +15,6 @@ package org.apache.aurora.scheduler.http.api.security;
 
 import com.google.common.base.Optional;
 
-import org.apache.thrift.TBase;
-
 final class FieldGetters {
   private FieldGetters() {
     // Utility class.
@@ -29,11 +27,6 @@ final class FieldGetters {
       @Override
       public Class<P> getStructClass() {
         return parent.getStructClass();
-      }
-
-      @Override
-      public Class<G> getValueClass() {
-        return child.getValueClass();
       }
 
       @Override

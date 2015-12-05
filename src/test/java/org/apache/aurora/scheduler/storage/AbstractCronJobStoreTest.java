@@ -24,7 +24,10 @@ import com.google.inject.Module;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
@@ -33,10 +36,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.storage.testing.StorageEntityUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,18 +85,23 @@ public abstract class AbstractCronJobStoreTest {
   @Test
   public void testJobStoreSameEnvironment() {
     JobConfiguration templateConfig = makeJob("labrat");
-    JobConfiguration prodBuilder = templateConfig.newBuilder();
-    prodBuilder.getKey().setEnvironment("prod");
-    JobConfiguration prod = JobConfiguration.build(prodBuilder);
-    JobConfiguration stagingBuilder = templateConfig.newBuilder();
-    stagingBuilder.getKey().setEnvironment("staging");
-    JobConfiguration staging = JobConfiguration.build(stagingBuilder);
+    JobConfiguration prod = templateConfig.toBuilder()
+        .setKey(templateConfig.getKey().toBuilder()
+            .setEnvironment("prod")
+            .build())
+        .build();
+
+    JobConfiguration staging = templateConfig.toBuilder()
+        .setKey(templateConfig.getKey().toBuilder()
+            .setEnvironment("staging")
+            .build())
+        .build();
 
     saveAcceptedJob(prod);
     saveAcceptedJob(staging);
 
-    assertNull(fetchJob(
-        JobKey.build(templateConfig.getKey().newBuilder().setEnvironment("test"))).orNull());
+    JobKey test = templateConfig.getKey().toBuilder().setEnvironment("test").build();
+    assertNull(fetchJob(test).orNull());
     assertEquals(prod, fetchJob(prod.getKey()).orNull());
     assertEquals(staging, fetchJob(staging.getKey()).orNull());
 
@@ -127,7 +131,7 @@ public abstract class AbstractCronJobStoreTest {
             new TaskStore.Mutable.TaskMutation() {
               @Override
               public ScheduledTask apply(ScheduledTask task) {
-                return ScheduledTask.build(task.newBuilder().setStatus(ScheduleStatus.RUNNING));
+                return task.toBuilder().setStatus(ScheduleStatus.RUNNING).build();
               }
             });
       }
@@ -141,7 +145,7 @@ public abstract class AbstractCronJobStoreTest {
 
     saveAcceptedJob(JOB_A);
     JobConfiguration jobAUpdated =
-        JobConfiguration.build(JOB_A.newBuilder().setCronSchedule("changed"));
+        JOB_A.toBuilder().setCronSchedule("changed").build();
     saveAcceptedJob(jobAUpdated);
     assertEquals(jobAUpdated, fetchJob(KEY_A).orNull());
   }
@@ -151,14 +155,15 @@ public abstract class AbstractCronJobStoreTest {
     TaskConfig config = TaskTestUtil.makeConfig(job);
 
     return StorageEntityUtil.assertFullyPopulated(
-        JobConfiguration.build(
-            new JobConfiguration()
-                .setKey(job.newBuilder())
-                .setOwner(new Identity(job.getRole(), "user"))
-                .setCronSchedule("schedule")
-                .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
-                .setTaskConfig(config.newBuilder())
-                .setInstanceCount(5)));
+        JobConfiguration.builder()
+            .setKey(job)
+            .setOwner(Identity.create(job.getRole(), "user"))
+            .setCronSchedule("schedule")
+            .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
+            .setTaskConfig(config)
+            .setInstanceCount(5)
+
+            .build());
   }
 
   private Set<JobConfiguration> fetchJobs() {

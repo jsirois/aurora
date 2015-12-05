@@ -22,11 +22,10 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
-import org.apache.aurora.gen.AuroraAdmin.Sync;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
-import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.gen.ServerInfo;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,12 +43,12 @@ public class AopModuleTest extends EasyMockTest {
     mockThrift = createMock(AnnotatedAuroraAdmin.class);
   }
 
-  private Iface getIface(Map<String, Boolean> toggledMethods) {
+  private AuroraAdmin.Sync getIface(Map<String, Boolean> toggledMethods) {
     Injector injector = Guice.createInjector(
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()));
+            bind(ServerInfo.class).toInstance(ServerInfo.builder().build());
             MockDecoratedThrift.bindForwardedMock(binder(), mockThrift);
           }
         },
@@ -74,11 +73,11 @@ public class AopModuleTest extends EasyMockTest {
 
   @Test
   public void testFlaggedMethodDisabled() throws Exception {
-    JobConfiguration job = new JobConfiguration();
+    JobConfiguration job = JobConfiguration.builder().build();
 
     control.replay();
 
-    Iface thrift = getIface(ImmutableMap.of("createJob", false));
+    AuroraAdmin.Sync thrift = getIface(ImmutableMap.of("createJob", false));
     assertEquals(ResponseCode.ERROR, thrift.createJob(job, null).getResponseCode());
   }
 
@@ -89,13 +88,13 @@ public class AopModuleTest extends EasyMockTest {
   }
 
   private void assertCreateAllowed(Map<String, Boolean> toggledMethods) throws Exception {
-    JobConfiguration job = new JobConfiguration();
-    Response response = new Response();
+    JobConfiguration job = JobConfiguration.builder().build();
+    Response response = Response.builder().build();
     expect(mockThrift.createJob(job, null)).andReturn(response);
 
     control.replay();
 
-    Iface thrift = getIface(toggledMethods);
+    AuroraAdmin.Sync thrift = getIface(toggledMethods);
     assertSame(response, thrift.createJob(job, null));
   }
 
@@ -103,7 +102,7 @@ public class AopModuleTest extends EasyMockTest {
   public void assertToStringNotIntercepted() {
     control.replay();
 
-    Iface thrift = getIface(ImmutableMap.of());
+    AuroraAdmin.Sync thrift = getIface(ImmutableMap.of());
     assertNotNull(thrift.toString());
   }
 }

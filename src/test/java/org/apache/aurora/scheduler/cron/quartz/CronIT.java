@@ -26,6 +26,7 @@ import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -36,8 +37,6 @@ import org.apache.aurora.scheduler.cron.SanitizedCronJob;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobKey;
 import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,17 +54,19 @@ public class CronIT extends EasyMockTest {
   public static final CrontabEntry CRONTAB_ENTRY = CrontabEntry.parse("* * * * *");
 
   private static final JobKey JOB_KEY = JobKeys.from("roll", "b", "c");
-  private static final Identity IDENTITY = new Identity()
+  private static final Identity IDENTITY = Identity.builder()
       .setRole(JOB_KEY.getRole())
-      .setUser("user");
+      .setUser("user")
+      .build();
 
-  private static final JobConfiguration CRON_JOB = JobConfiguration.build(
-      new JobConfiguration()
+  private static final JobConfiguration CRON_JOB =
+      JobConfiguration.builder()
           .setCronSchedule(CRONTAB_ENTRY.toString())
-          .setKey(JOB_KEY.newBuilder())
+          .setKey(JOB_KEY)
           .setInstanceCount(2)
           .setOwner(IDENTITY)
-          .setTaskConfig(makeTaskConfig()));
+          .setTaskConfig(makeTaskConfig())
+          .build();
 
   private Injector injector;
   private StateManager stateManager;
@@ -97,12 +98,12 @@ public class CronIT extends EasyMockTest {
   }
 
   private static TaskConfig makeTaskConfig() {
-    TaskConfig config = TaskTestUtil.makeConfig(JOB_KEY).newBuilder();
+    TaskConfig.Builder config = TaskTestUtil.makeConfig(JOB_KEY).toBuilder();
     config.setIsService(false);
     // Bypassing a command-line argument in ConfigurationManager that by default disallows the
     // docker container type.
-    config.setContainer(Container.mesos(new MesosContainer()));
-    return config;
+    config.setContainer(Container.mesos(MesosContainer.create()));
+    return config.build();
   }
 
   private Service boot() {

@@ -56,6 +56,7 @@ import org.apache.aurora.common.zookeeper.ZooKeeperClient;
 import org.apache.aurora.common.zookeeper.ZooKeeperClient.Credentials;
 import org.apache.aurora.common.zookeeper.testing.BaseZooKeeperTest;
 import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
@@ -63,13 +64,13 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.gen.storage.LogEntry;
 import org.apache.aurora.gen.storage.Op;
 import org.apache.aurora.gen.storage.SaveFrameworkId;
 import org.apache.aurora.gen.storage.SaveTasks;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.scheduler.AppStartup;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorSettings;
@@ -81,7 +82,6 @@ import org.apache.aurora.scheduler.mesos.DriverFactory;
 import org.apache.aurora.scheduler.mesos.DriverSettings;
 import org.apache.aurora.scheduler.mesos.TestExecutorSettings;
 import org.apache.aurora.scheduler.storage.backup.BackupModule;
-import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.storage.log.EntrySerializer;
 import org.apache.aurora.scheduler.storage.log.LogStorageModule;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
@@ -200,11 +200,11 @@ public class SchedulerIT extends BaseZooKeeperTest {
         install(new BackupModule(backupDir, SnapshotStoreImpl.class));
 
         bind(ServerInfo.class).toInstance(
-            ServerInfo.build(
-                new ServerInfo()
-                    .setClusterName(CLUSTER_NAME)
-                    .setThriftAPIVersion(THRIFT_API_VERSION)
-                    .setStatsUrlPrefix(STATS_URL_PREFIX)));
+            ServerInfo.builder()
+                .setClusterName(CLUSTER_NAME)
+                .setThriftAPIVersion(THRIFT_API_VERSION)
+                .setStatsUrlPrefix(STATS_URL_PREFIX)
+                .build());
       }
     };
     Credentials credentials = ZooKeeperClient.digestCredentials("mesos", "mesos");
@@ -305,18 +305,21 @@ public class SchedulerIT extends BaseZooKeeperTest {
   }
 
   private static ScheduledTask makeTask(String id, ScheduleStatus status) {
-    return new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(status)
-        .setTaskEvents(ImmutableList.of(new TaskEvent(100, status)))
-        .setAssignedTask(new AssignedTask()
+        .setTaskEvents(TaskEvent.create(100, status))
+        .setAssignedTask(AssignedTask.builder()
             .setSlaveId("slaveId")
             .setTaskId(id)
-            .setTask(new TaskConfig()
-                .setJob(new JobKey("role-" + id, "test", "job-" + id))
+            .setTask(TaskConfig.builder()
+                .setJob(JobKey.create("role-" + id, "test", "job-" + id))
                 .setJobName("job-" + id)
                 .setEnvironment("test")
-                .setExecutorConfig(new org.apache.aurora.gen.ExecutorConfig("AuroraExecutor", ""))
-                .setOwner(new Identity("role-" + id, "user-" + id))));
+                .setExecutorConfig(ExecutorConfig.create("AuroraExecutor", ""))
+                .setOwner(Identity.create("role-" + id, "user-" + id))
+                .build())
+            .build())
+        .build();
   }
 
   @Test
@@ -332,18 +335,18 @@ public class SchedulerIT extends BaseZooKeeperTest {
     ScheduledTask snapshotTask = makeTask("snapshotTask", ScheduleStatus.ASSIGNED);
     ScheduledTask transactionTask = makeTask("transactionTask", ScheduleStatus.RUNNING);
     Iterable<Entry> recoveredEntries = toEntries(
-        LogEntry.snapshot(new Snapshot().setTasks(ImmutableSet.of(snapshotTask))),
-        LogEntry.transaction(new Transaction(
-            ImmutableList.of(Op.saveTasks(new SaveTasks(ImmutableSet.of(transactionTask)))),
+        LogEntry.snapshot(Snapshot.builder().setTasks(snapshotTask).build()),
+        LogEntry.transaction(Transaction.create(
+            ImmutableList.of(Op.saveTasks(SaveTasks.create(ImmutableSet.of(transactionTask)))),
             Constants.CURRENT_SCHEMA_VERSION)));
 
     expect(log.open()).andReturn(logStream);
     expect(logStream.readAll()).andReturn(recoveredEntries.iterator()).anyTimes();
     // An empty saveTasks is an artifact of the fact that mutateTasks always writes a log operation
     // even if nothing is changed.
-    streamMatcher.expectTransaction(Op.saveTasks(new SaveTasks(ImmutableSet.of())))
+    streamMatcher.expectTransaction(Op.saveTasks(SaveTasks.create(ImmutableSet.of())))
         .andReturn(nextPosition());
-    streamMatcher.expectTransaction(Op.saveFrameworkId(new SaveFrameworkId(FRAMEWORK_ID)))
+    streamMatcher.expectTransaction(Op.saveFrameworkId(SaveFrameworkId.create(FRAMEWORK_ID)))
         .andReturn(nextPosition());
 
     final CountDownLatch driverStarted = new CountDownLatch(1);

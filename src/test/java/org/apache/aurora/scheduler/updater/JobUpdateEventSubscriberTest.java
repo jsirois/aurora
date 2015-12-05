@@ -21,13 +21,11 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
-import org.apache.aurora.gen.InstanceKey;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,21 +37,22 @@ public class JobUpdateEventSubscriberTest extends EasyMockTest {
 
   private static final JobKey JOB = JobKeys.from("role", "env", "name");
 
-  private static final ScheduledTask TASK = ScheduledTask.build(
-      new ScheduledTask()
+  private static final ScheduledTask TASK =
+      ScheduledTask.builder()
           .setStatus(ScheduleStatus.PENDING)
           .setAssignedTask(
-              new AssignedTask()
+              AssignedTask.builder()
                   .setInstanceId(5)
-                  .setTask(new TaskConfig()
-                      .setJob(JOB.newBuilder())
-                      .setOwner(new Identity().setRole(JOB.getRole()))
+                  .setTask(TaskConfig.builder()
+                      .setJob(JOB)
+                      .setOwner(Identity.builder().setRole(JOB.getRole()).build())
                       .setEnvironment(JOB.getEnvironment())
-                      .setJobName(JOB.getName()))));
-  private static final InstanceKey INSTANCE_A = InstanceKey.build(
-      new InstanceKey()
-          .setJobKey(JOB.newBuilder())
-          .setInstanceId(TASK.getAssignedTask().getInstanceId()));
+                      .setJobName(JOB.getName())
+                      .build())
+                  .build())
+          .build();
+  private static final InstanceKey INSTANCE_A =
+      InstanceKey.create(JOB, TASK.getAssignedTask().getInstanceId());
 
   private JobUpdateController updater;
   private Service service;
@@ -118,7 +117,7 @@ public class JobUpdateEventSubscriberTest extends EasyMockTest {
     control.replay();
 
     ScheduledTask task =
-        ScheduledTask.build(TASK.newBuilder().setStatus(ScheduleStatus.FAILED));
+        TASK.toBuilder().setStatus(ScheduleStatus.FAILED).build();
     eventBus.post(new TasksDeleted(ImmutableSet.of(task)));
   }
 }

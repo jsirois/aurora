@@ -13,18 +13,28 @@
  */
 package org.apache.aurora.scheduler.http.api.security;
 
-import java.io.IOException;
+import java.net.URI;
 import java.util.Set;
 
+import com.facebook.nifty.client.HttpClientChannel;
+import com.facebook.nifty.client.HttpClientConnector;
+import com.facebook.nifty.client.NettyClientConfig;
+import com.facebook.nifty.duplex.TDuplexProtocolFactory;
+import com.facebook.swift.service.ThriftClientManager;
+import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.sun.jersey.api.client.ClientResponse;
 
+import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.gen.AuroraAdmin;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
@@ -34,25 +44,24 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.http.H2ConsoleModule;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
 import org.apache.aurora.scheduler.http.api.ApiModule;
-import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.shiro.authz.UnauthenticatedException;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TJSONProtocol;
-import org.apache.thrift.transport.THttpClient;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+import org.jboss.netty.channel.Channel;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,7 +73,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class HttpSecurityIT extends JettyServerModuleTest {
-  private static final Response OK = new Response().setResponseCode(ResponseCode.OK);
+  private static final Response OK = Response.builder().setResponseCode(ResponseCode.OK).build();
 
   private static final UsernamePasswordCredentials ROOT =
       new UsernamePasswordCredentials("root", "secret");
@@ -149,34 +158,48 @@ public class HttpSecurityIT extends JettyServerModuleTest {
         });
   }
 
-  private AuroraAdmin.Client getUnauthenticatedClient() throws TTransportException {
-    return getClient(null);
+  private AuroraAdmin.Sync getUnauthenticatedClient() throws Exception {
+    return getClient(channel -> {});
   }
 
   private String formatUrl(String endpoint) {
     return "http://" + httpServer.getHostText() + ":" + httpServer.getPort() + endpoint;
   }
 
-  private AuroraAdmin.Client getClient(HttpClient httpClient) throws TTransportException {
-    final TTransport httpClientTransport = new THttpClient(formatUrl(API_PATH), httpClient);
-    addTearDown(httpClientTransport::close);
-    return new AuroraAdmin.Client(new TJSONProtocol(httpClientTransport));
+  private AuroraAdmin.Sync getClient(Closure<HttpClientChannel> channelModifier) throws Exception {
+    URI uri = URI.create(formatUrl(API_PATH));
+    TDuplexProtocolFactory protocolFactory =
+        TDuplexProtocolFactory.fromSingleFactory(new TJSONProtocol.Factory());
+
+    HttpClientConnector httpClientConnector = new HttpClientConnector(uri, protocolFactory) {
+      @Override
+      public HttpClientChannel newThriftClientChannel(Channel channel, NettyClientConfig config) {
+        HttpClientChannel httpChannel = super.newThriftClientChannel(channel, config);
+        channelModifier.execute(httpChannel);
+        return httpChannel;
+      }
+    };
+
+    ThriftClientManager thriftClientManager = new ThriftClientManager();
+    addTearDown(thriftClientManager::close);
+
+    ListenableFuture<AuroraAdmin.Sync> connectingClient =
+        thriftClientManager.createClient(httpClientConnector, AuroraAdmin.Sync.class);
+    AuroraAdmin.Sync sync = connectingClient.get();
+    addTearDown(sync::close);
+    return sync;
   }
 
-  private AuroraAdmin.Client getAuthenticatedClient(Credentials credentials)
-      throws TTransportException {
-
-    DefaultHttpClient defaultHttpClient = new DefaultHttpClient();
-
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    credentialsProvider.setCredentials(AuthScope.ANY, credentials);
-    defaultHttpClient.setCredentialsProvider(credentialsProvider);
-
-    return getClient(defaultHttpClient);
+  private AuroraAdmin.Sync getAuthenticatedClient(Credentials credentials) throws Exception {
+    return getClient(channel -> {
+      Header authenticate =
+          BasicScheme.authenticate(credentials, Charsets.UTF_8.displayName(), /* proxy */ false);
+      channel.setHeaders(ImmutableMap.of(authenticate.getName(), authenticate.getValue()));
+    });
   }
 
   @Test
-  public void testReadOnlyScheduler() throws TException {
+  public void testReadOnlyScheduler() throws Exception {
     expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(3);
 
     replayAndStart();
@@ -188,19 +211,19 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     assertEquals(OK, getAuthenticatedClient(INCORRECT).getRoleSummary());
   }
 
-  private void assertKillTasksFails(AuroraAdmin.Client client) throws TException {
+  private void assertKillTasksFails(AuroraAdmin.Sync client) throws TException {
     try {
       client.killTasks(null, null);
       fail("killTasks should fail.");
-    } catch (TTransportException e) {
+    } catch (UnauthenticatedException e) {
       // Expected.
     }
   }
 
   @Test
-  public void testAuroraSchedulerManager() throws TException, IOException {
-    expect(auroraAdmin.killTasks(null, new Lock().setMessage("1"))).andReturn(OK);
-    expect(auroraAdmin.killTasks(null, new Lock().setMessage("2"))).andReturn(OK);
+  public void testAuroraSchedulerManager() throws Exception {
+    expect(auroraAdmin.killTasks(null, Lock.builder().setMessage("1").build())).andReturn(OK);
+    expect(auroraAdmin.killTasks(null, Lock.builder().setMessage("2").build())).andReturn(OK);
 
     TaskQuery jobScopedQuery = Query.jobScoped(JobKeys.from("role", "env", "name")).get();
     TaskQuery adsScopedQuery = Query.jobScoped(ADS_STAGING_JOB).get();
@@ -209,9 +232,9 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     replayAndStart();
 
     assertEquals(OK,
-        getAuthenticatedClient(WFARNER).killTasks(null, new Lock().setMessage("1")));
+        getAuthenticatedClient(WFARNER).killTasks(null, Lock.builder().setMessage("1").build()));
     assertEquals(OK,
-        getAuthenticatedClient(ROOT).killTasks(null, new Lock().setMessage("2")));
+        getAuthenticatedClient(ROOT).killTasks(null, Lock.builder().setMessage("2").build()));
     assertEquals(
         ResponseCode.INVALID_REQUEST,
         getAuthenticatedClient(UNPRIVILEGED).killTasks(null, null).getResponseCode());
@@ -242,17 +265,17 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     assertKillTasksFails(getAuthenticatedClient(NONEXISTENT));
   }
 
-  private void assertSnapshotFails(AuroraAdmin.Client client) throws TException {
+  private void assertSnapshotFails(AuroraAdmin.Sync client) throws TException {
     try {
       client.snapshot();
       fail("snapshot should fail");
-    } catch (TTransportException e) {
+    } catch (UnauthenticatedException e) {
       // Expected.
     }
   }
 
   @Test
-  public void testAuroraAdmin() throws TException {
+  public void testAuroraAdmin() throws Exception {
     expect(auroraAdmin.snapshot()).andReturn(OK);
     expect(auroraAdmin.listBackups()).andReturn(OK);
 

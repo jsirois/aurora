@@ -14,28 +14,27 @@
 package org.apache.aurora.scheduler.updater;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
-
 import org.apache.aurora.gen.InstanceKey;
 import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateSettings;
 import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.gen.InstanceKey;
-import org.apache.aurora.gen.JobUpdateInstructions;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 
 public class AddTaskTest extends EasyMockTest {
-  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
-      new JobUpdateInstructions()
+  private static final JobUpdateInstructions INSTRUCTIONS =
+      JobUpdateInstructions.builder()
           .setSettings(
-              new JobUpdateSettings()
-                  .setMinWaitInInstanceRunningMs(1000)));
+              JobUpdateSettings.builder()
+                  .setMinWaitInInstanceRunningMs(1000)
+                  .build())
+          .build();
   private static final InstanceKey INSTANCE =
-      InstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
+      InstanceKey.create(JobKeys.from("role", "env", "job"), 0);
 
   private MutableStoreProvider storeProvider;
   private StateManager stateManager;

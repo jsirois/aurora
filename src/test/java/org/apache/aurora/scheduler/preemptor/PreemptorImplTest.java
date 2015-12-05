@@ -35,10 +35,6 @@ import org.apache.aurora.scheduler.state.StateChangeResult;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.gen.AssignedTask;
-import org.apache.aurora.gen.HostAttributes;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos;
 import org.easymock.EasyMock;
@@ -56,15 +52,15 @@ import static org.junit.Assert.assertEquals;
 
 public class PreemptorImplTest extends EasyMockTest {
   private static final String SLAVE_ID = "slave_id";
-  private static final ScheduledTask TASK = ScheduledTask.build(makeTask());
+  private static final ScheduledTask TASK = makeTask();
   private static final PreemptionProposal PROPOSAL = createPreemptionProposal(TASK);
   private static final TaskGroupKey GROUP_KEY =
-      TaskGroupKey.from(TaskConfig.build(makeTask().getAssignedTask().getTask()));
+      TaskGroupKey.from(makeTask().getAssignedTask().getTask());
 
   private static final Set<PreemptionProposal> NO_SLOTS = ImmutableSet.of();
   private static final Optional<String> EMPTY_RESULT = Optional.absent();
   private static final HostOffer OFFER =
-      new HostOffer(Protos.Offer.getDefaultInstance(), HostAttributes.build(new HostAttributes()));
+      new HostOffer(Protos.Offer.getDefaultInstance(), HostAttributes.builder().build());
 
   private StateManager stateManager;
   private FakeStatsProvider statsProvider;
@@ -165,13 +161,15 @@ public class PreemptorImplTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask() {
-    ScheduledTask task = new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
-            .setTask(new TaskConfig()
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
+            .setTask(TaskConfig.builder()
                 .setPriority(1)
                 .setProduction(true)
-                .setJob(new JobKey("role", "env", "name"))));
-    task.addToTaskEvents(new TaskEvent(0, PENDING));
-    return task;
+                .setJob(JobKey.create("role", "env", "name"))
+                .build())
+            .build())
+        .addToTaskEvents(TaskEvent.create(0, PENDING))
+        .build();
   }
 }

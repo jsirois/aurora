@@ -22,14 +22,13 @@ import com.google.inject.matcher.Matchers;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.GetJobsResult;
 import org.apache.aurora.gen.Response;
+import org.apache.aurora.gen.ResponseCode;
 import org.apache.aurora.gen.Result;
-import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.apache.aurora.gen.ResponseCode.OK;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 
@@ -40,11 +39,12 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
   private AnnotatedAuroraAdmin realThrift;
   private AnnotatedAuroraAdmin decoratedThrift;
 
-  private static final ServerInfo SERVER_INFO = ServerInfo.build(
-      new ServerInfo()
+  private static final ServerInfo SERVER_INFO =
+      ServerInfo.builder()
           .setClusterName("test")
           .setThriftAPIVersion(1)
-          .setStatsUrlPrefix("fake_url"));
+          .setStatsUrlPrefix("fake_url")
+          .build();
 
   private ServerInfoInterceptor interceptor;
 
@@ -69,22 +69,18 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
   @Test
   public void testServerInfoIsSet() throws Exception {
     ServerInfo previousServerInfo =
-        new ServerInfo().setClusterName("FAKECLUSTER").setThriftAPIVersion(100000);
+        ServerInfo.builder().setClusterName("FAKECLUSTER").setThriftAPIVersion(100000).build();
 
-    Response response = okResponse(
-        Result.getJobsResult(new GetJobsResult().setConfigs(ImmutableSet.of())))
-        .setServerInfo(previousServerInfo);
+    Response response = Response.builder()
+        .setResponseCode(ResponseCode.OK)
+        .setResult(Result.getJobsResult(GetJobsResult.create(ImmutableSet.of())))
+        .setServerInfo(previousServerInfo)
+        .build();
 
     expect(realThrift.getJobs(ROLE)).andReturn(response);
 
     control.replay();
 
-    assertEquals(SERVER_INFO.newBuilder(), decoratedThrift.getJobs(ROLE).getServerInfo());
-  }
-
-  private static Response okResponse(Result result) {
-    return new Response()
-        .setResponseCode(OK)
-        .setResult(result);
+    assertEquals(SERVER_INFO, decoratedThrift.getJobs(ROLE).getServerInfo());
   }
 }

@@ -57,7 +57,6 @@ import org.apache.aurora.scheduler.scheduling.TaskScheduler;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.stats.StatsModule;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.easymock.Capture;
@@ -111,10 +110,11 @@ public abstract class JettyServerModuleTest extends EasyMockTest {
           protected void configure() {
             bind(StatsProvider.class).toInstance(new FakeStatsProvider());
             bind(Storage.class).toInstance(storage.storage);
-            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()
+            bind(ServerInfo.class).toInstance(ServerInfo.builder()
                 .setClusterName("unittest")
                 .setThriftAPIVersion(100)
-                .setStatsUrlPrefix("none")));
+                .setStatsUrlPrefix("none")
+                .build());
             bind(TaskGroupsSettings.class).toInstance(
                 new TaskGroupsSettings(
                     Amount.of(1L, Time.MILLISECONDS),

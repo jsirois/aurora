@@ -29,6 +29,7 @@ import com.google.inject.TypeLiteral;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.async.AsyncModule.AsyncExecutor;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -49,8 +50,6 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.easymock.EasyMock;
@@ -237,9 +236,11 @@ public class TaskSchedulerImplTest extends EasyMockTest {
 
     control.replay();
 
-    ScheduledTask taskBuilder = TASK_A.newBuilder().setStatus(PENDING);
-    taskBuilder.getAssignedTask().setSlaveId(SLAVE_ID);
-    eventSink.post(TaskStateChange.transition(ScheduledTask.build(taskBuilder), PENDING));
+    ScheduledTask taskBuilder = TASK_A.toBuilder()
+        .setStatus(PENDING)
+        .setAssignedTask(TASK_A.getAssignedTask().toBuilder().setSlaveId(SLAVE_ID).build())
+        .build();
+    eventSink.post(TaskStateChange.transition(taskBuilder, PENDING));
   }
 
   @Test
@@ -251,10 +252,12 @@ public class TaskSchedulerImplTest extends EasyMockTest {
     scheduler = injector.getInstance(TaskScheduler.class);
     eventSink = PubsubTestUtil.startPubsub(injector);
 
-    ScheduledTask builder = TASK_A.newBuilder();
-    final ScheduledTask taskA = ScheduledTask.build(builder.setStatus(PENDING));
-    builder.getAssignedTask().setTaskId("b");
-    final ScheduledTask taskB = ScheduledTask.build(builder.setStatus(THROTTLED));
+    final ScheduledTask taskA = TASK_A.toBuilder()
+        .setStatus(PENDING)
+        .setAssignedTask(TASK_A.getAssignedTask().toBuilder().setTaskId("b").build())
+        .build();
+
+    final ScheduledTask taskB = TASK_A.toBuilder().setStatus(THROTTLED).build();
 
     memStorage.write(new MutateWork.NoResult.Quiet() {
       @Override

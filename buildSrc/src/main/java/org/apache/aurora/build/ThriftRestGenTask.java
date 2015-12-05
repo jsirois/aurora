@@ -614,7 +614,7 @@ public class ThriftRestGenTask extends DefaultTask {
       if (value instanceof ConstInteger || value instanceof ConstDouble) {
         codeBuilder.add("$L", value.value());
       } else if (value instanceof ConstString) {
-        codeBuilder.add("$S", value.value());
+        codeBuilder.add("\"$L\"", value.value());
       } else if (value instanceof ConstList) {
         renderListValue(structRenderers, type, (ConstList) value, codeBuilder);
       } else if (value instanceof ConstMap) {

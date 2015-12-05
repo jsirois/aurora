@@ -30,8 +30,6 @@ import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEvent.TasksDeleted;
 import org.apache.aurora.scheduler.scheduling.TaskGroups.TaskGroupsSettings;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.testing.FakeScheduledExecutor;
 import org.easymock.IAnswer;
 import org.junit.Before;
@@ -44,7 +42,7 @@ import static org.easymock.EasyMock.expect;
 public class TaskGroupsTest extends EasyMockTest {
   private static final Amount<Long, Time> FIRST_SCHEDULE_DELAY = Amount.of(1L, Time.MILLISECONDS);
   private static final Amount<Long, Time> RESCHEDULE_DELAY = FIRST_SCHEDULE_DELAY;
-  private static final JobKey JOB_A = JobKey.build(new JobKey("role", "test", "jobA"));
+  private static final JobKey JOB_A = JobKey.create("role", "test", "jobA");
   private static final String TASK_A_ID = "a";
 
   private BackoffStrategy backoffStrategy;
@@ -129,7 +127,7 @@ public class TaskGroupsTest extends EasyMockTest {
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a1", 1), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a2", 2), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(
-        makeTask(JobKey.build(JOB_A.newBuilder().setName("jobB")), "b0", 0), INIT));
+        makeTask(JOB_A.toBuilder().setName("jobB").build(), "b0", 0), INIT));
 
     clock.advance(FIRST_SCHEDULE_DELAY);
   }
@@ -139,7 +137,7 @@ public class TaskGroupsTest extends EasyMockTest {
     control.replay();
 
     ScheduledTask task =
-        ScheduledTask.build(makeTask(TASK_A_ID).newBuilder().setStatus(ASSIGNED));
+        makeTask(TASK_A_ID).toBuilder().setStatus(ASSIGNED).build();
     taskGroups.taskChangedState(TaskStateChange.initialized(task));
   }
 
@@ -148,12 +146,15 @@ public class TaskGroupsTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(JobKey jobKey, String id, int instanceId) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(ScheduleStatus.PENDING)
-        .setAssignedTask(new AssignedTask()
+        .setAssignedTask(AssignedTask.builder()
             .setInstanceId(instanceId)
             .setTaskId(id)
-            .setTask(new TaskConfig()
-                .setJob(jobKey.newBuilder()))));
+            .setTask(TaskConfig.builder()
+                .setJob(jobKey)
+                .build())
+            .build())
+        .build();
   }
 }

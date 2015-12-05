@@ -53,8 +53,6 @@ import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.pruning.TaskHistoryPruner.HistoryPrunnerSettings;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.easymock.Capture;
@@ -404,7 +402,7 @@ public class TaskHistoryPrunerTest extends EasyMockTest {
   }
 
   private ScheduledTask copy(ScheduledTask task, ScheduleStatus status) {
-    return ScheduledTask.build(task.newBuilder().setStatus(status));
+    return task.toBuilder().setStatus(status).build();
   }
 
   private ScheduledTask makeTask(
@@ -412,10 +410,11 @@ public class TaskHistoryPrunerTest extends EasyMockTest {
       String taskId,
       ScheduleStatus status) {
 
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(status)
-        .setTaskEvents(ImmutableList.of(new TaskEvent(clock.nowMillis(), status)))
-        .setAssignedTask(makeAssignedTask(job, taskId)));
+        .setTaskEvents(ImmutableList.of(TaskEvent.create(clock.nowMillis(), status)))
+        .setAssignedTask(makeAssignedTask(job, taskId))
+        .build();
   }
 
   private ScheduledTask makeTask(String taskId, ScheduleStatus status) {
@@ -423,14 +422,16 @@ public class TaskHistoryPrunerTest extends EasyMockTest {
   }
 
   private AssignedTask makeAssignedTask(String job, String taskId) {
-    return new AssignedTask()
+    return AssignedTask.builder()
         .setSlaveHost(SLAVE_HOST)
         .setTaskId(taskId)
-        .setTask(new TaskConfig()
-            .setJob(new JobKey("role", "staging45", job))
-            .setOwner(new Identity().setRole("role").setUser("user"))
+        .setTask(TaskConfig.builder()
+            .setJob(JobKey.create("role", "staging45", job))
+            .setOwner(Identity.create("role", "user"))
             .setEnvironment("staging45")
             .setJobName(job)
-            .setExecutorConfig(new ExecutorConfig("aurora", "config")));
+            .setExecutorConfig(ExecutorConfig.create("aurora", "config"))
+            .build())
+        .build();
   }
 }

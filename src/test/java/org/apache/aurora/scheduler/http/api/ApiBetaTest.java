@@ -16,9 +16,7 @@ package org.apache.aurora.scheduler.http.api;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
@@ -49,9 +47,6 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.Response;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,58 +79,66 @@ public class ApiBetaTest extends JettyServerModuleTest {
     );
   }
 
-  private static final TaskConfig TASK_CONFIG = TaskConfig.build(
-      new TaskConfig()
-          .setOwner(new Identity().setUser("user").setRole("role"))
+  private static final TaskConfig TASK_CONFIG =
+      TaskConfig.builder()
+          .setOwner(Identity.create("user", "role"))
           .setEnvironment("test")
           .setDiskMb(1024)
           .setRamMb(4096)
           .setNumCpus(1.0)
           .setIsService(true)
           .setJobName("jobName")
-          .setConstraints(ImmutableSet.of(new Constraint()
+          .setConstraints(Constraint.builder()
               .setName("rack")
-              .setConstraint(TaskConstraint.limit(new LimitConstraint().setLimit(1)))))
+              .setConstraint(TaskConstraint.limit(LimitConstraint.create(1)))
+              .build())
           .setExecutorConfig(
-              new ExecutorConfig()
+              ExecutorConfig.builder()
                   .setData("executor config data")
-                  .setName("executor name")));
-  private static final JobConfiguration JOB_CONFIG = JobConfiguration.build(
-      new JobConfiguration()
+                  .setName("executor name")
+                  .build())
+          .build();
+  private static final JobConfiguration JOB_CONFIG =
+      JobConfiguration.builder()
           .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
-          .setKey(new JobKey("role", "env", "name"))
-          .setTaskConfig(TASK_CONFIG.newBuilder()));
+          .setKey(JobKey.create("role", "env", "name"))
+          .setTaskConfig(TASK_CONFIG)
+          .build();
 
   @Test
   public void testCreateJob() throws Exception {
-    Lock lock = new Lock()
-        .setKey(LockKey.job(new JobKey("role", "env", "name")))
-        .setToken("token");
-    Response response = new Response()
-        .setResponseCode(OK);
+    Lock lock = Lock.builder()
+        .setKey(LockKey.job(JobKey.create("role", "env", "name")))
+        .setToken("token")
+        .build();
+    Response response = Response.builder()
+        .setResponseCode(OK)
+        .build();
 
-    JobConfiguration job = JOB_CONFIG.newBuilder();
     expect(thrift.createJob(anyObject(), eq(lock))).andReturn(response);
 
     replayAndStart();
 
     Response actualResponse = getRequestBuilder("/apibeta/createJob")
         .entity(
-            ImmutableMap.of("description", job, "lock", lock),
+            ImmutableMap.of("description", JOB_CONFIG, "lock", lock),
             MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(Response.build(response), Response.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test
   public void testGetRoleSummary() throws Exception {
-    Response response = new Response()
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.roleSummaryResult(new RoleSummaryResult()
-            .setSummaries(ImmutableSet.of(new RoleSummary()
+        .setResult(Result.roleSummaryResult(RoleSummaryResult.builder()
+            .setSummaries(RoleSummary.builder()
                 .setCronJobCount(1)
                 .setJobCount(2)
-                .setRole("role")))));
+                .setRole("role")
+                .build())
+            .build()))
+        .build();
 
     expect(thrift.getRoleSummary()).andReturn(response);
 
@@ -148,11 +151,14 @@ public class ApiBetaTest extends JettyServerModuleTest {
 
   @Test
   public void testGetJobSummary() throws Exception {
-    Response response = new Response()
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.jobSummaryResult(new JobSummaryResult()
-            .setSummaries(ImmutableSet.of(new JobSummary()
-                .setJob(JOB_CONFIG.newBuilder())))));
+        .setResult(Result.jobSummaryResult(JobSummaryResult.builder()
+            .setSummaries(JobSummary.builder()
+                .setJob(JOB_CONFIG)
+                .build())
+            .build()))
+        .build();
 
     expect(thrift.getJobSummary("roleA")).andReturn(response);
 
@@ -161,24 +167,29 @@ public class ApiBetaTest extends JettyServerModuleTest {
     Response actualResponse = getRequestBuilder("/apibeta/getJobSummary")
         .entity(ImmutableMap.of("role", "roleA"), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(Response.build(response), Response.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test
   public void testGetTasks() throws Exception {
-    ScheduledTask task = new ScheduledTask()
+    ScheduledTask task = ScheduledTask.builder()
         .setStatus(RUNNING)
         .setAssignedTask(
-            new AssignedTask()
-                .setTask(TASK_CONFIG.newBuilder()));
-    Response response = new Response()
+            AssignedTask.builder()
+                .setTask(TASK_CONFIG)
+                .build())
+        .build();
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.scheduleStatusResult(new ScheduleStatusResult()
-            .setTasks(ImmutableList.of(task))));
+        .setResult(Result.scheduleStatusResult(ScheduleStatusResult.builder()
+            .setTasks(task)
+            .build()))
+        .build();
 
-    TaskQuery query = new TaskQuery()
-        .setStatuses(ImmutableSet.of(RUNNING))
-        .setTaskIds(ImmutableSet.of("a"));
+    TaskQuery query = TaskQuery.builder()
+        .setStatuses(RUNNING)
+        .setTaskIds("a")
+        .build();
 
     expect(thrift.getTasksStatus(query)).andReturn(response);
 
@@ -187,7 +198,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
     Response actualResponse = getRequestBuilder("/apibeta/getTasksStatus")
         .entity(ImmutableMap.of("query", query), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(Response.build(response), Response.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test

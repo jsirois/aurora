@@ -29,7 +29,6 @@ import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.state.StateChangeResult;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.easymock.Capture;
 import org.junit.Before;
@@ -131,12 +130,13 @@ public class TaskThrottlerTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String id, ScheduleStatus status) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setTaskEvents(ImmutableList.of(
-            new TaskEvent()
+            TaskEvent.builder()
                 .setStatus(status)
-                .setTimestamp(clock.nowMillis())))
+                .setTimestamp(clock.nowMillis()).build()))
         .setStatus(status)
-        .setAssignedTask(new AssignedTask().setTaskId(id)));
+        .setAssignedTask(AssignedTask.builder().setTaskId(id).build())
+        .build();
   }
 }

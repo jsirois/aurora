@@ -29,11 +29,10 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
-import org.apache.aurora.gen.TaskConfig;
 import org.junit.Test;
 
-import static org.apache.aurora.gen.test.testConstants.INVALID_IDENTIFIERS;
-import static org.apache.aurora.gen.test.testConstants.VALID_IDENTIFIERS;
+import static org.apache.aurora.gen.test.Constants.INVALID_IDENTIFIERS;
+import static org.apache.aurora.gen.test.Constants.VALID_IDENTIFIERS;
 import static org.apache.aurora.scheduler.configuration.ConfigurationManager.DEDICATED_ATTRIBUTE;
 import static org.apache.aurora.scheduler.configuration.ConfigurationManager.isGoodIdentifier;
 import static org.junit.Assert.assertFalse;
@@ -41,16 +40,16 @@ import static org.junit.Assert.assertTrue;
 
 // TODO(kevints): Improve test coverage for this class.
 public class ConfigurationManagerTest {
-  private static final JobConfiguration UNSANITIZED_JOB_CONFIGURATION = new JobConfiguration()
-      .setKey(new JobKey("owner-role", "devel", "email_stats"))
+  private static final JobConfiguration UNSANITIZED_JOB_CONFIGURATION = JobConfiguration.builder()
+      .setKey(JobKey.create("owner-role", "devel", "email_stats"))
       .setCronSchedule("0 2 * * *")
       .setCronCollisionPolicy(CronCollisionPolicy.KILL_EXISTING)
       .setInstanceCount(1)
       .setTaskConfig(
-          new TaskConfig()
+          TaskConfig.builder()
               .setIsService(false)
               .setTaskLinks(ImmutableMap.of())
-              .setExecutorConfig(new ExecutorConfig("aurora", "config"))
+              .setExecutorConfig(ExecutorConfig.create("aurora", "config"))
               .setEnvironment("devel")
               .setRequestedPorts(ImmutableSet.of())
               .setJobName(null)
@@ -59,39 +58,42 @@ public class ConfigurationManagerTest {
               .setContactEmail("foo@twitter.com")
               .setProduction(false)
               .setDiskMb(1)
-              .setMetadata(null)
+              .setMetadata(ImmutableSet.of())
               .setNumCpus(1.0)
               .setRamMb(1)
               .setMaxTaskFailures(0)
               .setConstraints(
                   ImmutableSet.of(
-                      new Constraint()
+                      Constraint.builder()
                           .setName("executor")
                           .setConstraint(TaskConstraint
-                              .value(new ValueConstraint()
+                              .value(ValueConstraint.builder()
                                   .setNegated(false)
-                                  .setValues(ImmutableSet.of("legacy")))),
-                      new Constraint()
+                                  .setValues(ImmutableSet.of("legacy"))
+                                  .build()))
+                          .build(),
+                      Constraint.builder()
                           .setName("host")
-                          .setConstraint(TaskConstraint.limit(new LimitConstraint()
-                              .setLimit(1))),
-                      new Constraint()
+                          .setConstraint(TaskConstraint.limit(LimitConstraint.create(1)))
+                          .build(),
+                      Constraint.builder()
                           .setName(DEDICATED_ATTRIBUTE)
-                          .setConstraint(TaskConstraint.value(new ValueConstraint(
-                              false, ImmutableSet.of("foo"))))))
-              .setOwner(new Identity()
-                  .setRole("owner-role")
-                  .setUser("owner-user")));
-  private static final TaskConfig CONFIG_WITH_CONTAINER = TaskConfig.build(new TaskConfig()
+                          .setConstraint(TaskConstraint.value(
+                              ValueConstraint.create(false, ImmutableSet.of("foo"))))
+                          .build()))
+              .setOwner(Identity.create("owner-role", "owner-user"))
+              .build())
+      .build();
+  private static final TaskConfig CONFIG_WITH_CONTAINER = TaskConfig.builder()
       .setJobName("container-test")
       .setEnvironment("devel")
-      .setExecutorConfig(new ExecutorConfig())
-      .setOwner(new Identity("role", "user"))
+      .setExecutorConfig(ExecutorConfig.builder().build())
+      .setOwner(Identity.create("role", "user"))
       .setNumCpus(1)
       .setRamMb(1)
       .setDiskMb(1)
-      .setContainer(Container.docker(new DockerContainer("testimage"))))
-      .newBuilder();
+      .setContainer(Container.docker(DockerContainer.create("testimage")))
+      .build();
 
   @Test
   public void testIsGoodIdentifier() {
@@ -105,18 +107,19 @@ public class ConfigurationManagerTest {
 
   @Test(expected = TaskDescriptionException.class)
   public void testBadContainerConfig() throws TaskDescriptionException {
-    TaskConfig taskConfig = CONFIG_WITH_CONTAINER.deepCopy();
-    taskConfig.getContainer().getDocker().setImage(null);
+    TaskConfig taskConfig = CONFIG_WITH_CONTAINER.toBuilder()
+        .setContainer(Container.docker(DockerContainer.create(null))).build();
 
-    ConfigurationManager.validateAndPopulate(TaskConfig.build(taskConfig));
+    ConfigurationManager.validateAndPopulate(taskConfig);
   }
 
   @Test(expected = TaskDescriptionException.class)
   public void testInvalidTier() throws TaskDescriptionException {
-    TaskConfig config = TaskConfig.build(UNSANITIZED_JOB_CONFIGURATION.deepCopy().getTaskConfig()
+    TaskConfig config = UNSANITIZED_JOB_CONFIGURATION.getTaskConfig().toBuilder()
         .setJobName("job")
         .setEnvironment("env")
-        .setTier("pr/d"));
+        .setTier("pr/d")
+        .build();
 
     ConfigurationManager.validateAndPopulate(config);
   }

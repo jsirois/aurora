@@ -13,15 +13,12 @@
  */
 package org.apache.aurora.scheduler.http.api.security;
 
+import java.lang.reflect.Type;
+
 import com.google.common.base.Optional;
 
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGetter;
 import org.apache.aurora.thrift.ThriftStruct;
-import org.apache.thrift.TBase;
-import org.apache.thrift.TFieldIdEnum;
-import org.apache.thrift.meta_data.FieldMetaData;
-import org.apache.thrift.meta_data.FieldValueMetaData;
-import org.apache.thrift.meta_data.StructMetaData;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -36,16 +33,16 @@ class ThriftFieldGetter<
 
   private final F fieldId;
 
-  ThriftFieldGetter(Class<T> structClass, F fieldId, Class<V> valueClass) {
-    super(structClass, valueClass);
+  ThriftFieldGetter(Class<T> structClass, F fieldId, Type valueType) {
+    super(structClass);
 
     checkArgument(
-        valueClass.equals(fieldId.getFieldType()),
+        valueType.equals(fieldId.getFieldType()),
         "Value class "
-            + valueClass.getName()
+            + valueType.getTypeName()
             + " does not match field metadata for "
             + fieldId
-            + " (expected " + fieldId.getFieldType()
+            + " (expected " + fieldId.getFieldType().getTypeName()
             + ").");
 
     this.fieldId = fieldId;

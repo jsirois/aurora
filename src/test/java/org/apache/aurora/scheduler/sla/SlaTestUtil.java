@@ -26,8 +26,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskEvent;
 
 final class SlaTestUtil {
 
@@ -41,26 +39,29 @@ final class SlaTestUtil {
 
   static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId, boolean isProd) {
     List<TaskEvent> taskEvents = makeEvents(events);
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(Iterables.getLast(taskEvents).getStatus())
-        .setTaskEvents(TaskEvent.toBuildersList(taskEvents))
-        .setAssignedTask(new AssignedTask()
+        .setTaskEvents(taskEvents)
+        .setAssignedTask(AssignedTask.builder()
             .setTaskId("task_Id")
             .setSlaveHost("host")
             .setInstanceId(instanceId)
-            .setTask(new TaskConfig()
-                .setJob(new JobKey("role", "env", "job"))
+            .setTask(TaskConfig.builder()
+                .setJob(JobKey.create("role", "env", "job"))
                 .setJobName("job")
                 .setIsService(true)
                 .setProduction(isProd)
                 .setEnvironment("env")
-                .setOwner(new Identity("role", "role-user")))));
+                .setOwner(Identity.create("role", "role-user"))
+                .build())
+            .build())
+        .build();
   }
 
   static List<TaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
     ImmutableList.Builder<TaskEvent> taskEvents = ImmutableList.builder();
     for (Map.Entry<Long, ScheduleStatus> entry : events.entrySet()) {
-      taskEvents.add(TaskEvent.build(new TaskEvent(entry.getKey(), entry.getValue())));
+      taskEvents.add(TaskEvent.create(entry.getKey(), entry.getValue()));
     }
 
     return taskEvents.build();

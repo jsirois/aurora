@@ -24,7 +24,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTrip() throws CodingException {
-    Identity original = new Identity("mesos", "jack");
+    Identity original = Identity.create("mesos", "jack");
     assertEquals(original,
         ThriftBinaryCodec.decode(Identity.class, ThriftBinaryCodec.encode(original)));
   }
@@ -36,7 +36,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTripNonNull() throws CodingException {
-    Identity original = new Identity("mesos", "jill");
+    Identity original = Identity.create("mesos", "jill");
     assertEquals(original,
         ThriftBinaryCodec.decodeNonNull(Identity.class, ThriftBinaryCodec.encodeNonNull(original)));
   }
@@ -53,7 +53,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testInflateDeflateRoundTrip() throws CodingException {
-    Identity original = new Identity("aurora", "jsmith");
+    Identity original = Identity.create("aurora", "jsmith");
 
     byte[] deflated = ThriftBinaryCodec.deflateNonNull(original);
 

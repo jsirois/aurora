@@ -22,8 +22,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
-import org.apache.aurora.gen.AssignedTask;
-import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -117,17 +115,19 @@ public class ClusterStateImplTest {
   }
 
   private AssignedTask makeTask(String taskId, String slaveId) {
-    return AssignedTask.build(new AssignedTask()
+    return AssignedTask.builder()
         .setTaskId(taskId)
         .setSlaveId(slaveId)
         .setSlaveHost(slaveId + "host")
-        .setTask(new TaskConfig().setJob(new JobKey("role", "env", "job"))));
+        .setTask(TaskConfig.builder().setJob(JobKey.create("role", "env", "job")).build())
+        .build();
   }
 
   private void changeState(AssignedTask assignedTask, ScheduleStatus status) {
-    ScheduledTask task = ScheduledTask.build(new ScheduledTask()
+    ScheduledTask task = ScheduledTask.builder()
         .setStatus(status)
-        .setAssignedTask(assignedTask.newBuilder()));
+        .setAssignedTask(assignedTask)
+        .build();
     state.taskChangedState(TaskStateChange.transition(task, ScheduleStatus.INIT));
   }
 }

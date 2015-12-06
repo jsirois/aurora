@@ -80,13 +80,13 @@ class LoggingInterceptor implements MethodInterceptor {
       return invocation.proceed();
     } catch (Storage.TransientStorageException e) {
       LOG.log(Level.WARNING, "Uncaught transient exception while handling " + message, e);
-      return Responses.addMessage(Responses.empty(), ResponseCode.ERROR_TRANSIENT, e);
+      return Responses.error(ResponseCode.ERROR_TRANSIENT, e);
     } catch (RuntimeException e) {
       // We need shiro's exceptions to bubble up to the Shiro servlet filter so we intentionally
       // do not swallow them here.
       Throwables.propagateIfInstanceOf(e, ShiroException.class);
       LOG.log(Level.WARNING, "Uncaught exception while handling " + message, e);
-      return Responses.addMessage(Responses.empty(), ResponseCode.ERROR, e);
+      return Responses.error(ResponseCode.ERROR, e);
     }
   }
 }

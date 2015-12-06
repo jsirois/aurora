@@ -24,6 +24,7 @@ import org.apache.aurora.gen.DockerContainer;
 import org.apache.aurora.gen.DockerParameter;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.LimitConstraint;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.ScheduleStatus;
@@ -33,9 +34,6 @@ import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.TierInfo;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 
 /**
  * Convenience methods for working with tasks.
@@ -127,11 +125,15 @@ public final class TaskTestUtil {
 
     return task.toBuilder()
         .setStatus(status)
-        .addToTaskEvents(TaskEvent.builder()
-            .setTimestamp(timestamp)
-            .setStatus(status)
-            .setScheduler("scheduler")
-            .build())
+        .setTaskEvents(
+            ImmutableList.<TaskEvent>builder()
+                .addAll(task.getTaskEvents())
+                .add(TaskEvent.builder()
+                    .setTimestamp(timestamp)
+                    .setStatus(status)
+                    .setScheduler("scheduler")
+                    .build())
+                .build())
         .build();
   }
 }

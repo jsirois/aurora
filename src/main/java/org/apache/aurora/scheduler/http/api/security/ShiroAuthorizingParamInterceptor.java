@@ -340,15 +340,13 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
         return invocation.proceed();
       } else {
         authorizationFailures.incrementAndGet();
-        return Responses.addMessage(
-            Responses.empty(),
+        return Responses.message(
             ResponseCode.AUTH_FAILED,
             "Subject " + subject + " is not permitted to " + targetPermission + ".");
       }
     } else {
       badRequests.incrementAndGet();
-      return Responses.addMessage(
-          Responses.empty(),
+      return Responses.message(
           ResponseCode.INVALID_REQUEST,
           "Missing or invalid job key from request.");
     }

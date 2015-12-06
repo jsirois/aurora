@@ -170,13 +170,21 @@ public class ResourceCounterTest {
         .setDiskMb(diskMb)
         .setProduction(production);
 
+    ImmutableSet.Builder<Constraint> constraints = ImmutableSet.builder();
+    constraints.addAll(task.getAssignedTask().getTask().getConstraints());
     if (dedicated.isPresent()) {
-      config.addToConstraints(Constraint.create(
+      constraints.add(Constraint.create(
           ConfigurationManager.DEDICATED_ATTRIBUTE,
           TaskConstraint.value(ValueConstraint.create(false, ImmutableSet.of(dedicated.get())))));
     }
+    config.setConstraints(constraints.build());
 
-    return task.toBuilder().setStatus(status).build();
+    return task.toBuilder()
+        .setAssignedTask(task.getAssignedTask().toBuilder()
+            .setTask(config.build())
+            .build())
+        .setStatus(status)
+        .build();
   }
 
   private void insertTasks(final ScheduledTask... tasks) {

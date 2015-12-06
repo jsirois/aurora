@@ -281,7 +281,7 @@ public class PendingTaskProcessorTest extends EasyMockTest {
                 .setJob(key)
                 .build())
             .build())
-        .addToTaskEvents(TaskEvent.create(0, PENDING))
+        .setTaskEvents(TaskEvent.create(0, PENDING))
         .build();
   }
 

@@ -37,8 +37,7 @@ public class FeatureToggleInterceptor implements MethodInterceptor {
     if (allowMethod.apply(method)) {
       return invocation.proceed();
     } else {
-      return Responses.addMessage(
-          Responses.empty(),
+      return Responses.message(
           ResponseCode.ERROR,
           "The " + method.getName() + " feature is currently disabled on this scheduler.");
     }

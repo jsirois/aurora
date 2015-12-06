@@ -13,7 +13,6 @@
  */
 package org.apache.aurora.scheduler.thrift;
 
-import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
 import org.apache.aurora.gen.ResponseDetail;
@@ -26,7 +25,6 @@ import static org.apache.aurora.gen.ResponseCode.OK;
 /**
  * Utility class for constructing responses to API calls.
  */
-// TODO(John Sirois): XXX: Re-structure towards exposing Builders or simply kill.
 public final class Responses {
 
   private Responses() {
@@ -34,54 +32,44 @@ public final class Responses {
   }
 
   /**
-   * Creates a new empty response.
-   *
-   * @return An empty response message.
-   */
-  public static Response empty() {
-    return Response.builder().build();
-  }
-
-  /**
    * Adds a human-friendly message to a response, usually to indicate a problem or deprecation
    * encountered while handling the request.
    *
-   * @param response Response to augment.
    * @param message Message to include in the response.
    * @return {@code response} with {@code message} included.
    */
-  public static Response addMessage(Response response, String message) {
-    return appendMessage(response, MorePreconditions.checkNotBlank(message));
+  public static Response message(String message) {
+    return Response.builder().setDetails(ResponseDetail.create(message)).build();
   }
 
   /**
-   * Identical to {@link #addMessage(Response, String)} that also applies a response code.
+   * Identical to {@link #message(String)} that also applies a response code.
    *
-   * @param response Response to augment.
    * @param code Response code to include.
    * @param message Message to include in the response.
    * @return {@code response} with {@code message} included.
-   * @see {@link #addMessage(Response, String)}
+   * @see {@link #message(String)}
    */
-  public static Response addMessage(Response response, ResponseCode code, String message) {
-    return addMessage(response.toBuilder().setResponseCode(code).build(), message);
+  public static Response message(ResponseCode code, String message) {
+    return Response.builder()
+        .setResponseCode(code)
+        .setDetails(ResponseDetail.create(message))
+        .build();
   }
 
   /**
-   * Identical to {@link #addMessage(Response, String)} that also applies a response code and
+   * Identical to {@link #message(String)} that also applies a response code and
    * extracts a message from the provided {@link Throwable}.
    *
-   * @param response Response to augment.
    * @param code Response code to include.
    * @param throwable {@link Throwable} to extract message from.
-   * @return {@link #addMessage(Response, String)}
+   * @return {@link #message(String)}
    */
-  public static Response addMessage(Response response, ResponseCode code, Throwable throwable) {
-    return appendMessage(response.toBuilder().setResponseCode(code).build(), throwable.getMessage());
-  }
-
-  private static Response appendMessage(Response response, String message) {
-    return response.toBuilder().addToDetails(ResponseDetail.create(message)).build();
+  public static Response error(ResponseCode code, Throwable throwable) {
+    return Response.builder()
+        .setResponseCode(code)
+        .setDetails(ResponseDetail.create(throwable.getMessage()))
+        .build();
   }
 
   /**
@@ -91,7 +79,7 @@ public final class Responses {
    * @return A response with an ERROR code set containing the message indicated.
    */
   public static Response error(String message) {
-    return addMessage(empty(), ERROR, message);
+    return message(ERROR, message);
   }
 
   /**
@@ -104,20 +92,10 @@ public final class Responses {
   }
 
   static Response invalidRequest(String message) {
-    return Response.builder()
-        .setDetails(ResponseDetail.create(message))
-        .setResponseCode(INVALID_REQUEST)
-        .build();
+    return message(INVALID_REQUEST, message);
   }
 
   static Response ok(Result result) {
     return Response.builder().setResponseCode(OK).setResult(result).build();
-  }
-
-  static Response error(ResponseCode code, Throwable error) {
-    return Response.builder()
-        .setDetails(ResponseDetail.create(error.getMessage()))
-        .setResponseCode(code)
-        .build();
   }
 }

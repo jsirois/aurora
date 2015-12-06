@@ -247,7 +247,11 @@ public class DbJobUpdateStoreTest {
     JobUpdate jobUpdate = makeJobUpdate(makeKey("u1"));
     JobUpdate builder = jobUpdate.toBuilder()
         .setInstructions(jobUpdate.getInstructions().toBuilder()
-            .addToInitialState(InstanceTaskConfig.create(null, ImmutableSet.of()))
+            .setInitialState(
+                ImmutableSet.<InstanceTaskConfig>builder()
+                    .addAll(jobUpdate.getInstructions().getInitialState())
+                    .add(InstanceTaskConfig.create(null, ImmutableSet.of()))
+                    .build())
             .build())
         .build();
 
@@ -259,10 +263,14 @@ public class DbJobUpdateStoreTest {
     JobUpdate jobUpdate = makeJobUpdate(makeKey("u1"));
     JobUpdate builder = jobUpdate.toBuilder()
         .setInstructions(jobUpdate.getInstructions().toBuilder()
-            .addToInitialState(
-                InstanceTaskConfig.create(
-                    TaskTestUtil.makeConfig(TaskTestUtil.JOB),
-                    ImmutableSet.of()))
+            .setInitialState(
+                ImmutableSet.<InstanceTaskConfig>builder()
+                    .addAll(jobUpdate.getInstructions().getInitialState())
+                    .add(
+                        InstanceTaskConfig.create(
+                            TaskTestUtil.makeConfig(TaskTestUtil.JOB),
+                            ImmutableSet.of()))
+                    .build())
             .build())
         .build();
 

@@ -169,7 +169,7 @@ public class PreemptorImplTest extends EasyMockTest {
                 .setJob(JobKey.create("role", "env", "name"))
                 .build())
             .build())
-        .addToTaskEvents(TaskEvent.create(0, PENDING))
+        .setTaskEvents(TaskEvent.create(0, PENDING))
         .build();
   }
 }

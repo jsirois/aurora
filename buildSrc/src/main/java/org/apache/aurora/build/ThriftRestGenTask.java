@@ -16,7 +16,6 @@ package org.apache.aurora.build;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -1748,7 +1747,6 @@ public class ThriftRestGenTask extends DefaultTask {
           Iterable<MethodSpec> overloads =
               createCollectionBuilderOverloads(
                   field,
-                  accessor,
                   wrapperMethodSpec,
                   List.class,
                   elementType);
@@ -1758,7 +1756,6 @@ public class ThriftRestGenTask extends DefaultTask {
           Iterable<MethodSpec> overloads =
               createCollectionBuilderOverloads(
                   field,
-                  accessor,
                   wrapperMethodSpec,
                   Set.class,
                   elementType);
@@ -1906,7 +1903,6 @@ public class ThriftRestGenTask extends DefaultTask {
 
     private Iterable<MethodSpec> createCollectionBuilderOverloads(
         ThriftField field,
-        MethodSpec accessor,
         MethodSpec primaryMethod,
         Class<? extends Collection> containerType,
         ThriftType elementType) {
@@ -1934,22 +1930,6 @@ public class ThriftRestGenTask extends DefaultTask {
       overloads.add(
           createBuilderOverload(
               field, primaryMethod, varargsParam, /* annotate */ false, /* varargs */ true));
-
-      ParameterizedTypeName primaryType = (ParameterizedTypeName) typeName(field.getType());
-      ClassName immutableFactoryType = primaryType.rawType;
-
-      overloads.add(
-          MethodSpec.methodBuilder("addTo" +toUpperCamelCaseName(field))
-              .addModifiers(primaryMethod.modifiers)
-              .addParameter(typeName(elementType), "item")
-              .returns(primaryMethod.returnType)
-              .addStatement(
-                  "return $N($T.<$T>builder().addAll(build().$N()).add(item).build())",
-                  primaryMethod,
-                  immutableFactoryType,
-                  typeName(elementType).box(),
-                  accessor)
-              .build());
 
       return overloads.build();
     }

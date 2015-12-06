@@ -160,8 +160,12 @@ public class DbAttributeStoreTest {
     });
 
     HostAttributes hostAUpdated = HOST_A_ATTRS.toBuilder()
-        .setMode(MaintenanceMode.DRAINED)
-        .addToAttributes(Attribute.create("newAttr", ImmutableSet.of("a", "b")))
+        .setMode(MaintenanceMode.DRAINED).setAttributes()
+        .setAttributes(
+            ImmutableSet.<Attribute>builder()
+                .addAll(HOST_A_ATTRS.getAttributes())
+                .add(Attribute.create("newAttr", ImmutableSet.of("a", "b")))
+                .build())
         .build();
     insert(hostAUpdated);
     assertEquals(Optional.of(hostAUpdated), read(HOST_A));

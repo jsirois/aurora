@@ -39,11 +39,15 @@ import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.common.args.constraints.Positive;
 import org.apache.aurora.gen.AcquireLockResult;
 import org.apache.aurora.gen.AddInstancesConfig;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ConfigRewrite;
 import org.apache.aurora.gen.DrainHostsResult;
 import org.apache.aurora.gen.EndMaintenanceResult;
 import org.apache.aurora.gen.Hosts;
+import org.apache.aurora.gen.InstanceConfigRewrite;
+import org.apache.aurora.gen.InstanceKey;
 import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobConfigRewrite;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.JobUpdate;
@@ -68,8 +72,10 @@ import org.apache.aurora.gen.ResponseDetail;
 import org.apache.aurora.gen.Result;
 import org.apache.aurora.gen.RewriteConfigsRequest;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.StartJobUpdateResult;
 import org.apache.aurora.gen.StartMaintenanceResult;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.TaskIdGenerator;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -98,30 +104,12 @@ import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.backup.Recovery;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup;
-import org.apache.aurora.gen.AssignedTask;
-import org.apache.aurora.gen.ConfigRewrite;
-import org.apache.aurora.gen.InstanceConfigRewrite;
-import org.apache.aurora.gen.InstanceKey;
-import org.apache.aurora.gen.JobConfigRewrite;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.JobUpdate;
-import org.apache.aurora.gen.JobUpdateKey;
-import org.apache.aurora.gen.JobUpdateRequest;
-import org.apache.aurora.gen.JobUpdateSettings;
-import org.apache.aurora.gen.Lock;
-import org.apache.aurora.gen.LockKey;
-import org.apache.aurora.gen.Range;
-import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 import org.apache.aurora.scheduler.updater.JobDiff;
 import org.apache.aurora.scheduler.updater.JobUpdateController;
 import org.apache.aurora.scheduler.updater.JobUpdateController.AuditData;
 import org.apache.aurora.scheduler.updater.UpdateStateException;
-import org.apache.thrift.TException;
 
 import static java.util.Objects.requireNonNull;
 
@@ -136,8 +124,6 @@ import static org.apache.aurora.scheduler.base.Numbers.convertRanges;
 import static org.apache.aurora.scheduler.base.Numbers.toRanges;
 import static org.apache.aurora.scheduler.base.Tasks.ACTIVE_STATES;
 import static org.apache.aurora.scheduler.quota.QuotaCheckResult.Result.INSUFFICIENT_QUOTA;
-import static org.apache.aurora.scheduler.thrift.Responses.addMessage;
-import static org.apache.aurora.scheduler.thrift.Responses.empty;
 import static org.apache.aurora.scheduler.thrift.Responses.error;
 import static org.apache.aurora.scheduler.thrift.Responses.invalidRequest;
 import static org.apache.aurora.scheduler.thrift.Responses.ok;
@@ -476,7 +462,7 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
 
         return tasksKilled
             ? ok()
-            : addMessage(empty(), OK, NO_TASKS_TO_KILL_MESSAGE);
+            : Responses.message(OK, NO_TASKS_TO_KILL_MESSAGE);
       }
     });
   }
@@ -647,7 +633,7 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
   @Override
   public Response rewriteConfigs(RewriteConfigsRequest request) {
     if (request.getRewriteCommands().isEmpty()) {
-      return addMessage(Responses.empty(), INVALID_REQUEST, "No rewrite commands provided.");
+      return Responses.message(INVALID_REQUEST, "No rewrite commands provided.");
     }
 
     return storage.write(new MutateWork.Quiet<Response>() {
@@ -978,7 +964,7 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
         }
 
         if (diff.isNoop()) {
-          return addMessage(empty(), OK, NOOP_JOB_UPDATE_MESSAGE);
+          return Responses.message(OK, NOOP_JOB_UPDATE_MESSAGE);
         }
 
         JobUpdateInstructions.Builder instructions = JobUpdateInstructions.builder()

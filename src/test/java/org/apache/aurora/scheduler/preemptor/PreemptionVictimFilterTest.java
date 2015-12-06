@@ -614,7 +614,11 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
   private ScheduledTask assignToHost(ScheduledTask task) {
     return task.toBuilder()
         .setStatus(RUNNING)
-        .addToTaskEvents(TaskEvent.create(0, RUNNING))
+        .setTaskEvents(
+            ImmutableList.<TaskEvent>builder()
+                .addAll(task.getTaskEvents())
+                .add(TaskEvent.create(0, RUNNING))
+                .build())
         .setAssignedTask(task.getAssignedTask().toBuilder()
             .setSlaveHost(HOST)
             .setSlaveId(SLAVE_ID)

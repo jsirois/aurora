@@ -90,7 +90,7 @@ class ShiroAuthorizingInterceptor implements MethodInterceptor {
           "Subject " + subject.getPrincipal() + " lacks permission " + checkedPermission;
       LOG.warning(responseMessage);
       // TODO(ksweeney): 403 FORBIDDEN would be a more accurate translation of this response code.
-      return Responses.addMessage(Responses.empty(), ResponseCode.AUTH_FAILED, responseMessage);
+      return Responses.message(ResponseCode.AUTH_FAILED, responseMessage);
     }
   }
 }

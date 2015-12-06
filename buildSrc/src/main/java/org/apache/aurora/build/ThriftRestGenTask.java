@@ -16,6 +16,7 @@ package org.apache.aurora.build;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.annotation.Generated;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
@@ -928,38 +930,159 @@ public class ThriftRestGenTask extends DefaultTask {
     static class StructInterface {
       final ClassName typeName;
       final ClassName fieldsTypeName;
+      final ClassName noThriftFieldsTypeName;
+      final ClassName builderTypeName;
 
-      public StructInterface(ClassName typeName, ClassName fieldsTypeName) {
+      public StructInterface(
+          ClassName typeName,
+          ClassName fieldsTypeName,
+          ClassName noThriftFieldsTypeName,
+          ClassName builderTypeName) {
+
         this.typeName = typeName;
         this.fieldsTypeName = fieldsTypeName;
+        this.noThriftFieldsTypeName = noThriftFieldsTypeName;
+        this.builderTypeName = builderTypeName;
       }
     }
 
     private StructInterface createStructInterface() throws IOException {
-      String thriftFieldsSimpleName = "ThriftFields";
-      TypeSpec thriftFields =
-          TypeSpec.interfaceBuilder(thriftFieldsSimpleName)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addSuperinterface(TFieldIdEnum.class)
-            .addMethod(
-                MethodSpec.methodBuilder("getFieldType")
-                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                    .returns(Type.class)
-                    .build())
-            .build();
-
       String thriftStructSimpleName = "ThriftStruct";
+      String builderSimpleName = "Builder";
+      String thriftFieldsSimpleName = "ThriftFields";
+      String noFieldsSimpleName = "NoFields";
+
+      ClassName thriftStructClassName =
+          ClassName.get(
+              BaseEmitter.AURORA_THRIFT_PACKAGE_NAME,
+              thriftStructSimpleName);
+
+      ClassName builderClassName =
+          ClassName.get(
+              BaseEmitter.AURORA_THRIFT_PACKAGE_NAME,
+              thriftStructSimpleName,
+              builderSimpleName);
+
       ClassName thriftFieldsClassName =
           ClassName.get(
               BaseEmitter.AURORA_THRIFT_PACKAGE_NAME,
               thriftStructSimpleName,
               thriftFieldsSimpleName);
+
+      ClassName noFieldsClassName =
+          ClassName.get(
+              BaseEmitter.AURORA_THRIFT_PACKAGE_NAME,
+              thriftStructSimpleName,
+              thriftFieldsSimpleName,
+              noFieldsSimpleName);
+
+      TypeSpec thriftFields =
+          TypeSpec.interfaceBuilder(thriftFieldsSimpleName)
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addSuperinterface(TFieldIdEnum.class)
+                  .addType(
+                      TypeSpec.classBuilder(noFieldsSimpleName)
+                          .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                          .addSuperinterface(thriftFieldsClassName)
+                          .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                          .addMethod(
+                              MethodSpec.constructorBuilder()
+                                  .addModifiers(Modifier.PRIVATE)
+                                  .addCode("// NoFields can never be extended so no fields can \n")
+                                  .addCode("// ever be added.\n")
+                                  .build())
+                          .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldType")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(Type.class)
+                      .build())
+              .build();
+
       TypeVariableName fieldsType = TypeVariableName.get("T", thriftFieldsClassName);
+
+      TypeVariableName thriftFieldsTypeVariable = TypeVariableName.get("F", thriftFieldsClassName);
+      TypeVariableName thriftStructTypeVariable =
+          TypeVariableName.get(
+              "S",
+              ParameterizedTypeName.get(thriftStructClassName, thriftFieldsTypeVariable));
+      ParameterizedTypeName builderReturnType =
+          ParameterizedTypeName.get(
+              builderClassName,
+              thriftFieldsTypeVariable,
+              thriftStructTypeVariable);
+
+      TypeSpec builderInterface =
+          TypeSpec.interfaceBuilder(builderSimpleName)
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addTypeVariable(thriftFieldsTypeVariable)
+              .addTypeVariable(thriftStructTypeVariable)
+              .addMethod(
+                  MethodSpec.methodBuilder("set")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .addParameter(thriftFieldsTypeVariable, "field")
+                      .addParameter(Object.class, "value")
+                      .returns(builderReturnType)
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("build")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(thriftStructTypeVariable)
+                      .build())
+              .build();
+
+      ParameterizedTypeName typeParameterTpe =
+          ParameterizedTypeName.get(
+              ClassName.get(Class.class),
+              thriftStructTypeVariable);
+
+      ParameterizedTypeName fieldsReturnType =
+          ParameterizedTypeName.get(
+              ClassName.get(ImmutableSet.class),
+              thriftFieldsTypeVariable);
+
       TypeSpec.Builder structInterfaceBuilder =
           TypeSpec.interfaceBuilder(thriftStructSimpleName)
               .addTypeVariable(fieldsType)
               .addModifiers(Modifier.PUBLIC)
               .addType(thriftFields)
+              .addType(builderInterface)
+              .addMethod(
+                  MethodSpec.methodBuilder("fields")
+                      .addTypeVariable(thriftFieldsTypeVariable)
+                      .addTypeVariable(thriftStructTypeVariable)
+                      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                      .addParameter(
+                          typeParameterTpe,
+                          "type")
+                      .returns(fieldsReturnType)
+                      .beginControlFlow("try")
+                      .addStatement(
+                          "return ($T) type.getMethod($S).invoke(null)",
+                          fieldsReturnType,
+                          "fields")
+                      .nextControlFlow("catch ($T e)", ReflectiveOperationException.class)
+                      .addStatement("throw new $T(e)", IllegalStateException.class)
+                      .endControlFlow()
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("builder")
+                      .addTypeVariable(thriftFieldsTypeVariable)
+                      .addTypeVariable(thriftStructTypeVariable)
+                      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                      .addParameter(
+                          typeParameterTpe,
+                          "type")
+                      .returns(builderReturnType)
+                      .beginControlFlow("try")
+                      .addStatement(
+                          "return ($T) type.getMethod($S).invoke(null)",
+                          builderReturnType,
+                          "builder")
+                      .nextControlFlow("catch ($T e)", ReflectiveOperationException.class)
+                      .addStatement("throw new $T(e)", IllegalStateException.class)
+                      .endControlFlow()
+                      .build())
               .addMethod(
                   MethodSpec.methodBuilder("isSet")
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
@@ -982,8 +1105,10 @@ public class ThriftRestGenTask extends DefaultTask {
       writeType(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, structInterfaceBuilder);
 
       return new StructInterface(
-          ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, thriftStructSimpleName),
-          thriftFieldsClassName);
+          thriftStructClassName,
+          thriftFieldsClassName,
+          noFieldsClassName,
+          builderClassName);
     }
   }
 
@@ -1347,62 +1472,15 @@ public class ThriftRestGenTask extends DefaultTask {
           structInterfaceFactory.getStructInterface();
       Optional<ClassName> fieldsEnumClassName =
           maybeAddFieldsEnum(typeBuilder, struct, structInterface.fieldsTypeName);
-      Optional<ParameterSpec> fieldParam = Optional.absent();
-      Optional<MethodSpec.Builder> isSetMethod = Optional.absent();
-      Optional<CodeBlock.Builder> isSetCode = Optional.absent();
-      Optional<MethodSpec.Builder> getFieldValueMethod = Optional.absent();
-      Optional<CodeBlock.Builder> getFieldValueCode = Optional.absent();
-      if (fieldsEnumClassName.isPresent()) {
-        ClassName localFieldsTypeName = getClassName(struct.getName(), "_Fields");
-        typeBuilder.addSuperinterface(
-            ParameterizedTypeName.get(structInterface.typeName, localFieldsTypeName));
 
-        typeBuilder.addMethod(
-            MethodSpec.methodBuilder("getFields")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .returns(
-                    ParameterizedTypeName.get(
-                        ClassName.get(ImmutableSet.class),
-                        localFieldsTypeName))
-                .addStatement(
-                    "return $T.copyOf($T.allOf($T.class))",
-                    ImmutableSet.class,
-                    EnumSet.class,
-                    localFieldsTypeName)
-                .build());
+      ClassName localFieldsTypeName =
+          fieldsEnumClassName.or(structInterface.noThriftFieldsTypeName);
 
-        ClassName fieldsEnumClass = fieldsEnumClassName.get();
-        fieldParam = Optional.of(ParameterSpec.builder(fieldsEnumClass, "field").build());
-        isSetMethod =
-            Optional.of(
-                MethodSpec.methodBuilder("isSet")
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .addParameter(fieldParam.get())
-                    .returns(boolean.class));
-        isSetCode =
-            Optional.of(
-                CodeBlock.builder()
-                    .beginControlFlow("switch ($N)", fieldParam.get()));
+      ParameterSpec fieldParam = ParameterSpec.builder(localFieldsTypeName, "field").build();
 
-        getFieldValueMethod =
-            Optional.of(
-                MethodSpec.methodBuilder("getFieldValue")
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .addParameter(fieldParam.get())
-                    .returns(Object.class));
-        getFieldValueCode =
-            Optional.of(
-                CodeBlock.builder()
-                    .beginControlFlow("if (!this.isSet($N))", fieldParam.get())
-                    .addStatement(
-                        "throw new $T($T.format($S, $N))",
-                        IllegalArgumentException.class,
-                        String.class,
-                        "%s is not set.",
-                        fieldParam.get())
-                    .endControlFlow()
-                    .beginControlFlow("switch ($N)", fieldParam.get()));
-      }
+      typeBuilder.addSuperinterface(
+          ParameterizedTypeName.get(structInterface.typeName, localFieldsTypeName));
+
 
       TypeSpec.Builder builderBuilder =
           TypeSpec.interfaceBuilder("_Builder")
@@ -1413,11 +1491,136 @@ public class ThriftRestGenTask extends DefaultTask {
       ClassName autoValueBuilderName =
           ClassName.get(getPackageName(), "AutoValue_" + struct.getName(), "Builder");
 
+      ClassName wrapperBuilderName = ClassName.get(getPackageName(), struct.getName(), "Builder");
+
       TypeSpec.Builder wrapperBuilder =
           TypeSpec.classBuilder("Builder")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
               .addSuperinterface(builderBuilderName)
+              .addSuperinterface(
+                  ParameterizedTypeName.get(
+                      structInterface.builderTypeName,
+                      localFieldsTypeName,
+                      getClassName(struct.getName())))
               .addField(builderBuilderName, "builder", Modifier.PRIVATE, Modifier.FINAL);
+
+      Optional<MethodSpec.Builder> isSetMethod = Optional.absent();
+      Optional<CodeBlock.Builder> isSetCode = Optional.absent();
+
+      Optional<MethodSpec.Builder> getFieldValueMethod = Optional.absent();
+      Optional<CodeBlock.Builder> getFieldValueCode = Optional.absent();
+
+      Optional<MethodSpec.Builder> builderSetMethod = Optional.absent();
+      Optional<CodeBlock.Builder> builderSetCode = Optional.absent();
+
+      MethodSpec fieldsMethod;
+      if (fieldsEnumClassName.isPresent()) {
+        fieldsMethod =
+            MethodSpec.methodBuilder("fields")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .returns(
+                    ParameterizedTypeName.get(
+                        ClassName.get(ImmutableSet.class),
+                        localFieldsTypeName))
+                .addStatement(
+                    "return $T.copyOf($T.allOf($T.class))",
+                    ImmutableSet.class,
+                    EnumSet.class,
+                    localFieldsTypeName)
+                .build();
+
+        isSetMethod =
+            Optional.of(
+                MethodSpec.methodBuilder("isSet")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addParameter(fieldParam)
+                    .returns(boolean.class));
+        isSetCode =
+            Optional.of(
+                CodeBlock.builder()
+                    .beginControlFlow("switch ($N)", fieldParam));
+
+        getFieldValueMethod =
+            Optional.of(
+                MethodSpec.methodBuilder("getFieldValue")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addParameter(fieldParam)
+                    .returns(Object.class));
+        getFieldValueCode =
+            Optional.of(
+                CodeBlock.builder()
+                    .beginControlFlow("if (!this.isSet($N))", fieldParam)
+                    .addStatement(
+                        "throw new $T($T.format($S, $N))",
+                        IllegalArgumentException.class,
+                        String.class,
+                        "%s is not set.",
+                        fieldParam)
+                    .endControlFlow()
+                    .beginControlFlow("switch ($N)", fieldParam));
+
+        builderSetMethod =
+            Optional.of(
+                MethodSpec.methodBuilder("set")
+                    .addAnnotation(Override.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addParameter(localFieldsTypeName, "field")
+                    .addParameter(
+                        ParameterSpec.builder(Object.class, "value")
+                            .addAnnotation(Nullable.class)
+                            .build())
+                    .returns(wrapperBuilderName));
+        builderSetCode =
+            Optional.of(
+                CodeBlock.builder()
+                    .beginControlFlow("switch ($N)", fieldParam));
+      } else {
+        fieldsMethod =
+            MethodSpec.methodBuilder("fields")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .returns(
+                    ParameterizedTypeName.get(
+                        ClassName.get(ImmutableSet.class),
+                        localFieldsTypeName))
+                .addStatement("return $T.of()", ImmutableSet.class)
+                .build();
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder("isSet")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(fieldParam)
+                .returns(boolean.class)
+                .addStatement("throw new $T()", IllegalAccessError.class)
+                .build());
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder("getFieldValue")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(fieldParam)
+                .returns(Object.class)
+                .addStatement("throw new $T()", IllegalAccessError.class)
+                .build());
+
+        wrapperBuilder.addMethod(
+            MethodSpec.methodBuilder("set")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(localFieldsTypeName, "field")
+                .addParameter(
+                    ParameterSpec.builder(Object.class, "value")
+                        .addAnnotation(Nullable.class)
+                        .build())
+                .returns(wrapperBuilderName)
+                .addStatement("throw new $T()", IllegalAccessError.class)
+                .build());
+      }
+      typeBuilder.addMethod(fieldsMethod);
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("getFields")
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .returns(fieldsMethod.returnType)
+              .addStatement("return $N()", fieldsMethod)
+              .build());
 
       wrapperBuilder.addMethod(
           MethodSpec.constructorBuilder()
@@ -1431,7 +1634,6 @@ public class ThriftRestGenTask extends DefaultTask {
               .add("this(new $T()", autoValueBuilderName);
 
       // A convenience builder factory method for coding against; the Builder is defined below.
-      ClassName wrapperBuilderName = ClassName.get(getPackageName(), struct.getName(), "Builder");
       typeBuilder.addMethod(
           MethodSpec.methodBuilder("builder")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -1455,8 +1657,10 @@ public class ThriftRestGenTask extends DefaultTask {
               .addStatement("return new $T($N())", wrapperBuilderName, toBuilder)
               .build());
 
-      // Make the constructor package private for the Immutable implementations to access.
-      typeBuilder.addMethod(MethodSpec.constructorBuilder().build());
+      typeBuilder.addMethod(
+          MethodSpec.constructorBuilder()
+              .addCode("// Package private for access by AutoValue subclass only.\n")
+              .build());
 
       // Setup the psuedo-constructor.
       ClassName structClassName = getClassName(struct.getName());
@@ -1499,6 +1703,12 @@ public class ThriftRestGenTask extends DefaultTask {
           isSetCode.get().addStatement("case $L: return true", fieldsValueName);
         }
         getFieldValueCode.get().addStatement("case $L: return $N()", fieldsValueName, accessor);
+        builderSetCode.get()
+            .add("case $L:\n", fieldsValueName)
+            .indent()
+            .addStatement("$N(($T) value)", setterName(field), typeName(type))
+            .addStatement("break")
+            .unindent();
 
         ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
         if (nullable && !unsetValue.isPresent()) {
@@ -1618,7 +1828,7 @@ public class ThriftRestGenTask extends DefaultTask {
                             IllegalArgumentException.class,
                             String.class,
                             "%s is not a known field",
-                            fieldParam.get())
+                            fieldParam)
                         .endControlFlow()
                         .build())
                 .build());
@@ -1634,7 +1844,7 @@ public class ThriftRestGenTask extends DefaultTask {
                             IllegalArgumentException.class,
                             String.class,
                             "%s is not a known field",
-                            fieldParam.get())
+                            fieldParam)
                         .endControlFlow()
                         .build())
                 .build());
@@ -1664,6 +1874,23 @@ public class ThriftRestGenTask extends DefaultTask {
                       .add(");\n$]")
                       .build())
               .build());
+
+      if (builderSetCode.isPresent()) {
+        wrapperBuilder.addMethod(
+            builderSetMethod.get()
+                .addCode(
+                    builderSetCode.get()
+                        .addStatement(
+                            "default: throw new $T($T.format($S, $N))",
+                            IllegalArgumentException.class,
+                            String.class,
+                            "%s is not a known field",
+                            fieldParam)
+                        .endControlFlow()
+                        .addStatement("return this")
+                        .build())
+                .build());
+      }
 
       wrapperBuilder.addMethod(
           MethodSpec.methodBuilder("build")

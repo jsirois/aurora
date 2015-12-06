@@ -333,12 +333,15 @@ public class StateManagerImpl implements StateManager {
             public ScheduledTask apply(ScheduledTask task) {
               return task.toBuilder()
                   .setStatus(targetState.get())
-                  .addToTaskEvents(TaskEvent.builder()
-                      .setTimestamp(clock.nowMillis())
-                      .setStatus(targetState.get())
-                      .setMessage(transitionMessage.orNull())
-                      .setScheduler(LOCAL_HOST_SUPPLIER.get())
-                      .build())
+                  .setTaskEvents(
+                      ImmutableList.<TaskEvent>builder()
+                          .addAll(task.getTaskEvents())
+                          .add(TaskEvent.builder()
+                              .setTimestamp(clock.nowMillis())
+                              .setStatus(targetState.get())
+                              .setMessage(transitionMessage.orNull())
+                              .setScheduler(LOCAL_HOST_SUPPLIER.get())
+                              .build()).build())
                   .build();
             }
           });

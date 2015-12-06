@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
@@ -103,7 +104,7 @@ public interface SnapshotDeduplicator {
       for (Entry<TaskConfig, List<ScheduledTask>> entry : Multimaps.asMap(index).entrySet()) {
         indexedConfigs.add(entry.getKey());
         for (ScheduledTask scheduledTask : entry.getValue()) {
-          deduplicatedSnapshot.addToPartialTasks(DeduplicatedScheduledTask.builder()
+          deduplicatedTasks.add(DeduplicatedScheduledTask.builder()
               .setPartialScheduledTask(withoutTaskConfig(scheduledTask))
               .setTaskConfigId(indexedConfigs.size() - 1)
               .build());
@@ -133,12 +134,15 @@ public interface SnapshotDeduplicator {
     public Snapshot reduplicate(DeduplicatedSnapshot deduplicatedSnapshot) throws CodingException {
       LOG.info("Starting reduplication.");
       int numInputTasks = deduplicatedSnapshot.getTaskConfigs().size();
+      Snapshot partialSnapshot = deduplicatedSnapshot.getPartialSnapshot();
       if (numInputTasks == 0) {
         LOG.warning("Got deduplicated snapshot with unset task configs.");
-        return deduplicatedSnapshot.getPartialSnapshot();
+        return partialSnapshot;
       }
 
-      Snapshot.Builder snapshot = deduplicatedSnapshot.getPartialSnapshot().toBuilder();
+      Snapshot.Builder snapshot = partialSnapshot.toBuilder();
+      ImmutableSet.Builder<ScheduledTask> scheduledTasks = ImmutableSet.builder();
+      scheduledTasks.addAll(partialSnapshot.getTasks());
       for (DeduplicatedScheduledTask partialTask : deduplicatedSnapshot.getPartialTasks()) {
         int taskConfigId = partialTask.getTaskConfigId();
         TaskConfig config;
@@ -154,8 +158,9 @@ public interface SnapshotDeduplicator {
                 .setTask(config)
                 .build())
             .build();
-        snapshot.addToTasks(scheduledTask);
+        scheduledTasks.add(scheduledTask);
       }
+      snapshot.setTasks(scheduledTasks.build());
 
       Snapshot built = snapshot.build();
       int numOutputTasks = built.getTasks().size();

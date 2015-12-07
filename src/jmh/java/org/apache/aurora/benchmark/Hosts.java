@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
-import org.apache.aurora.gen.HostAttributes;
 
 /**
  * Host attribute builder.
@@ -48,13 +47,14 @@ final class Hosts {
       ImmutableSet.Builder<HostAttributes> attributes = ImmutableSet.builder();
       int rackIndex = 0;
       for (int i = 0; i < count; i++) {
-        attributes.add(HostAttributes.build(new HostAttributes()
+        attributes.add(HostAttributes.builder()
             .setHost(String.format(HOST_NAME_FORMAT, i))
             .setSlaveId(String.format(SLAVE_ID_FORMAT, i))
             .setMode(MaintenanceMode.NONE)
-            .setAttributes(ImmutableSet.of(
-                new Attribute("rack", ImmutableSet.of(String.format(RACK_NAME_FORMAT, rackIndex))),
-                new Attribute("host", ImmutableSet.of(String.format(HOST_NAME_FORMAT, i)))))));
+            .setAttributes(
+                Attribute.create("rack", ImmutableSet.of(String.format(RACK_NAME_FORMAT, rackIndex))),
+                Attribute.create("host", ImmutableSet.of(String.format(HOST_NAME_FORMAT, i))))
+            .build());
 
         if (i % hostsPerRack == 0) {
           rackIndex++;

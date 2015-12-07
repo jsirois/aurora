@@ -31,6 +31,7 @@ import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.ReadOnlyScheduler;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.async.AsyncModule;
 import org.apache.aurora.scheduler.cron.CronPredictor;
@@ -38,7 +39,6 @@ import org.apache.aurora.scheduler.quota.QuotaManager;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.thrift.ThriftModule;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -123,7 +123,7 @@ public class ThriftApiBenchmarks {
 
     @Benchmark
     public Response run() throws TException {
-      return api.getTasksStatus(new TaskQuery());
+      return api.getTasksStatus(TaskQuery.builder().build());
     }
   }
 

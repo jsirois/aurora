@@ -30,14 +30,14 @@ import org.apache.aurora.benchmark.fakes.FakeStatsProvider;
 import org.apache.aurora.common.inject.Bindings;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.gen.JobUpdateDetails;
-import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -120,12 +120,13 @@ public class SnapshotBenchmarks {
       JobUpdateKey key = details.getUpdate().getSummary().getKey();
       String lockToken = UUID.randomUUID().toString();
 
-      lockBuilder.add(new Lock(LockKey.job(key.getJob().newBuilder()), lockToken, "user", 0L));
-      detailsBuilder.add(new StoredJobUpdateDetails(details.newBuilder(), lockToken));
+      lockBuilder.add(Lock.create(LockKey.job(key.getJob()), lockToken, "user", 0L));
+      detailsBuilder.add(StoredJobUpdateDetails.create(details, lockToken));
     }
 
-    return new Snapshot()
+    return Snapshot.builder()
         .setLocks(lockBuilder.build())
-        .setJobUpdateDetails(detailsBuilder.build());
+        .setJobUpdateDetails(detailsBuilder.build())
+        .build();
   }
 }

@@ -16,7 +16,6 @@ package org.apache.aurora.benchmark;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
@@ -29,8 +28,6 @@ import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 
 /**
  * Task factory.
@@ -45,7 +42,7 @@ final class Tasks {
    * Builds tasks for the specified configuration.
    */
   static final class Builder {
-    private JobKey jobKey = new JobKey("jmh", "dev", "benchmark");
+    private JobKey.Builder jobKeyBuilder = JobKey.create("jmh", "dev", "benchmark").toBuilder();
     private int uuidStart = 0;
     private boolean isProduction = false;
     private double cpu = 6.0;
@@ -55,17 +52,17 @@ final class Tasks {
     private ImmutableSet.Builder<Constraint> constraints = ImmutableSet.builder();
 
     Builder setRole(String newRole) {
-      jobKey.setRole(newRole);
+      jobKeyBuilder.setRole(newRole);
       return this;
     }
 
     Builder setEnv(String env) {
-      jobKey.setEnvironment(env);
+      jobKeyBuilder.setEnvironment(env);
       return this;
     }
 
     Builder setJob(String job) {
-      jobKey.setName(job);
+      jobKeyBuilder.setName(job);
       return this;
     }
 
@@ -100,20 +97,24 @@ final class Tasks {
     }
 
     Builder addValueConstraint(String name, String value) {
-      constraints.add(new Constraint()
+      constraints.add(Constraint.builder()
           .setName(name)
-          .setConstraint(TaskConstraint.value(new ValueConstraint()
+          .setConstraint(TaskConstraint.value(ValueConstraint.builder()
               .setNegated(false)
-              .setValues(ImmutableSet.of(value)))));
+              .setValues(value)
+              .build()))
+          .build());
 
       return this;
     }
 
     Builder addLimitConstraint(String name, int limit) {
-      constraints.add(new Constraint()
+      constraints.add(Constraint.builder()
           .setName(name)
-          .setConstraint(TaskConstraint.limit(new LimitConstraint()
-              .setLimit(limit))));
+          .setConstraint(TaskConstraint.limit(LimitConstraint.builder()
+              .setLimit(limit)
+              .build()))
+          .build());
 
       return this;
     }
@@ -127,27 +128,36 @@ final class Tasks {
     Set<ScheduledTask> build(int count) {
       ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
 
+      JobKey finalJobKey = jobKeyBuilder.build();
       for (int i = 0; i < count; i++) {
         String taskId =
-            jobKey.getRole() + "-" + jobKey.getEnvironment() + "-" + i + "-" + (uuidStart + i);
+            String.format(
+                "%s-%s-%d-%s",
+                finalJobKey.getRole(),
+                finalJobKey.getEnvironment(),
+                i,
+                (uuidStart + i));
 
-        ScheduledTask builder = TaskTestUtil.makeTask(taskId, JobKey.build(jobKey))
-            .newBuilder()
+        ScheduledTask scheduledTask = TaskTestUtil.makeTask(taskId, finalJobKey);
+        ScheduledTask builder = scheduledTask.toBuilder()
             .setStatus(scheduleStatus)
-            .setTaskEvents(Lists.newArrayList(
-                new TaskEvent(0, ScheduleStatus.PENDING),
-                new TaskEvent(1, scheduleStatus)));
-        builder.getAssignedTask()
-            .setInstanceId(i)
-            .setTaskId(taskId);
-        builder.getAssignedTask().getTask()
-            .setConstraints(constraints.build())
-            .setNumCpus(cpu)
-            .setRamMb(ram.as(Data.MB))
-            .setDiskMb(disk.as(Data.MB))
-            .setProduction(isProduction)
-            .setRequestedPorts(ImmutableSet.of());
-        tasks.add(ScheduledTask.build(builder));
+            .setTaskEvents(
+                TaskEvent.create(0, ScheduleStatus.PENDING),
+                TaskEvent.create(1, scheduleStatus))
+            .setAssignedTask(scheduledTask.getAssignedTask().toBuilder()
+                .setInstanceId(i)
+                .setTaskId(taskId)
+                .setTask(scheduledTask.getAssignedTask().getTask().toBuilder()
+                    .setConstraints(constraints.build())
+                    .setNumCpus(cpu)
+                    .setRamMb(ram.as(Data.MB))
+                    .setDiskMb(disk.as(Data.MB))
+                    .setProduction(isProduction)
+                    .setRequestedPorts()
+                    .build())
+                .build())
+            .build();
+        tasks.add(builder);
       }
 
       return tasks.build();

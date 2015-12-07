@@ -30,7 +30,7 @@ public final class DbScheduledTask {
   private DbScheduledTask() {
   }
 
-  public ScheduledTask toImmutable() {
+  public ScheduledTask toThrift() {
     return ScheduledTask.builder()
         .setAssignedTask(assignedTask.toThrift())
         .setStatus(status)

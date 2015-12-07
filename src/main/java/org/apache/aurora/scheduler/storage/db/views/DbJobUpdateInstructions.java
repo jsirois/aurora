@@ -29,7 +29,7 @@ public final class DbJobUpdateInstructions {
   private DbJobUpdateInstructions() {
   }
 
-  JobUpdateInstructions toThrift() {
+  public JobUpdateInstructions toThrift() {
     return JobUpdateInstructions.builder()
         .setInitialState(
             FluentIterable.from(initialState)
@@ -38,9 +38,5 @@ public final class DbJobUpdateInstructions {
         .setDesiredState(desiredState == null ? null : desiredState.toThrift())
         .setSettings(settings)
         .build();
-  }
-
-  public JobUpdateInstructions toImmutable() {
-    return toThrift();
   }
 }

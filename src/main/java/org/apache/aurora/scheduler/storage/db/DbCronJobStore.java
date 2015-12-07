@@ -65,7 +65,7 @@ class DbCronJobStore implements CronJobStore.Mutable {
   @Override
   public Iterable<JobConfiguration> fetchJobs() {
     return FluentIterable.from(cronJobMapper.selectAll())
-        .transform(DbJobConfiguration::toImmutable)
+        .transform(DbJobConfiguration::toThrift)
         .toList();
   }
 
@@ -73,6 +73,6 @@ class DbCronJobStore implements CronJobStore.Mutable {
   public Optional<JobConfiguration> fetchJob(JobKey jobKey) {
     requireNonNull(jobKey);
     return Optional.fromNullable(cronJobMapper.select(jobKey))
-        .transform(DbJobConfiguration::toImmutable);
+        .transform(DbJobConfiguration::toThrift);
   }
 }

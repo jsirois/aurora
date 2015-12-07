@@ -42,7 +42,6 @@ import org.apache.aurora.scheduler.storage.TaskStore;
 import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 
 import static java.util.Objects.requireNonNull;
@@ -221,7 +220,7 @@ class DbTaskStore implements TaskStore.Mutable {
     }
 
     return FluentIterable.from(results)
-        .transform(DbScheduledTask::toImmutable)
+        .transform(DbScheduledTask::toThrift)
         .filter(filter);
   }
 }

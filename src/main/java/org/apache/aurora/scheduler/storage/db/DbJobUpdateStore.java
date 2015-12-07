@@ -216,14 +216,14 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Override
   public Optional<JobUpdate> fetchJobUpdate(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectUpdate(key))
-        .transform(DbJobUpdate::toImmutable);
+        .transform(DbJobUpdate::toThrift);
   }
 
   @Timed("job_update_store_fetch_instructions")
   @Override
   public Optional<JobUpdateInstructions> fetchJobUpdateInstructions(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectInstructions(key))
-        .transform(DbJobUpdateInstructions::toImmutable);
+        .transform(DbJobUpdateInstructions::toThrift);
   }
 
   @Timed("job_update_store_fetch_all_details")

@@ -30,7 +30,7 @@ public final class DbJobConfiguration {
   private DbJobConfiguration() {
   }
 
-  public JobConfiguration toImmutable() {
+  public JobConfiguration toThrift() {
     return JobConfiguration.builder()
         .setKey(key)
         .setOwner(owner)

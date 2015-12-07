@@ -100,7 +100,7 @@ public class RowGarbageCollectorTest {
     // populated, therefore full object equivalence cannot easily be used.
     assertEquals(
         TASK_A2.getAssignedTask().getTask().getRamMb(),
-        Iterables.getOnlyElement(taskConfigMapper.selectConfigsByJob(JOB_A)).toImmutable()
+        Iterables.getOnlyElement(taskConfigMapper.selectConfigsByJob(JOB_A)).toThrift()
             .getRamMb());
     assertEquals(ImmutableList.of(), taskConfigMapper.selectConfigsByJob(JOB_B));
   }

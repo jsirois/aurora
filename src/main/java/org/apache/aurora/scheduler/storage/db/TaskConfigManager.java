@@ -45,7 +45,7 @@ class TaskConfigManager {
     Map<TaskConfig, DbTaskConfig> rowsByConfig =
         Maps.uniqueIndex(
             configMapper.selectConfigsByJob(config.getJob()),
-            DbTaskConfig::toImmutable);
+            DbTaskConfig::toThrift);
 
     return Optional.ofNullable(rowsByConfig.get(config)).map(DbTaskConfig::getRowId);
   }

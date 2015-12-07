@@ -24,14 +24,10 @@ public final class DbJobUpdate {
   private DbJobUpdate() {
   }
 
-  JobUpdate toThrift() {
+  public JobUpdate toThrift() {
     return JobUpdate.builder()
         .setSummary(summary)
         .setInstructions(instructions.toThrift())
         .build();
-  }
-
-  public JobUpdate toImmutable() {
-    return toThrift();
   }
 }

@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.benchmark.fakes;
 
-import org.apache.aurora.scheduler.scheduling.RescheduleCalculator;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.scheduler.scheduling.RescheduleCalculator;
 
 public class FakeRescheduleCalculator implements RescheduleCalculator {
   @Override

@@ -52,7 +52,8 @@ final class Hosts {
             .setSlaveId(String.format(SLAVE_ID_FORMAT, i))
             .setMode(MaintenanceMode.NONE)
             .setAttributes(
-                Attribute.create("rack", ImmutableSet.of(String.format(RACK_NAME_FORMAT, rackIndex))),
+                Attribute.create("rack",
+                    ImmutableSet.of(String.format(RACK_NAME_FORMAT, rackIndex))),
                 Attribute.create("host", ImmutableSet.of(String.format(HOST_NAME_FORMAT, i))))
             .build());
 

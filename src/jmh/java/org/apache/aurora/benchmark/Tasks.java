@@ -136,7 +136,7 @@ final class Tasks {
                 finalJobKey.getRole(),
                 finalJobKey.getEnvironment(),
                 i,
-                (uuidStart + i));
+                uuidStart + i);
 
         ScheduledTask scheduledTask = TaskTestUtil.makeTask(taskId, finalJobKey);
         ScheduledTask builder = scheduledTask.toBuilder()

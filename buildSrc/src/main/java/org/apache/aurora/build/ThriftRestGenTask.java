@@ -19,7 +19,6 @@ import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +45,7 @@ import com.facebook.swift.parser.model.ConstMap;
 import com.facebook.swift.parser.model.ConstString;
 import com.facebook.swift.parser.model.ConstValue;
 import com.facebook.swift.parser.model.ContainerType;
+import com.facebook.swift.parser.model.Definition;
 import com.facebook.swift.parser.model.Document;
 import com.facebook.swift.parser.model.IdentifierType;
 import com.facebook.swift.parser.model.IntegerEnum;
@@ -70,6 +70,8 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -156,17 +158,125 @@ public class ThriftRestGenTask extends DefaultTask {
     // we may want this - partially depends on TODO above.
 
     File outdir = getOutputs().getFiles().getSingleFile();
-    Map<String, String> packageNameByImportPrefix = new HashMap<>();
+    SymbolTable symbolTable = new SymbolTable();
     Set<File> thriftFiles =
         getInputs().getFiles().getFiles()
             .stream()
             .map(File::getAbsoluteFile)
             .collect(Collectors.toSet());
-    processThriftFiles(packageNameByImportPrefix, thriftFiles, outdir, false);
+    processThriftFiles(symbolTable, thriftFiles, outdir, false);
   }
 
-  private void processThriftFiles(
-      Map<String, String> packageNameByImportPrefix,
+  static class SymbolTable {
+    static class Symbol {
+      private final String packageName;
+      private final Definition symbol;
+
+      Symbol(String packageName, Definition symbol) {
+        this.packageName = packageName;
+        this.symbol = symbol;
+      }
+
+      ClassName getClassName() {
+        return ClassName.get(packageName, symbol.getName());
+      }
+
+      Definition getSymbol() {
+        return symbol;
+      }
+    }
+
+    private final ImmutableBiMap<File, String> importPrefixByFile;
+    private final ImmutableMap<String, String> packageNameByImportPrefix;
+    private final ImmutableMap<String, ImmutableMap<String, Symbol>> symbolsByPackageName;
+
+    SymbolTable() {
+      this(
+          ImmutableBiMap.<File, String>of(),
+          ImmutableMap.<String, String>of(),
+          ImmutableMap.<String, ImmutableMap<String, Symbol>>of());
+    }
+
+    private SymbolTable(
+        ImmutableBiMap<File, String> importPrefixByFile,
+        ImmutableMap<String, String> packageNameByImportPrefix,
+        ImmutableMap<String, ImmutableMap<String, Symbol>> symbolsByPackageName) {
+
+      this.importPrefixByFile = importPrefixByFile;
+      this.packageNameByImportPrefix = packageNameByImportPrefix;
+      this.symbolsByPackageName = symbolsByPackageName;
+    }
+
+    Symbol lookup(String packageName, IdentifierType identifier) {
+      return lookup(packageName, identifier.getName());
+    }
+
+    Symbol lookup(String packageName, String identifierName) {
+      List<String> parts = Splitter.on('.').limit(2).splitToList(identifierName);
+      if (parts.size() == 2) {
+        String importPrefix = parts.get(0);
+        packageName = packageNameByImportPrefix.get(importPrefix);
+        if (packageName == null) {
+          throw new ParseException(
+              String.format(
+                  "Could not map identifier %s to a parsed type: %s", identifierName, this));
+        }
+        identifierName = parts.get(1);
+      }
+      return symbolsByPackageName.get(packageName).get(identifierName);
+    }
+
+    SymbolTable updated(File file, String packageName, Iterable<Definition> definitions) {
+      if (importPrefixByFile.containsKey(file)) {
+        return this;
+      }
+
+      String importPrefix = Files.getNameWithoutExtension(file.getName());
+      String existingPackageName = packageNameByImportPrefix.get(importPrefix);
+      if (existingPackageName != null) {
+        throw new ParseException(
+            String.format(
+                "Invalid include, already have an include with prefix of %s containing " +
+                    "definitions for package %s in file %s.",
+                importPrefix, existingPackageName, importPrefixByFile.inverse().get(importPrefix)));
+      }
+
+      ImmutableBiMap<File, String> prefixByFile =
+          ImmutableBiMap.<File, String>builder()
+              .putAll(importPrefixByFile)
+              .put(file, importPrefix)
+              .build();
+
+      ImmutableMap<String, String> packageByPrefix =
+          ImmutableMap.<String, String>builder()
+              .putAll(packageNameByImportPrefix)
+              .put(importPrefix, packageName)
+              .build();
+
+      ImmutableMap<String, ImmutableMap<String, Symbol>> symbolsByPackage =
+          ImmutableMap.<String, ImmutableMap<String, Symbol>>builder()
+              .putAll(symbolsByPackageName)
+              .put(
+                  packageName,
+                  Maps.uniqueIndex(
+                      Iterables.transform(definitions, d -> new Symbol(packageName, d)),
+                      s -> s.getClassName().simpleName()))
+              .build();
+
+      return new SymbolTable(prefixByFile, packageByPrefix, symbolsByPackage);
+    }
+
+    @Override
+    public String toString() {
+      return "SymbolTable{" +
+          "packageNameByImportPrefix=" + packageNameByImportPrefix +
+          ", symbolsByPackageName=" + symbolsByPackageName +
+          '}';
+    }
+  }
+
+  private SymbolTable processThriftFiles(
+      SymbolTable symbolTable,
       Set<File> thriftFiles,
       File outdir,
       boolean required)
@@ -185,31 +295,31 @@ public class ThriftRestGenTask extends DefaultTask {
           getLogger().warn("Skipping {} - no java namespace", thriftFile);
         }
       } else {
+        symbolTable = symbolTable.updated(thriftFile, packageName, document.getDefinitions());
         Set<File> includes =
             document.getHeader().getIncludes()
                 .stream()
                 .map(inc -> new File(thriftFile.getParentFile(), inc).getAbsoluteFile())
                 .filter(f -> !processed.contains(f))
                 .collect(Collectors.toSet());
-        processThriftFiles(packageNameByImportPrefix, includes, outdir, true);
+        symbolTable = processThriftFiles(symbolTable, includes, outdir, true);
 
         if (packageSuffix.isPresent()) {
           packageName = packageName + packageSuffix.get();
         }
+
         ThriftGenVisitor visitor =
             new ThriftGenVisitor(
                 getLogger(),
                 outdir,
-                ImmutableMap.copyOf(packageNameByImportPrefix),
+                symbolTable,
                 packageName);
         document.visit(visitor);
         visitor.finish();
-        packageNameByImportPrefix.put(
-            Files.getNameWithoutExtension(thriftFile.getName()),
-            packageName);
         processed.add(thriftFile);
       }
     }
+    return symbolTable;
   }
 
   @NotThreadSafe
@@ -224,18 +334,18 @@ public class ThriftRestGenTask extends DefaultTask {
     ThriftGenVisitor(
         Logger logger,
         File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
+        SymbolTable symbolTable,
         String packageName) {
 
       StructInterfaceFactory structInterfaceFactory = new StructInterfaceFactory(logger, outdir);
       visitors =
           ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
               .put(Const.class,
-                  new ConstVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+                  new ConstVisitor(logger, outdir, symbolTable, packageName))
               .put(IntegerEnum.class,
-                  new IntegerEnumVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+                  new IntegerEnumVisitor(logger, outdir, symbolTable, packageName))
               .put(Service.class,
-                  new ServiceVisior(logger, outdir, packageNameByImportPrefix, packageName))
+                  new ServiceVisior(logger, outdir, symbolTable, packageName))
               // Not needed by Aurora and of questionable value to ever add support for.
               .put(StringEnum.class,
                   Visitor.failing("The Senum type is deprecated and removed in thrift 1.0.0, " +
@@ -245,12 +355,12 @@ public class ThriftRestGenTask extends DefaultTask {
                       structInterfaceFactory,
                       logger,
                       outdir,
-                      packageNameByImportPrefix,
+                      symbolTable,
                       packageName))
               // Currently not used by Aurora, but trivial to support.
               .put(ThriftException.class, Visitor.failing())
               .put(TypeAnnotation.class,
-                  new TypeAnnotationVisitor(logger, outdir, packageNameByImportPrefix, packageName))
+                  new TypeAnnotationVisitor(logger, outdir, symbolTable, packageName))
               // TODO(John Sirois): Implement as the need arises.
               // Currently not needed by Aurora; requires deferring all generation to `finish` and
               // collecting a full symbol table + adding a resolve method to resolve through
@@ -261,7 +371,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       structInterfaceFactory,
                       logger,
                       outdir,
-                      packageNameByImportPrefix,
+                      symbolTable,
                       packageName))
               .build();
     }
@@ -491,7 +601,7 @@ public class ThriftRestGenTask extends DefaultTask {
       return outdir;
     }
 
-    protected final void writeType(String packageName, TypeSpec.Builder typeBuilder)
+    protected final TypeSpec writeType(String packageName, TypeSpec.Builder typeBuilder)
         throws IOException {
 
       TypeSpec type =
@@ -509,6 +619,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .build();
       javaFile.writeTo(getOutdir());
       getLogger().info("Wrote {} to {}", type.name, getOutdir());
+      return type;
     }
   }
 
@@ -527,18 +638,21 @@ public class ThriftRestGenTask extends DefaultTask {
       return value;
     }
 
-    private final ImmutableMap<String, String> packageNameByImportPrefix;
+    private final SymbolTable symbolTable;
     private final String packageName;
 
-    public BaseVisitor(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName) {
-
+    public BaseVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
       super(logger, outdir);
-      this.packageNameByImportPrefix = packageNameByImportPrefix;
+      this.symbolTable = symbolTable;
       this.packageName = requireNonNull(packageName);
+    }
+
+    protected final SymbolTable.Symbol lookup(String identifier) {
+      return symbolTable.lookup(getPackageName(), identifier);
+    }
+
+    protected final SymbolTable.Symbol lookup(IdentifierType identifier) {
+      return symbolTable.lookup(getPackageName(), identifier);
     }
 
     protected final ClassName getClassName(IdentifierType identifierType, String... simpleNames) {
@@ -550,19 +664,8 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     protected final ClassName getClassName(String identifier, String... simpleNames) {
-      List<String> parts = Splitter.on('.').limit(2).splitToList(identifier);
-      if (parts.size() == 1) {
-        return ClassName.get(getPackageName(), identifier, simpleNames);
-      } else {
-        String importPrefix = parts.get(0);
-        String typeName = parts.get(1);
-        String packageName = packageNameByImportPrefix.get(importPrefix);
-        if (packageName == null) {
-          throw new ParseException(
-              String.format("Could not map identifier %s to a parsed type", identifier));
-        }
-        return ClassName.get(packageName, typeName, simpleNames);
-      }
+      ClassName className = lookup(identifier).getClassName();
+      return ClassName.get(className.packageName(), className.simpleName(), simpleNames);
     }
 
     protected final String getPackageName() {
@@ -602,6 +705,7 @@ public class ThriftRestGenTask extends DefaultTask {
     protected final ParameterizedTypeName parameterizedTypeName(
         Class<?> type,
         ThriftType... parameters) {
+
       return ParameterizedTypeName.get(ClassName.get(type),
           Stream.of(parameters).map(p -> typeName(p).box()).toArray(TypeName[]::new));
     }
@@ -906,8 +1010,8 @@ public class ThriftRestGenTask extends DefaultTask {
       return Optional.of(fieldsClassName);
     }
 
-    protected final void writeType(TypeSpec.Builder typeBuilder) throws IOException {
-      writeType(getPackageName(), typeBuilder);
+    protected final TypeSpec writeType(TypeSpec.Builder typeBuilder) throws IOException {
+      return writeType(getPackageName(), typeBuilder);
     }
   }
 
@@ -1115,13 +1219,8 @@ public class ThriftRestGenTask extends DefaultTask {
   static class ConstVisitor extends BaseVisitor<Const> {
     private final ImmutableList.Builder<Const> consts = ImmutableList.builder();
 
-    public ConstVisitor(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName) {
-
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+    ConstVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+      super(logger, outdir, symbolTable, packageName);
     }
 
     @Override
@@ -1153,13 +1252,8 @@ public class ThriftRestGenTask extends DefaultTask {
   }
 
   static class IntegerEnumVisitor extends BaseVisitor<IntegerEnum> {
-    public IntegerEnumVisitor(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName) {
-
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+    IntegerEnumVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+      super(logger, outdir, symbolTable, packageName);
     }
 
     @Override
@@ -1239,13 +1333,8 @@ public class ThriftRestGenTask extends DefaultTask {
 
     private TypeName thriftServiceInterface;
 
-    ServiceVisior(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName) {
-
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+    ServiceVisior(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+      super(logger, outdir, symbolTable, packageName);
     }
 
     @Override
@@ -1426,14 +1515,14 @@ public class ThriftRestGenTask extends DefaultTask {
     private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
     private final StructInterfaceFactory structInterfaceFactory;
 
-    public StructVisitor(
+    StructVisitor(
         StructInterfaceFactory structInterfaceFactory,
         Logger logger,
         File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
+        SymbolTable symbolTable,
         String packageName) {
 
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+      super(logger, outdir, symbolTable, packageName);
       this.structInterfaceFactory = structInterfaceFactory;
     }
 
@@ -1898,7 +1987,178 @@ public class ThriftRestGenTask extends DefaultTask {
               .build());
       typeBuilder.addType(wrapperBuilder.build());
 
-      writeType(typeBuilder);
+      TypeSpec typeSpec = writeType(typeBuilder);
+
+      Optional<PeerInfo> peerInfo = PeerInfo.from(getPackageName(), struct);
+      if (peerInfo.isPresent()) {
+        PeerInfo mutablePeer = peerInfo.get();
+        if (mutablePeer.render) {
+          TypeSpec.Builder peerType =
+              createMutablePeer(struct, typeSpec, mutablePeer);
+          writeType(mutablePeer.packageName, peerType);
+        }
+      }
+    }
+
+    static class PeerInfo {
+      static Optional<PeerInfo> from(String packageName, AbstractStruct struct) {
+        return FluentIterable.from(struct.getAnnotations())
+            .filter(a -> "mutablePeer".equals(a.getName()))
+            .transform(TypeAnnotation::getValue)
+            .first()
+            .transform(value -> new PeerInfo(packageName, struct, value));
+      }
+
+      final boolean render;
+      final String packageName;
+      final String className;
+
+      private PeerInfo(String structPackageName, AbstractStruct struct, String mutablePeerValue) {
+        render = Boolean.parseBoolean(mutablePeerValue);
+        if (render) {
+          packageName = structPackageName + ".peer";
+          className = "Mutable" + struct.getName();
+        } else {
+          int i = mutablePeerValue.lastIndexOf('.');
+          if (i == -1) {
+            packageName = "";
+            className = mutablePeerValue;
+          } else {
+            packageName = mutablePeerValue.substring(0, i);
+            className = mutablePeerValue.substring(i + 1);
+          }
+        }
+      }
+    }
+
+    private TypeSpec.Builder createMutablePeer(Struct struct, TypeSpec typeSpec, PeerInfo peerInfo) {
+      TypeSpec.Builder typeBuilder =
+          TypeSpec.classBuilder(peerInfo.className)
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+
+      CodeBlock.Builder toThriftCode =
+          CodeBlock.builder()
+              .add("$[return $N.builder()", typeSpec);
+
+      for (ThriftField field : struct.getFields()) {
+        // TODO(John Sirois): XXX here we only want the mutable peer if the identifier type does not
+        // resolve to an enum ...
+        // + this implies the need to operate off of a symbol table - type identifier to ThriftType
+        // + this further implies just labeling storage roots and then walking and creating peers
+        // + OR just creating peers for everything (minus enums and structs).
+
+        // TODO(John Sirois): XXX the structTable needs to map identifier to AbstractStruct
+        // I need to be able to say:
+        // getIdentifiedType(
+        //     callerPackage=getPackageName(),
+        //     identifier=((Identifier) field.getType()))
+        ThriftType fieldType = field.getType();
+        FieldSpec fieldSpec =
+            FieldSpec.builder(typeName(fieldType), field.getName())
+                .addModifiers(Modifier.PRIVATE)
+                .build();
+        CodeBlock code = CodeBlock.builder().add("$N", fieldSpec).build();
+
+        toThriftCode.add("\n.$L(", setterName(field));
+        if (fieldType instanceof IdentifierType) {
+          SymbolTable.Symbol symbol = lookup(((IdentifierType) fieldType));
+          if (symbol.getSymbol() instanceof AbstractStruct) {
+            Optional<PeerInfo> peer =
+                PeerInfo.from(symbol.packageName, (AbstractStruct) symbol.getSymbol());
+            if (peer.isPresent()) {
+              ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
+              fieldSpec =
+                  FieldSpec.builder(peerType, field.getName())
+                      .addModifiers(Modifier.PRIVATE)
+                      .build();
+              code = CodeBlock.builder().add("$N.toThrift()", fieldSpec).build();
+            }
+          }
+        } else if (fieldType instanceof ListType) {
+          ThriftType elementType = ((ListType) fieldType).getElementType();
+          if (elementType instanceof IdentifierType) {
+            SymbolTable.Symbol symbol = lookup(((IdentifierType) elementType));
+            if (symbol.getSymbol() instanceof AbstractStruct) {
+              Optional<PeerInfo> peer =
+                  PeerInfo.from(symbol.packageName, (AbstractStruct) symbol.getSymbol());
+              if (peer.isPresent()) {
+                ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
+                ParameterizedTypeName listType =
+                    ParameterizedTypeName.get(ClassName.get(List.class), peerType);
+                fieldSpec =
+                    FieldSpec.builder(listType, field.getName())
+                        .addModifiers(Modifier.PRIVATE)
+                        .build();
+                code =
+                    CodeBlock.builder()
+                        .add(
+                            "$N.stream().map($T::toThrift).collect($T.toList())",
+                            fieldSpec,
+                            peerType,
+                            Collectors.class)
+                        .build();
+              }
+            }
+          } else {
+            ParameterizedTypeName listType =
+                ParameterizedTypeName.get(ClassName.get(List.class), typeName(elementType));
+            fieldSpec =
+                FieldSpec.builder(listType, field.getName())
+                    .addModifiers(Modifier.PRIVATE)
+                    .build();
+          }
+        } else if (fieldType instanceof SetType) {
+          ThriftType elementType = ((SetType) fieldType).getElementType();
+          if (elementType instanceof IdentifierType) {
+            SymbolTable.Symbol symbol = lookup(((IdentifierType) elementType));
+            if (symbol.getSymbol() instanceof AbstractStruct) {
+              Optional<PeerInfo> peer =
+                  PeerInfo.from(symbol.packageName, (AbstractStruct) symbol.getSymbol());
+              if (peer.isPresent()) {
+                ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
+                ParameterizedTypeName setType =
+                    ParameterizedTypeName.get(ClassName.get(Set.class), peerType);
+                fieldSpec =
+                    FieldSpec.builder(setType, field.getName())
+                        .addModifiers(Modifier.PRIVATE)
+                        .build();
+                code =
+                    CodeBlock.builder()
+                        .add(
+                            "$N.stream().map($T::toThrift).collect($T.toSet())",
+                            fieldSpec,
+                            peerType,
+                            Collectors.class)
+                        .build();
+              }
+            }
+          } else {
+            ParameterizedTypeName listType =
+                ParameterizedTypeName.get(ClassName.get(Set.class), typeName(elementType));
+            fieldSpec =
+                FieldSpec.builder(listType, field.getName())
+                    .addModifiers(Modifier.PRIVATE)
+                    .build();
+          }
+        } // TODO(John Sirois): XXX Handle maps
+
+        typeBuilder.addField(fieldSpec);
+        toThriftCode.add(code);
+        toThriftCode.add(")");
+      }
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("toThrift")
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .returns(getClassName(typeSpec.name))
+              .addCode(
+                  toThriftCode
+                      .add("\n.build();\n$]")
+                      .build())
+              .build());
+
+      return typeBuilder;
     }
 
     private Iterable<MethodSpec> createCollectionBuilderOverloads(
@@ -1980,13 +2240,8 @@ public class ThriftRestGenTask extends DefaultTask {
       return annotationBuilder.build();
     }
 
-    public TypeAnnotationVisitor(
-        Logger logger,
-        File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
-        String packageName) {
-
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+    TypeAnnotationVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+      super(logger, outdir, symbolTable, packageName);
     }
 
     @Override
@@ -2032,13 +2287,14 @@ public class ThriftRestGenTask extends DefaultTask {
   static class UnionVisitor extends BaseVisitor<Union> {
     private final StructInterfaceFactory structInterfaceFactory;
 
-    public UnionVisitor(
-        StructInterfaceFactory structInterfaceFactory, Logger logger,
+    UnionVisitor(
+        StructInterfaceFactory structInterfaceFactory,
+        Logger logger,
         File outdir,
-        ImmutableMap<String, String> packageNameByImportPrefix,
+        SymbolTable symbolTable,
         String packageName) {
 
-      super(logger, outdir, packageNameByImportPrefix, packageName);
+      super(logger, outdir, symbolTable, packageName);
       this.structInterfaceFactory = structInterfaceFactory;
     }
 

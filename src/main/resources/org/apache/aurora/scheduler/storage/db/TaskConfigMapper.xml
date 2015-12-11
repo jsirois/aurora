@@ -56,11 +56,11 @@
     )
   </insert>
 
-  <resultMap id="limitConstraintMap" type="org.apache.aurora.gen.LimitConstraint">
+  <resultMap id="limitConstraintMap" type="org.apache.aurora.gen.peer.MutableLimitConstraint">
     <id column="id"/>
   </resultMap>
 
-  <resultMap id="valueConstraintMap" type="org.apache.aurora.gen.ValueConstraint">
+  <resultMap id="valueConstraintMap" type="org.apache.aurora.gen.peer.MutableValueConstraint">
     <id column="id"/>
 
     <collection property="values" ofType="String" columnPrefix="v_">
@@ -74,7 +74,7 @@
     <association property="limit" resultMap="limitConstraintMap" columnPrefix="l_"/>
   </resultMap>
 
-  <resultMap id="constraintMap" type="org.apache.aurora.scheduler.storage.db.views.DbConstraint">
+  <resultMap id="constraintMap" type="org.apache.aurora.gen.peer.MutableConstraint">
     <id column="id"/>
     <association property="constraint" resultMap="taskConstraintMap"/>
   </resultMap>
@@ -95,7 +95,7 @@
     WHERE tc.task_config_id = #{id}
   </select>
 
-  <resultMap id="dockerParameterMap" type="org.apache.aurora.gen.DockerParameter">
+  <resultMap id="dockerParameterMap" type="org.apache.aurora.gen.peer.MutableDockerParameter">
     <id column="id"/>
   </resultMap>
 
@@ -108,7 +108,7 @@
     WHERE container_id = #{id}
   </select>
 
-  <resultMap id="dockerContainerMap" type="org.apache.aurora.gen.DockerContainer">
+  <resultMap id="dockerContainerMap" type="org.apache.aurora.gen.peer.MutableDockerContainer">
     <id column="id"/>
     <result column="image" property="image"/>
     <collection
@@ -122,7 +122,7 @@
     <association property="docker" resultMap="dockerContainerMap"/>
   </resultMap>
 
-  <resultMap id="metadataMap" type="org.apache.aurora.gen.Metadata">
+  <resultMap id="metadataMap" type="org.apache.aurora.gen.peer.MutableMetadata">
     <id column="id" />
   </resultMap>
 
@@ -266,7 +266,7 @@
     )
   </insert>
 
-  <resultMap id="taskLinkMap" type="org.apache.aurora.common.collections.Pair">
+  <resultMap id="taskLinkMap" type="org.apache.aurora.scheduler.storage.db.views.Pairs$Pair">
     <constructor>
       <arg column="label"/>
       <arg column="url"/>

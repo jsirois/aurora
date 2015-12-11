@@ -19,6 +19,7 @@ import java.util.List;
 import javax.inject.Singleton;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Files;
 import com.google.inject.AbstractModule;
@@ -37,6 +38,8 @@ import org.apache.mesos.Protos;
 import org.apache.mesos.SchedulerDriver;
 import org.apache.shiro.io.ResourceUtils;
 
+import autovalue.shaded.com.google.common.common.base.Joiner;
+
 /**
  * A main class that runs the scheduler in local mode, using fakes for external components.
  */
@@ -54,6 +57,8 @@ public final class LocalSchedulerMain {
           .build());
 
   public static void main(String[] args) {
+    System.out.println(">>> classpath:\n\t" + Joiner.on("\n\t").join(Splitter.on(File.pathSeparatorChar).split(System.getProperty("java.class.path"))));
+
     File backupDir = Files.createTempDir();
     backupDir.deleteOnExit();
     List<String> arguments = ImmutableList.<String>builder()

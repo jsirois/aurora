@@ -15,13 +15,13 @@ package org.apache.aurora.scheduler.storage.db.views;
 
 import javax.annotation.Nullable;
 
-import org.apache.aurora.gen.LimitConstraint;
 import org.apache.aurora.gen.TaskConstraint;
-import org.apache.aurora.gen.ValueConstraint;
+import org.apache.aurora.gen.peer.MutableLimitConstraint;
+import org.apache.aurora.gen.peer.MutableValueConstraint;
 
 public final class DbTaskConstraint {
-  private ValueConstraint value;
-  private LimitConstraint limit;
+  private MutableValueConstraint value;
+  private MutableLimitConstraint limit;
 
   private DbTaskConstraint() {
   }
@@ -31,13 +31,13 @@ public final class DbTaskConstraint {
   }
 
   @Nullable
-  TaskConstraint toThrift() {
+  public TaskConstraint toThrift() {
     // Using the isSet shim to work around a well-intentioned PMD rule that prefers positive
     // branching (would trip if we did value != null directly here.
     if (isSet(value)) {
-      return TaskConstraint.value(value);
+      return TaskConstraint.value(value.toThrift());
     } else if (isSet(limit)) {
-      return TaskConstraint.limit(limit);
+      return TaskConstraint.limit(limit.toThrift());
     } else {
       return null;
     }

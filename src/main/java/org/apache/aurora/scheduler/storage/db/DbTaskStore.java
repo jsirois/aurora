@@ -35,11 +35,11 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.peer.MutableScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Query.Builder;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskConfig;
@@ -204,7 +204,7 @@ class DbTaskStore implements TaskStore.Mutable {
   }
 
   private FluentIterable<ScheduledTask> matches(Query.Builder query) {
-    Iterable<DbScheduledTask> results;
+    Iterable<MutableScheduledTask> results;
     Predicate<ScheduledTask> filter;
     if (query.get().getTaskIds().size() == 1) {
       // Optimize queries that are scoped to a single task, as the dynamic SQL used for arbitrary
@@ -220,7 +220,7 @@ class DbTaskStore implements TaskStore.Mutable {
     }
 
     return FluentIterable.from(results)
-        .transform(DbScheduledTask::toThrift)
+        .transform(MutableScheduledTask::toThrift)
         .filter(filter);
   }
 }

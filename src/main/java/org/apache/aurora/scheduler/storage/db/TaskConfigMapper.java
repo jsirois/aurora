@@ -16,9 +16,6 @@ package org.apache.aurora.scheduler.storage.db;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.aurora.common.collections.Pair;
-
-import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.DockerContainer;
 import org.apache.aurora.gen.DockerParameter;
@@ -27,6 +24,8 @@ import org.apache.aurora.gen.LimitConstraint;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.ValueConstraint;
+import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
+import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -114,7 +113,7 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
    */
   void insertTaskLinks(
       @Param("configId") long configId,
-      @Param("links") List<Pair<String, String>> links);
+      @Param("links") List<Pairs.Pair<String, String>> links);
 
   /**
    * Inserts the container association within an {@link TaskConfig}.

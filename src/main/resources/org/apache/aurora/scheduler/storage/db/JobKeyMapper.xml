@@ -41,7 +41,7 @@
     DELETE FROM job_keys WHERE id = #{rowId}
   </delete>
 
-  <resultMap id="jobKeyMap" type="org.apache.aurora.gen.JobKey">
+  <resultMap id="jobKeyMap" type="org.apache.aurora.gen.peer.MutableJobKey">
     <id column="id" />
   </resultMap>
 </mapper>

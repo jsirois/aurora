@@ -13,21 +13,28 @@
  */
 package org.apache.aurora.scheduler.storage.db.views;
 
-import org.apache.aurora.gen.Container;
-import org.apache.aurora.gen.DockerContainer;
-import org.apache.aurora.gen.MesosContainer;
+import org.apache.aurora.gen.JobUpdateKey;
 
-public final class DbContainer {
-  private DockerContainer docker;
+/**
+ * A job update that should be pruned.
+ */
+public class DbPruneVictim {
+  private long rowId;
+  private JobUpdateKey update;
 
-  private DbContainer() {
+  public long getRowId() {
+    return rowId;
   }
 
-  Container toThrift() {
-    if (docker == null) {
-      return Container.mesos(MesosContainer.create());
-    } else {
-      return Container.docker(docker);
-    }
+  public JobUpdateKey getUpdate() {
+    return update;
+  }
+
+  public void setRowId(long rowId) {
+    this.rowId = rowId;
+  }
+
+  public void setUpdate(JobUpdateKey update) {
+    this.update = update;
   }
 }

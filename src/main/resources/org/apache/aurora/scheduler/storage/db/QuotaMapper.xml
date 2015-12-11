@@ -37,7 +37,7 @@
     WHERE role = #{id}
   </select>
 
-  <resultMap id="quotaResultMap" type="org.apache.aurora.gen.storage.SaveQuota">
+  <resultMap id="quotaResultMap" type="org.apache.aurora.gen.storage.peer.MutableSaveQuota">
     <id column="id" />
     <association property="quota" javaType="org.apache.aurora.gen.ResourceAggregate" />
   </resultMap>

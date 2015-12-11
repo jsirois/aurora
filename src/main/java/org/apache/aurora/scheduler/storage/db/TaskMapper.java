@@ -18,13 +18,12 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import org.apache.aurora.common.collections.Pair;
-
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.TaskQuery;
-import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskEvent;
+import org.apache.aurora.gen.TaskQuery;
+import org.apache.aurora.gen.peer.MutableScheduledTask;
+import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -48,7 +47,7 @@ interface TaskMapper {
    * @param query Query to use as a filter for tasks.
    * @return Tasks matching the query.
    */
-  List<DbScheduledTask> select(TaskQuery query);
+  List<MutableScheduledTask> select(TaskQuery query);
 
   /**
    * Gets a task by ID.
@@ -57,7 +56,7 @@ interface TaskMapper {
    * @return Task with the specified ID.
    */
   @Nullable
-  DbScheduledTask selectById(@Param("taskId") String taskId);
+  MutableScheduledTask selectById(@Param("taskId") String taskId);
 
   /**
    * Gets job keys of all stored tasks.
@@ -86,7 +85,7 @@ interface TaskMapper {
    */
   void insertPorts(
       @Param("taskRowId") long taskRowId,
-      @Param("ports") List<Pair<String, Integer>> ports);
+      @Param("ports") List<Pairs.Pair<String, Integer>> ports);
 
   /**
    * Deletes all task rows.

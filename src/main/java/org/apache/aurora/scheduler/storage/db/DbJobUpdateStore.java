@@ -25,13 +25,6 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.common.base.MorePreconditions;
-import org.apache.aurora.gen.JobUpdateStatus;
-import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
-import org.apache.aurora.scheduler.stats.CachedCounters;
-import org.apache.aurora.scheduler.storage.JobUpdateStore;
-import org.apache.aurora.scheduler.storage.db.views.DbJobUpdate;
-import org.apache.aurora.scheduler.storage.db.views.DbJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.db.views.DbStoredJobUpdateDetails;
 import org.apache.aurora.gen.InstanceTaskConfig;
 import org.apache.aurora.gen.JobInstanceUpdateEvent;
 import org.apache.aurora.gen.JobUpdate;
@@ -40,8 +33,16 @@ import org.apache.aurora.gen.JobUpdateEvent;
 import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.peer.MutableJobUpdate;
+import org.apache.aurora.gen.peer.MutableJobUpdateInstructions;
+import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
+import org.apache.aurora.gen.storage.peer.MutableStoredJobUpdateDetails;
+import org.apache.aurora.scheduler.stats.CachedCounters;
+import org.apache.aurora.scheduler.storage.JobUpdateStore;
+import org.apache.aurora.scheduler.storage.db.views.DbPruneVictim;
 
 import static java.util.Objects.requireNonNull;
 
@@ -157,10 +158,10 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
     detailsMapper.truncate();
   }
 
-  private static final Function<PruneVictim, JobUpdateKey> GET_UPDATE_KEY =
-      new Function<PruneVictim, JobUpdateKey>() {
+  private static final Function<DbPruneVictim, JobUpdateKey> GET_UPDATE_KEY =
+      new Function<DbPruneVictim, JobUpdateKey>() {
         @Override
-        public JobUpdateKey apply(PruneVictim victim) {
+        public JobUpdateKey apply(DbPruneVictim victim) {
           return victim.getUpdate();
         }
       };
@@ -175,13 +176,13 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
         historyPruneThresholdMs);
 
     for (long jobKeyId : jobKeyIdsToPrune) {
-      Set<PruneVictim> pruneVictims = detailsMapper.selectPruneVictims(
+      Set<DbPruneVictim> pruneVictims = detailsMapper.selectPruneVictims(
           jobKeyId,
           perJobRetainCount,
           historyPruneThresholdMs);
 
       detailsMapper.deleteCompletedUpdates(
-          FluentIterable.from(pruneVictims).transform(PruneVictim::getRowId).toSet());
+          FluentIterable.from(pruneVictims).transform(DbPruneVictim::getRowId).toSet());
       pruned.addAll(FluentIterable.from(pruneVictims).transform(GET_UPDATE_KEY));
     }
 
@@ -199,7 +200,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   public List<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateQuery query) {
     return FluentIterable
         .from(detailsMapper.selectDetailsList(query))
-        .transform(DbStoredJobUpdateDetails::toThrift)
+        .transform(MutableStoredJobUpdateDetails::toThrift)
         .transform(StoredJobUpdateDetails::getDetails)
         .toList();
   }
@@ -208,7 +209,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Override
   public Optional<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectDetails(key))
-        .transform(DbStoredJobUpdateDetails::toThrift)
+        .transform(MutableStoredJobUpdateDetails::toThrift)
         .transform(StoredJobUpdateDetails::getDetails);
   }
 
@@ -216,21 +217,21 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Override
   public Optional<JobUpdate> fetchJobUpdate(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectUpdate(key))
-        .transform(DbJobUpdate::toThrift);
+        .transform(MutableJobUpdate::toThrift);
   }
 
   @Timed("job_update_store_fetch_instructions")
   @Override
   public Optional<JobUpdateInstructions> fetchJobUpdateInstructions(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectInstructions(key))
-        .transform(DbJobUpdateInstructions::toThrift);
+        .transform(MutableJobUpdateInstructions::toThrift);
   }
 
   @Timed("job_update_store_fetch_all_details")
   @Override
   public Set<StoredJobUpdateDetails> fetchAllJobUpdateDetails() {
     return FluentIterable.from(detailsMapper.selectAllDetails())
-        .transform(DbStoredJobUpdateDetails::toThrift)
+        .transform(MutableStoredJobUpdateDetails::toThrift)
         .toSet();
   }
 

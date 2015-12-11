@@ -23,10 +23,11 @@ import org.apache.aurora.gen.JobUpdate;
 import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
-import org.apache.aurora.scheduler.storage.db.views.DbJobUpdate;
-import org.apache.aurora.scheduler.storage.db.views.DbJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.db.views.DbStoredJobUpdateDetails;
 import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.peer.MutableJobUpdate;
+import org.apache.aurora.gen.peer.MutableJobUpdateInstructions;
+import org.apache.aurora.gen.storage.peer.MutableStoredJobUpdateDetails;
+import org.apache.aurora.scheduler.storage.db.views.DbPruneVictim;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -79,7 +80,7 @@ interface JobUpdateDetailsMapper {
 
   /**
    * Maps update with an optional set of
-   * {@link org.apache.aurora.gen.JobUpdateSettings#updateOnlyTheseInstances}.
+   * {@link org.apache.aurora.gen.JobUpdateSettings#getUpdateOnlyTheseInstances}.
    *
    * @param key Update to store overrides for.
    * @param ranges Instance ID ranges to associate with an update.
@@ -88,7 +89,7 @@ interface JobUpdateDetailsMapper {
 
   /**
    * Maps update with a set of instance IDs in
-   * {@link org.apache.aurora.gen.JobUpdateInstructions#desiredState}.
+   * {@link org.apache.aurora.gen.JobUpdateInstructions#getDesiredState}.
    *
    * @param key Update to store desired instances for.
    * @param ranges Desired instance ID ranges to associate with an update.
@@ -129,7 +130,7 @@ interface JobUpdateDetailsMapper {
    * @param historyPruneThresholdMs History pruning timestamp threshold.
    * @return Victims to prune.
    */
-  Set<PruneVictim> selectPruneVictims(
+  Set<DbPruneVictim> selectPruneVictims(
       @Param("keyId") long jobKeyId,
       @Param("retainCount") int perJobRetainCount,
       @Param("pruneThresholdMs") long historyPruneThresholdMs);
@@ -150,7 +151,7 @@ interface JobUpdateDetailsMapper {
    * @return Job update details for the provided update ID, if it exists.
    */
   @Nullable
-  DbStoredJobUpdateDetails selectDetails(@Param("key") JobUpdateKey key);
+  MutableStoredJobUpdateDetails selectDetails(@Param("key") JobUpdateKey key);
 
   /**
    * Gets all job update details matching the provided {@code query}.
@@ -159,7 +160,7 @@ interface JobUpdateDetailsMapper {
    * @param query Query to filter results by.
    * @return Job update details matching the query.
    */
-  List<DbStoredJobUpdateDetails> selectDetailsList(JobUpdateQuery query);
+  List<MutableStoredJobUpdateDetails> selectDetailsList(JobUpdateQuery query);
 
   /**
    * Gets job update for the provided {@code update}.
@@ -168,7 +169,7 @@ interface JobUpdateDetailsMapper {
    * @return Job update for the provided update ID, if it exists.
    */
   @Nullable
-  DbJobUpdate selectUpdate(@Param("key") JobUpdateKey key);
+  MutableJobUpdate selectUpdate(@Param("key") JobUpdateKey key);
 
   /**
    * Gets job update instructions for the provided {@code update}.
@@ -177,14 +178,14 @@ interface JobUpdateDetailsMapper {
    * @return Job update instructions for the provided update ID, if it exists.
    */
   @Nullable
-  DbJobUpdateInstructions selectInstructions(@Param("key") JobUpdateKey key);
+  MutableJobUpdateInstructions selectInstructions(@Param("key") JobUpdateKey key);
 
   /**
    * Gets all stored job update details.
    *
    * @return All stored job update details.
    */
-  Set<DbStoredJobUpdateDetails> selectAllDetails();
+  Set<MutableStoredJobUpdateDetails> selectAllDetails();
 
   /**
    * Gets the token associated with an update.

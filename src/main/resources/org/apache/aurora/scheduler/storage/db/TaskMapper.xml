@@ -43,7 +43,7 @@
     )
   </insert>
 
-  <resultMap id="taskEventMap" type="org.apache.aurora.gen.TaskEvent">
+  <resultMap id="taskEventMap" type="org.apache.aurora.gen.peer.MutableTaskEvent">
     <id column="id"/>
     <result property="status"
             column="status"
@@ -62,7 +62,7 @@
     ORDER BY e.timestamp_ms ASC
   </select>
 
-  <resultMap id="scheduledTaskMap" type="org.apache.aurora.scheduler.storage.db.views.DbScheduledTask">
+  <resultMap id="scheduledTaskMap" type="org.apache.aurora.gen.peer.MutableScheduledTask">
     <id column="row_id"/>
     <result column="c_id" property="taskConfigRowId"/>
     <result property="status"
@@ -212,7 +212,7 @@
     )
   </insert>
 
-  <resultMap id="portMap" type="org.apache.aurora.common.collections.Pair">
+  <resultMap id="portMap" type="org.apache.aurora.scheduler.storage.db.views.Pairs$Pair">
     <constructor>
       <arg column="name"/>
       <arg column="port"/>

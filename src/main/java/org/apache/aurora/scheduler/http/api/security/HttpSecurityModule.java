@@ -26,6 +26,7 @@ import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.TypeLiteral;
+import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.matcher.Matcher;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
@@ -78,7 +79,12 @@ public class HttpSecurityModule extends ServletModule {
 
   @VisibleForTesting
   static final Matcher<Method> AURORA_SCHEDULER_MANAGER_SERVICE =
-      GuiceUtils.interfaceMatcher(AuroraSchedulerManager.Sync.class, true);
+      GuiceUtils.interfaceMatcher(AuroraSchedulerManager.Sync.class, true)
+          .and(new AbstractMatcher<Method>() {
+            @Override public boolean matches(Method method) {
+              return !method.isDefault();
+            }
+          });
 
   @VisibleForTesting
   static final Matcher<Method> AURORA_ADMIN_SERVICE =

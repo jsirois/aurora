@@ -20,12 +20,12 @@ import javax.inject.Inject;
 
 import com.google.common.collect.Maps;
 
-import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
-import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.DockerContainer;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.ValueConstraint;
+import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
+import org.apache.aurora.scheduler.storage.db.views.Pairs;
 
 import static java.util.Objects.requireNonNull;
 

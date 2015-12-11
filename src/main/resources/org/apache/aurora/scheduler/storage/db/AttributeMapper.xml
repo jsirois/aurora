@@ -44,7 +44,7 @@
     WHERE host = #{host}
   </update>
 
-  <resultMap id="hostAttributeResultMap" type="org.apache.aurora.gen.HostAttributes">
+  <resultMap id="hostAttributeResultMap" type="org.apache.aurora.gen.peer.MutableHostAttributes">
     <id column="a_id" />
     <result property="mode"
             column="a_mode"

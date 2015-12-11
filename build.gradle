@@ -217,6 +217,7 @@ project(':api') {
 
   thrift {
     version = thriftRev
+    peerSources = project.file("${projectDir}/src/main/java")
     resourcePrefix = 'org/apache/aurora/scheduler/gen/client'
   }
 
@@ -226,8 +227,6 @@ project(':api') {
         sourceDirs += it
         generatedSourceDirs += it
       }
-
-      scopes.COMPILE.plus += [parent.configurations.jmh]
 
       // These directories must exist, else the plugin omits them from the
       // generated project. Since this is executed during the configuration
@@ -371,9 +370,6 @@ dependencies {
 
   testCompile "com.sun.jersey:jersey-client:${jerseyRev}"
   testCompile "junit:junit:${junitRev}"
-
-  configurations.compile {
-  }
 }
 
 // For normal developer builds, avoid running the often-time-consuming code quality checks.

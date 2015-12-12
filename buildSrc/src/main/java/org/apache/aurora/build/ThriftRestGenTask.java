@@ -2314,8 +2314,13 @@ public class ThriftRestGenTask extends DefaultTask {
               .addSuperinterface(
                   ParameterizedTypeName.get(structInterface.typeName, localFieldsTypeName));
 
-      typeBuilder.addField(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL);
-      typeBuilder.addField(short.class, "id", Modifier.PRIVATE, Modifier.FINAL);
+      FieldSpec valueField =
+          FieldSpec.builder(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL).build();
+      typeBuilder.addField(valueField);
+
+      FieldSpec idField =
+          FieldSpec.builder(short.class, "id", Modifier.PRIVATE, Modifier.FINAL).build();
+      typeBuilder.addField(idField);
 
       typeBuilder.addMethod(
           MethodSpec.methodBuilder("getFields")
@@ -2426,6 +2431,31 @@ public class ThriftRestGenTask extends DefaultTask {
                 .addStatement("return value")
                 .build());
       }
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("equals")
+              .addAnnotation(Override.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addParameter(Object.class, "other")
+              .returns(boolean.class)
+              .beginControlFlow("if (!(other instanceof $T))", unionClassName)
+              .addStatement("return false")
+              .endControlFlow()
+              .addStatement(
+                  "return $T.equals($N, (($T) other).$N)",
+                  Objects.class,
+                  valueField,
+                  unionClassName,
+                  valueField)
+              .build());
+
+      typeBuilder.addMethod(
+          MethodSpec.methodBuilder("hashCode")
+              .addAnnotation(Override.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .returns(int.class)
+              .addStatement("return $T.hash($N, $N)", Objects.class, idField, valueField)
+              .build());
 
       writeType(typeBuilder);
     }

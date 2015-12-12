@@ -18,14 +18,14 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import org.apache.aurora.gen.JobInstanceUpdateEvent;
 import org.apache.aurora.gen.JobUpdate;
-import org.apache.aurora.gen.JobUpdateQuery;
-import org.apache.aurora.gen.JobUpdateSummary;
-import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.peer.MutableJobInstanceUpdateEvent;
 import org.apache.aurora.gen.peer.MutableJobUpdate;
 import org.apache.aurora.gen.peer.MutableJobUpdateInstructions;
+import org.apache.aurora.gen.peer.MutableJobUpdateSummary;
 import org.apache.aurora.gen.storage.peer.MutableStoredJobUpdateDetails;
 import org.apache.aurora.scheduler.storage.db.views.DbPruneVictim;
 import org.apache.ibatis.annotations.Param;
@@ -142,7 +142,7 @@ interface JobUpdateDetailsMapper {
    * @param query Query to filter results by.
    * @return Job update summaries matching the query.
    */
-  List<JobUpdateSummary> selectSummaries(JobUpdateQuery query);
+  List<MutableJobUpdateSummary> selectSummaries(JobUpdateQuery query);
 
   /**
    * Gets details for the provided {@code key}.
@@ -203,7 +203,7 @@ interface JobUpdateDetailsMapper {
    * @param instanceId Instance to fetch events for.
    * @return Instance events affecting {@code instanceId} within {@code key}.
    */
-  List<JobInstanceUpdateEvent> selectInstanceUpdateEvents(
+  List<MutableJobInstanceUpdateEvent> selectInstanceUpdateEvents(
       @Param("key") JobUpdateKey key,
       @Param("instanceId") int instanceId);
 }

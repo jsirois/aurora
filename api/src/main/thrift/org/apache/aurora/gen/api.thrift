@@ -485,7 +485,7 @@ struct AssignedTask {
    * job, and will be in the range [0, N-1] (inclusive) for a job that has N instances.
    */
   6: i32 instanceId
-}
+} (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbAssignedTask")
 
 /** A task that has been scheduled. */
 struct ScheduledTask {
@@ -792,7 +792,7 @@ struct JobUpdateDetails {
 
   /** History for the individual instances updated. */
   3: list<JobInstanceUpdateEvent> instanceEvents
-}
+} (mutablePeer="true")
 
 /** A request to update the following instances of an existing job. Used by startUpdate. */
 struct JobUpdateRequest {

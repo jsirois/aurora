@@ -16,7 +16,7 @@ package org.apache.aurora.scheduler.storage.db;
 import java.util.List;
 
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.peer.MutableJobKey;
 
 /**
  * MyBatis mapper class for JobKeyMapper.xml
@@ -32,5 +32,5 @@ interface JobKeyMapper extends GarbageCollectedTableMapper {
   /**
    * Selects all job keys from the database.
    */
-  List<JobKey> selectAll();
+  List<MutableJobKey> selectAll();
 }

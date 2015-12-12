@@ -13,28 +13,24 @@
  */
 package org.apache.aurora.scheduler.storage.db.views;
 
+import javax.annotation.Nullable;
+
 import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.peer.MutableJobUpdateKey;
 
 /**
  * A job update that should be pruned.
  */
 public class DbPruneVictim {
   private long rowId;
-  private JobUpdateKey update;
+  private MutableJobUpdateKey update;
 
   public long getRowId() {
     return rowId;
   }
 
+  @Nullable
   public JobUpdateKey getUpdate() {
-    return update;
-  }
-
-  public void setRowId(long rowId) {
-    this.rowId = rowId;
-  }
-
-  public void setUpdate(JobUpdateKey update) {
-    this.update = update;
+    return update == null ? null : update.toThrift();
   }
 }

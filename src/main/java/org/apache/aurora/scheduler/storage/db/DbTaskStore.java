@@ -30,19 +30,21 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
+import org.apache.aurora.GuavaUtils;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.peer.MutableJobKey;
 import org.apache.aurora.gen.peer.MutableScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Query.Builder;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.TaskStore;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.TaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -100,7 +102,9 @@ class DbTaskStore implements TaskStore.Mutable {
   @Timed("db_storage_get_job_keys")
   @Override
   public ImmutableSet<JobKey> getJobKeys() {
-    return ImmutableSet.copyOf(taskMapper.selectJobKeys());
+    return taskMapper.selectJobKeys().stream()
+        .map(MutableJobKey::toThrift)
+        .collect(GuavaUtils.toImmutableSet());
   }
 
   @Timed("db_storage_save_tasks")

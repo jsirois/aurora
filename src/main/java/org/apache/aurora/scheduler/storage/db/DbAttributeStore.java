@@ -18,13 +18,14 @@ import java.util.Set;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
-import org.apache.aurora.scheduler.storage.AttributeStore;
+import org.apache.aurora.GuavaUtils;
 import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.peer.MutableHostAttributes;
+import org.apache.aurora.scheduler.storage.AttributeStore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -89,12 +90,14 @@ class DbAttributeStore implements AttributeStore.Mutable {
   @Timed("attribute_store_fetch_one")
   @Override
   public Optional<HostAttributes> getHostAttributes(String host) {
-    return Optional.fromNullable(mapper.select(host));
+    return Optional.fromNullable(mapper.select(host)).transform(MutableHostAttributes::toThrift);
   }
 
   @Timed("attribute_store_fetch_all")
   @Override
   public Set<HostAttributes> getHostAttributes() {
-    return ImmutableSet.copyOf(mapper.selectAll());
+    return mapper.selectAll().stream()
+        .map(MutableHostAttributes::toThrift)
+        .collect(GuavaUtils.toImmutableSet());
   }
 }

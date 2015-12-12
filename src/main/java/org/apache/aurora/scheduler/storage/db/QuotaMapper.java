@@ -18,7 +18,8 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.storage.SaveQuota;
+import org.apache.aurora.gen.peer.MutableResourceAggregate;
+import org.apache.aurora.gen.storage.peer.MutableSaveQuota;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -40,14 +41,14 @@ interface QuotaMapper {
    * @return The previously-saved quota for the role, if it exists.
    */
   @Nullable
-  ResourceAggregate select(String role);
+  MutableResourceAggregate select(String role);
 
   /**
    * Gets all saved quotas.
    *
    * @return All quotas stored in the database.
    */
-  List<SaveQuota> selectAll();
+  List<MutableSaveQuota> selectAll();
 
   /**
    * Removes the quota stored for a role.

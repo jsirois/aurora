@@ -29,7 +29,7 @@
     )
   </insert>
 
-  <select id="selectAll" resultType="org.apache.aurora.gen.JobKey">
+  <select id="selectAll" resultType="org.apache.aurora.gen.peer.MutableJobKey">
     SELECT * FROM job_keys
   </select>
 

@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.aurora.GuavaUtils;
 import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.gen.InstanceTaskConfig;
 import org.apache.aurora.gen.JobInstanceUpdateEvent;
@@ -36,8 +37,10 @@ import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.peer.MutableJobInstanceUpdateEvent;
 import org.apache.aurora.gen.peer.MutableJobUpdate;
 import org.apache.aurora.gen.peer.MutableJobUpdateInstructions;
+import org.apache.aurora.gen.peer.MutableJobUpdateSummary;
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 import org.apache.aurora.gen.storage.peer.MutableStoredJobUpdateDetails;
 import org.apache.aurora.scheduler.stats.CachedCounters;
@@ -192,7 +195,9 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Timed("job_update_store_fetch_summaries")
   @Override
   public List<JobUpdateSummary> fetchJobUpdateSummaries(JobUpdateQuery query) {
-    return detailsMapper.selectSummaries(query);
+    return detailsMapper.selectSummaries(query).stream()
+        .map(MutableJobUpdateSummary::toThrift)
+        .collect(GuavaUtils.toImmutableList());
   }
 
   @Timed("job_update_store_fetch_details_list")
@@ -247,6 +252,8 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Timed("job_update_store_fetch_instance_events")
   @Override
   public List<JobInstanceUpdateEvent> fetchInstanceEvents(JobUpdateKey key, int instanceId) {
-    return detailsMapper.selectInstanceUpdateEvents(key, instanceId);
+    return detailsMapper.selectInstanceUpdateEvents(key, instanceId).stream()
+        .map(MutableJobInstanceUpdateEvent::toThrift)
+        .collect(GuavaUtils.toImmutableList());
   }
 }

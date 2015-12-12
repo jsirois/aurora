@@ -14,6 +14,7 @@
 package org.apache.aurora.codec;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,7 +25,6 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 
 import com.facebook.nifty.processor.NiftyProcessor;
 import com.facebook.nifty.processor.NiftyProcessorAdapters;
@@ -35,17 +35,17 @@ import com.facebook.swift.codec.metadata.MetadataErrorException;
 import com.facebook.swift.codec.metadata.MetadataErrors;
 import com.facebook.swift.codec.metadata.MetadataWarningException;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
-import com.facebook.swift.service.ThriftServiceProcessor;
 import com.google.common.primitives.UnsignedBytes;
 
+import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
 import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.thrift.TByteArrayOutputStream;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TTransport;
 
 import autovalue.shaded.com.google.common.common.collect.ImmutableList;
@@ -67,20 +67,16 @@ public final class ThriftBinaryCodec {
   // tune in a data-driven way.
   public static final int DEFAULT_BUFFER_SIZE = 1024 * 10;
 
-  private static TProtocol createProtocol() {
-    return createProtocol(createBuffer());
-  }
-
-  private static TProtocol createProtocol(TMemoryBuffer tTransport) {
-    return getProtocol(tTransport);
+  private static TProtocol createProtocol(TTransport transport) {
+    return getProtocol(transport);
   }
 
   private static TProtocol getProtocol(TTransport transport) {
     return new TBinaryProtocol.Factory().getProtocol(transport);
   }
 
-  private static TMemoryBuffer createBuffer() {
-    return new TMemoryBuffer(DEFAULT_BUFFER_SIZE);
+  private static TByteArrayOutputStream createBuffer() {
+    return new TByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
   }
 
   private static final Logger LOG = Logger.getLogger(ThriftBinaryCodec.class.getName());
@@ -99,9 +95,9 @@ public final class ThriftBinaryCodec {
           ImmutableSet.of()); // A priori known codecs,
 
   // TODO(John Sirois): XXX DOCME
-  public static TProcessor processorFor(Object... serviceObjects) {
+  public static TProcessor processorFor(ServiceDescriptor... services) {
     NiftyProcessor processor =
-        new ThriftServiceProcessor(CODEC_MANAGER, ImmutableList.of(), serviceObjects);
+        new ThriftServiceProcessor(CODEC_MANAGER, ImmutableList.of(), services);
     return NiftyProcessorAdapters.processorToTProcessor(processor);
   }
 
@@ -164,7 +160,8 @@ public final class ThriftBinaryCodec {
     requireNonNull(buffer);
 
     try {
-      return codecForType(clazz).read(createProtocol());
+      TProtocol protocol = createProtocol(new TIOStreamTransport(new ByteArrayInputStream(buffer)));
+      return codecForType(clazz).read(protocol);
     } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
       throw new CodingException("Failed to deserialize thrift object.", e);
     }
@@ -199,9 +196,9 @@ public final class ThriftBinaryCodec {
 
     try {
       ThriftCodec<T> codec = codecForObject(tBase);
-      TMemoryBuffer buffer = createBuffer();
-      codec.write(tBase, getProtocol(buffer));
-      return buffer.getArray();
+      TByteArrayOutputStream buffer = createBuffer();
+      codec.write(tBase, getProtocol(new TIOStreamTransport(buffer)));
+      return buffer.toByteArray();
     } catch (Exception e) {  // Unfortunately swift ThriftCodec.read throws Exception.
       throw new CodingException("Failed to serialize: " + tBase, e);
     }

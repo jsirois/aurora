@@ -18,10 +18,10 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.TaskQuery;
+import org.apache.aurora.gen.peer.MutableJobKey;
 import org.apache.aurora.gen.peer.MutableScheduledTask;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.ibatis.annotations.Param;
@@ -63,7 +63,7 @@ interface TaskMapper {
    *
    * @return Job keys.
    */
-  Set<JobKey> selectJobKeys();
+  Set<MutableJobKey> selectJobKeys();
 
   /**
    * Inserts the task events association within an

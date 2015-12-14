@@ -60,7 +60,7 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGe
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
 
@@ -254,7 +254,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
           final int index = annotatedParameterIndex(method);
           ImmutableList<Parameter> parameters = Invokable.from(method).getParameters();
           Class<?> parameterType = parameters.get(index).getType().getRawType();
-          if (!ThriftStruct.class.isAssignableFrom(parameterType)) {
+          if (!ThriftEntity.class.isAssignableFrom(parameterType)) {
             throw new UnsupportedOperationException(
                 "Annotated parameter must be a thrift struct.");
           }

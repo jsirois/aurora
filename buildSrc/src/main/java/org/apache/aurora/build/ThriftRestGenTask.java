@@ -1438,17 +1438,26 @@ public class ThriftRestGenTask extends DefaultTask {
               .build();
       serviceContainerBuilder.addField(methodsField);
 
+      MethodSpec thriftMethods =
+          MethodSpec.methodBuilder("thriftMethods")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .returns(METHODS_MAP_TYPE)
+              .addStatement("return $N", methodsField)
+              .build();
+
       MethodSpec getThriftMethods =
           MethodSpec.methodBuilder("getThriftMethods")
               .addAnnotation(Override.class)
               .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
               .returns(METHODS_MAP_TYPE)
-              .addStatement("return $N", methodsField)
+              .addStatement("return $N()", thriftMethods)
               .build();
 
+      asyncServiceBuilder.addMethod(thriftMethods);
       asyncServiceBuilder.addMethod(getThriftMethods);
       serviceContainerBuilder.addType(asyncServiceBuilder.build());
 
+      syncServiceBuilder.addMethod(thriftMethods);
       syncServiceBuilder.addMethod(getThriftMethods);
       serviceContainerBuilder.addType(syncServiceBuilder.build());
 

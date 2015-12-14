@@ -13,18 +13,21 @@
  */
 package org.apache.aurora.scheduler.storage.db;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
+import org.apache.aurora.GuavaUtils;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.common.util.testing.FakeClock;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.peer.MutableJobKey;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
@@ -95,7 +98,9 @@ public class RowGarbageCollectorTest {
     taskConfigMapper.insert(CONFIG_B, new InsertResult());
     rowGc.runOneIteration();
     // Only job A and config A2 are still referenced, other rows are deleted.
-    assertEquals(ImmutableList.of(JOB_A), jobKeyMapper.selectAll());
+    assertEquals(
+        ImmutableList.of(JOB_A),
+        FluentIterable.from(jobKeyMapper.selectAll()).transform(MutableJobKey::toThrift).toList());
     // Note: Using the ramMb as a sentinel value, since relations in the TaskConfig are not
     // populated, therefore full object equivalence cannot easily be used.
     assertEquals(

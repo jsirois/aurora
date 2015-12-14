@@ -1851,7 +1851,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
     ScheduledTask newTask = scheduledTask.toBuilder()
         .setAssignedTask(scheduledTask.getAssignedTask().toBuilder()
             .setTask(scheduledTask.getAssignedTask().getTask().toBuilder()
-                .setNumCpus(0)
+                .setNumCpus(100)
                 .build())
             .build())
         .build();

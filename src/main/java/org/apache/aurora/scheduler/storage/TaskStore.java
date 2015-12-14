@@ -137,11 +137,10 @@ public interface TaskStore {
             return false;
           }
 
-          if (!query.getJobKeys().isEmpty()
-              && !query.getJobKeys().contains(config.getJob())) {
+          if (!query.getJobKeys().isEmpty() && !query.getJobKeys().contains(config.getJob())) {
             return false;
           }
-          if (query.getTaskIds() != null && !query.getTaskIds().contains(Tasks.id(task))) {
+          if (!query.getTaskIds().isEmpty() && !query.getTaskIds().contains(Tasks.id(task))) {
             return false;
           }
 

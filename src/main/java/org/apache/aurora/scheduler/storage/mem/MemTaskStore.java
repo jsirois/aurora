@@ -47,15 +47,14 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -83,8 +82,13 @@ class MemTaskStore implements TaskStore.Mutable {
   private static final Function<Query.Builder, Optional<Set<String>>> QUERY_TO_SLAVE_HOST =
       new Function<Query.Builder, Optional<Set<String>>>() {
         @Override
-        public Optional<Set<String>> apply(Query.Builder query) {
-          return Optional.fromNullable(query.get().getSlaveHosts());
+        public Optional<Set<String>> apply(Query.Builder queryBuilder) {
+          TaskQuery query = queryBuilder.get();
+          if (!query.getSlaveHosts().isEmpty()) {
+            return Optional.of(query.getSlaveHosts());
+          } else {
+            return Optional.absent();
+          }
         }
       };
 

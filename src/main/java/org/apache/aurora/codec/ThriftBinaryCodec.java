@@ -40,7 +40,9 @@ import com.google.common.primitives.UnsignedBytes;
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
-import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
 import org.apache.thrift.TByteArrayOutputStream;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -48,6 +50,9 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 
+import autovalue.shaded.com.google.common.common.base.Predicate;
+import autovalue.shaded.com.google.common.common.base.Predicates;
+import autovalue.shaded.com.google.common.common.collect.FluentIterable;
 import autovalue.shaded.com.google.common.common.collect.ImmutableList;
 import autovalue.shaded.com.google.common.common.collect.ImmutableSet;
 
@@ -101,23 +106,26 @@ public final class ThriftBinaryCodec {
     return NiftyProcessorAdapters.processorToTProcessor(processor);
   }
 
+  private static final Predicate<Class<?>> UNION_OR_STRUCT =
+      Predicates.in(ImmutableSet.of(ThriftStruct.class, ThriftUnion.class));
+
   @SuppressWarnings("unchecked")
-  public static <T extends ThriftStruct<?>> ThriftCodec<T> codecForType(Class<T> clazz) {
-    Class<?> thriftStruct = clazz;
-    while(thriftStruct != null
-        && !ImmutableSet.copyOf(thriftStruct.getInterfaces()).contains(ThriftStruct.class)) {
-      thriftStruct = thriftStruct.getSuperclass();
+  public static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<T> clazz) {
+    Class<?> thriftEntity = clazz;
+    while(thriftEntity != null
+        && !FluentIterable.of(thriftEntity.getInterfaces()).anyMatch(UNION_OR_STRUCT)) {
+      thriftEntity = thriftEntity.getSuperclass();
     }
-    if (thriftStruct == null) {
+    if (thriftEntity == null) {
       throw new IllegalArgumentException(
           String.format("%s is not a thrift struct", clazz.getTypeName()));
     }
-    return CODEC_MANAGER.getCodec((Class<T>) thriftStruct);
+    return CODEC_MANAGER.getCodec((Class<T>) thriftEntity);
   }
 
-  private static <T extends ThriftStruct<?>> ThriftCodec<T> codecForObject(T thriftStruct) {
+  private static <T extends ThriftEntity<?>> ThriftCodec<T> codecForObject(T thriftEntity) {
     @SuppressWarnings("unchecked") // Trivially safe under erasure
-    Class<T> aClass = (Class<T>) thriftStruct.getClass();
+    Class<T> aClass = (Class<T>) thriftEntity.getClass();
     return codecForType(aClass);
   }
 
@@ -135,7 +143,7 @@ public final class ThriftBinaryCodec {
    * @throws CodingException If the message could not be decoded.
    */
   @Nullable
-  public static <T extends ThriftStruct<?>> T decode(Class<T> clazz, @Nullable byte[] buffer)
+  public static <T extends ThriftEntity<?>> T decode(Class<T> clazz, @Nullable byte[] buffer)
       throws CodingException {
 
     if (buffer == null) {
@@ -153,7 +161,7 @@ public final class ThriftBinaryCodec {
    * @return A populated message.
    * @throws CodingException If the message could not be decoded.
    */
-  public static <T extends ThriftStruct<?>> T decodeNonNull(Class<T> clazz, byte[] buffer)
+  public static <T extends ThriftEntity<?>> T decodeNonNull(Class<T> clazz, byte[] buffer)
       throws CodingException {
 
     requireNonNull(clazz);
@@ -168,14 +176,14 @@ public final class ThriftBinaryCodec {
   }
 
   /**
-   * Identical to {@link #encodeNonNull(ThriftStruct)}, but allows for a null input.
+   * Identical to {@link #encodeNonNull(ThriftEntity)}, but allows for a null input.
    *
    * @param tBase Object to encode.
    * @return Encoded object, or {@code null} if the argument was {@code null}.
    * @throws CodingException If the object could not be encoded.
    */
   @Nullable
-  public static <T extends ThriftStruct<?>> byte[] encode(@Nullable T tBase)
+  public static <T extends ThriftEntity<?>> byte[] encode(@Nullable T tBase)
       throws CodingException {
 
     if (tBase == null) {
@@ -191,7 +199,7 @@ public final class ThriftBinaryCodec {
    * @return Encoded object.
    * @throws CodingException If the object could not be encoded.
    */
-  public static <T extends ThriftStruct<?>> byte[] encodeNonNull(T tBase) throws CodingException {
+  public static <T extends ThriftEntity<?>> byte[] encodeNonNull(T tBase) throws CodingException {
     requireNonNull(tBase);
 
     try {
@@ -216,12 +224,12 @@ public final class ThriftBinaryCodec {
   /**
    * Encodes a thrift object into a DEFLATE-compressed binary array.
    *
-   * @param tBase Object to encode.
+   * @param thriftEntity Object to encode.
    * @return Deflated, encoded object.
    * @throws CodingException If the object could not be encoded.
    */
-  public static <T extends ThriftStruct<?>> byte[] deflateNonNull(T tBase) throws CodingException {
-    requireNonNull(tBase);
+  public static <T extends ThriftEntity<?>> byte[] deflateNonNull(T thriftEntity) throws CodingException {
+    requireNonNull(thriftEntity);
 
     ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
     try {
@@ -237,12 +245,12 @@ public final class ThriftBinaryCodec {
               DEFLATER_BUFFER_SIZE));
       TProtocol protocol = getProtocol(transport);
 
-      ThriftCodec<T> codec = codecForObject(tBase);
-      codec.write(tBase, protocol);
+      ThriftCodec<T> codec = codecForObject(thriftEntity);
+      codec.write(thriftEntity, protocol);
       transport.close();
       return outBytes.toByteArray();
     } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
-      throw new CodingException("Failed to serialize: " + tBase, e);
+      throw new CodingException("Failed to serialize: " + thriftEntity, e);
     }
   }
 
@@ -252,7 +260,7 @@ public final class ThriftBinaryCodec {
    * @return A populated message.
    * @throws CodingException If the message could not be decoded.
    */
-  public static <T extends ThriftStruct<?>> T inflateNonNull(Class<T> clazz, byte[] buffer)
+  public static <T extends ThriftEntity<?>> T inflateNonNull(Class<T> clazz, byte[] buffer)
       throws CodingException {
     return inflateNonNull(clazz, ByteBuffer.wrap(buffer));
   }
@@ -263,7 +271,7 @@ public final class ThriftBinaryCodec {
    * @return A populated message.
    * @throws CodingException If the message could not be decoded.
    */
-  public static <T extends ThriftStruct<?>> T inflateNonNull(Class<T> clazz, ByteBuffer buffer)
+  public static <T extends ThriftEntity<?>> T inflateNonNull(Class<T> clazz, ByteBuffer buffer)
       throws CodingException {
 
     requireNonNull(clazz);

@@ -21,7 +21,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 
-import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
 
 /**
  * Utility functions for thrift.

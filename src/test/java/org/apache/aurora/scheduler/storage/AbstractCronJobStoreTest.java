@@ -162,7 +162,6 @@ public abstract class AbstractCronJobStoreTest {
             .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
             .setTaskConfig(config)
             .setInstanceCount(5)
-
             .build());
   }
 

@@ -18,7 +18,8 @@ import java.lang.reflect.Type;
 import com.google.common.base.Optional;
 
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGetter;
-import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -26,9 +27,9 @@ import static com.google.common.base.Preconditions.checkArgument;
  * Retrieves an optional struct-type field from a struct.
  */
 class ThriftFieldGetter<
-    T extends ThriftStruct<F>,
-    F extends ThriftStruct.ThriftFields,
-    V extends ThriftStruct<?>>
+    T extends ThriftEntity<F>,
+    F extends ThriftFields,
+    V extends ThriftEntity<?>>
     extends AbstractFieldGetter<T, V> {
 
   private final F fieldId;

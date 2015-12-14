@@ -60,7 +60,7 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGe
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
 

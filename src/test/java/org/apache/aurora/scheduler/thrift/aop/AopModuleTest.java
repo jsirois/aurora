@@ -37,10 +37,12 @@ import static org.junit.Assert.assertSame;
 
 public class AopModuleTest extends EasyMockTest {
   private AnnotatedAuroraAdmin mockThrift;
+  private ServerInfo serverInfo;
 
   @Before
   public void setUp() throws Exception {
     mockThrift = createMock(AnnotatedAuroraAdmin.class);
+    serverInfo = ServerInfo.builder().build();
   }
 
   private AuroraAdmin.Sync getIface(Map<String, Boolean> toggledMethods) {
@@ -48,7 +50,7 @@ public class AopModuleTest extends EasyMockTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(ServerInfo.class).toInstance(ServerInfo.builder().build());
+            bind(ServerInfo.class).toInstance(serverInfo);
             MockDecoratedThrift.bindForwardedMock(binder(), mockThrift);
           }
         },
@@ -94,8 +96,11 @@ public class AopModuleTest extends EasyMockTest {
 
     control.replay();
 
+    // The ServerInfoInterceptor is expected to add in serverInfo.
+    Response expected = response.toBuilder().setServerInfo(serverInfo).build();
+
     AuroraAdmin.Sync thrift = getIface(toggledMethods);
-    assertSame(response, thrift.createJob(job, null));
+    assertEquals(expected, thrift.createJob(job, null));
   }
 
   @Test

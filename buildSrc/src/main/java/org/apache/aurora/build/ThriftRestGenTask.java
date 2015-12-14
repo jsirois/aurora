@@ -2119,7 +2119,10 @@ public class ThriftRestGenTask extends DefaultTask {
                   FieldSpec.builder(peerType, field.getName())
                       .addModifiers(Modifier.PRIVATE)
                       .build();
-              code = CodeBlock.builder().add("$N.toThrift()", fieldSpec).build();
+              code =
+                  CodeBlock.builder()
+                      .add("$N == null ? null : $N.toThrift()", fieldSpec, fieldSpec)
+                      .build();
             }
           }
         } else if (fieldType instanceof ListType) {

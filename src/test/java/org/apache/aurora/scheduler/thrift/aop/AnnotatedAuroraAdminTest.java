@@ -33,6 +33,11 @@ public class AnnotatedAuroraAdminTest {
   @Test
   public void testAllAuroraSchedulerManagerIfaceMethodsHaveAuthorizingParam() throws Exception {
     for (final Method declaredMethod : AuroraSchedulerManager.Sync.class.getDeclaredMethods()) {
+      // Default methods are generated to provide service metadata; these are not exposed and thus
+      // also not authenticated.
+      if (declaredMethod.isDefault()) {
+        continue;
+      }
       Invokable<?, ?> invokable = Invokable.from(declaredMethod);
       Collection<Parameter> parameters = invokable.getParameters();
       Invokable<?, ?> annotatedInvokable = Invokable.from(

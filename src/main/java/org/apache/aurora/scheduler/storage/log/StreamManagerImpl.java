@@ -160,7 +160,7 @@ class StreamManagerImpl implements StreamManager {
       hasher.putBytes(chunkData);
       chunks[i] = chunkData;
     }
-    if (header.getChecksum().equals(ByteBuffer.wrap(hasher.hash().asBytes()))) {
+    if (!header.getChecksum().equals(ByteBuffer.wrap(hasher.hash().asBytes()))) {
       throw new CodingException("Read back a framed log entry that failed its checksum");
     }
     return Entries.thriftBinaryDecode(Bytes.concat(chunks));

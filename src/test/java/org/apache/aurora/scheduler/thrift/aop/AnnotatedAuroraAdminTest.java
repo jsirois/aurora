@@ -14,6 +14,7 @@
 package org.apache.aurora.scheduler.thrift.aop;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 
 import com.google.common.base.Function;
@@ -33,9 +34,11 @@ public class AnnotatedAuroraAdminTest {
   @Test
   public void testAllAuroraSchedulerManagerIfaceMethodsHaveAuthorizingParam() throws Exception {
     for (final Method declaredMethod : AuroraSchedulerManager.Sync.class.getDeclaredMethods()) {
-      // Default methods are generated to provide service metadata; these are not exposed and thus
-      // also not authenticated.
-      if (declaredMethod.isDefault()) {
+      // Default and static methods are generated to provide service metadata; these are not
+      // exposed and thus also not authenticated.
+      // TODO(John Sirois): Consider driving this loop from the service metadata instead of via
+      // reflection.
+      if (declaredMethod.isDefault() || Modifier.isStatic(declaredMethod.getModifiers())) {
         continue;
       }
       Invokable<?, ?> invokable = Invokable.from(declaredMethod);

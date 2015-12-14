@@ -468,7 +468,7 @@ class JobUpdateControllerImpl implements JobUpdateController {
     if (record) {
       updateStore.saveJobUpdateEvent(
           key,
-          JobUpdateEvent.builder().setTimestampMs(clock.nowMillis()).setStatus(status).build());
+          proposedEvent.toBuilder().setTimestampMs(clock.nowMillis()).setStatus(status).build());
     }
 
     if (TERMINAL_STATES.contains(status)) {

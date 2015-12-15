@@ -146,23 +146,6 @@ public class GsonMessageBodyHandler
     return -1;
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private static ThriftUnion<ThriftFields> createUnion(
-      Class<ThriftUnion<ThriftFields>> unionType,
-      ThriftFields setField,
-      Object fieldValue) throws ReflectiveOperationException {
-
-    Class<?> fieldType;
-    if (setField.getFieldType() instanceof Class) {
-      fieldType = (Class<?>) setField.getFieldType();
-    } else {
-      fieldType =
-          (Class<?>) ((ParameterizedType) setField.getFieldType()).getRawType();
-    }
-
-    return unionType.getConstructor(fieldType).newInstance(fieldValue);
-  }
-
   public static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(ImmutableList.class, new JsonDeserializer<ImmutableList<?>>() {
         @Override
@@ -302,11 +285,7 @@ public class GsonMessageBodyHandler
                 for (ThriftFields field : ThriftEntity.fields(clazz)) {
                   if (field.getFieldName().equals(item.getKey())) {
                     Object value = context.deserialize(item.getValue(), field.getFieldType());
-                    try {
-                      return createUnion(clazz, field, value);
-                    } catch (ReflectiveOperationException e) {
-                      throw Throwables.propagate(e);
-                    }
+                    return ThriftUnion.create(clazz, field, value);
                   }
                 }
                 throw new RuntimeException("Failed to deserialize " + typeOfT);

@@ -337,7 +337,8 @@ public class ThriftRestGenTask extends DefaultTask {
         SymbolTable symbolTable,
         String packageName) {
 
-      StructInterfaceFactory structInterfaceFactory = new StructInterfaceFactory(logger, outdir);
+      ThriftEntityInterfaceFactory thriftEntityInterfaceFactory =
+          new ThriftEntityInterfaceFactory(logger, outdir);
       visitors =
           ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
               .put(Const.class,
@@ -352,7 +353,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       "see: https://issues.apache.org/jira/browse/THRIFT-2003"))
               .put(Struct.class,
                   new StructVisitor(
-                      structInterfaceFactory,
+                      thriftEntityInterfaceFactory,
                       logger,
                       outdir,
                       symbolTable,
@@ -368,7 +369,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .put(Typedef.class, Visitor.failing())
               .put(Union.class,
                   new UnionVisitor(
-                      structInterfaceFactory,
+                      thriftEntityInterfaceFactory,
                       logger,
                       outdir,
                       symbolTable,
@@ -926,32 +927,45 @@ public class ThriftRestGenTask extends DefaultTask {
               .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
               .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
               .addField(Type.class, "fieldType", Modifier.PRIVATE, Modifier.FINAL)
+              .addField(Class.class, "fieldClass", Modifier.PRIVATE, Modifier.FINAL)
               .addMethod(
                   MethodSpec.constructorBuilder()
                       .addParameter(short.class, "thriftId")
                       .addParameter(String.class, "fieldName")
                       .addParameter(Type.class, "fieldType")
+                      .addParameter(Class.class, "fieldClass")
                       .addStatement("this.thriftId = thriftId")
                       .addStatement("this.fieldName = fieldName")
                       .addStatement("this.fieldType = fieldType")
+                      .addStatement("this.fieldClass = fieldClass")
                       .build())
               .addMethod(
                   MethodSpec.methodBuilder("getThriftFieldId")
+                      .addAnnotation(Override.class)
                       .addModifiers(Modifier.PUBLIC)
                       .returns(short.class)
                       .addStatement("return thriftId")
                       .build())
               .addMethod(
                   MethodSpec.methodBuilder("getFieldName")
+                      .addAnnotation(Override.class)
                       .addModifiers(Modifier.PUBLIC)
                       .returns(String.class)
                       .addStatement("return fieldName")
                       .build())
               .addMethod(
                   MethodSpec.methodBuilder("getFieldType")
+                      .addAnnotation(Override.class)
                       .addModifiers(Modifier.PUBLIC)
                       .returns(Type.class)
                       .addStatement("return fieldType")
+                      .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldClass")
+                      .addAnnotation(Override.class)
+                      .addModifiers(Modifier.PUBLIC)
+                      .returns(Class.class)
+                      .addStatement("return fieldClass")
                       .build());
 
       ParameterSpec fieldIdParam = ParameterSpec.builder(short.class, "fieldId").build();
@@ -976,14 +990,20 @@ public class ThriftRestGenTask extends DefaultTask {
           thriftFieldsEnumBuilder.addEnumConstant(
               enumValueName,
               TypeSpec.anonymousClassBuilder(
-                  "(short) $L, $S, new $T() {}.getType()", fieldId, field.getName(), typeToken)
-                  .build());
+                  "(short) $L, $S, new $T() {}.getType(), $T.class",
+                  fieldId,
+                  field.getName(),
+                  typeToken,
+                  ((ParameterizedTypeName) fieldType).rawType).build());
         } else {
           thriftFieldsEnumBuilder.addEnumConstant(
               enumValueName,
               TypeSpec.anonymousClassBuilder(
-                  "(short) $L, $S, $T.class", fieldId, field.getName(), fieldType)
-                  .build());
+                  "(short) $L, $S, $T.class, $T.class",
+                  fieldId,
+                  field.getName(),
+                  fieldType,
+                  fieldType).build());
         }
 
         findByThriftIdCode.addStatement(
@@ -1016,16 +1036,16 @@ public class ThriftRestGenTask extends DefaultTask {
   }
 
   @NotThreadSafe
-  static class StructInterfaceFactory extends BaseEmitter {
+  static class ThriftEntityInterfaceFactory extends BaseEmitter {
     private EntityInterface entityInterface;
 
-    public StructInterfaceFactory(Logger logger, File outdir) {
+    public ThriftEntityInterfaceFactory(Logger logger, File outdir) {
       super(logger, outdir);
     }
 
     public EntityInterface getEntityInterface() throws IOException {
       if (entityInterface == null) {
-        entityInterface = createStructInterface();
+        entityInterface = createEntityInterface();
       }
       return entityInterface;
     }
@@ -1055,7 +1075,7 @@ public class ThriftRestGenTask extends DefaultTask {
       }
     }
 
-    private EntityInterface createStructInterface() throws IOException {
+    private EntityInterface createEntityInterface() throws IOException {
       String thriftEntitySimpleName = "ThriftEntity";
       String thriftStructSimpleName = "ThriftStruct";
       String thriftUnionSimpleName = "ThriftUnion";
@@ -1121,6 +1141,11 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                       .returns(Type.class)
                       .build())
+              .addMethod(
+                  MethodSpec.methodBuilder("getFieldClass")
+                      .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                      .returns(Class.class)
+                      .build())
               .build();
 
       TypeVariableName fieldsType = TypeVariableName.get("T", thriftFieldsClassName);
@@ -1159,7 +1184,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .build())
               .build();
 
-      ParameterizedTypeName typeParameterType =
+      ParameterizedTypeName structTypeParameterType =
           ParameterizedTypeName.get(
               ClassName.get(Class.class),
               thriftStructTypeVariable);
@@ -1180,7 +1205,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addTypeVariable(thriftFieldsTypeVariable)
                       .addTypeVariable(thriftStructTypeVariable)
                       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                      .addParameter(typeParameterType, "type")
+                      .addParameter(structTypeParameterType, "type")
                       .returns(builderReturnType)
                       .beginControlFlow("try")
                       .addStatement(
@@ -1192,11 +1217,37 @@ public class ThriftRestGenTask extends DefaultTask {
                       .endControlFlow()
                       .build());
 
+      TypeVariableName thriftUnionTypeVariable =
+          TypeVariableName.get(
+              "U",
+              ParameterizedTypeName.get(thriftUnionClassName, thriftFieldsTypeVariable));
+
+      ParameterizedTypeName unionTypeParameterType =
+          ParameterizedTypeName.get(
+              ClassName.get(Class.class),
+              thriftUnionTypeVariable);
+
       TypeSpec.Builder unionInterfaceBuilder =
           TypeSpec.interfaceBuilder(thriftUnionSimpleName)
               .addTypeVariable(fieldsType)
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
               .addSuperinterface(ParameterizedTypeName.get(thriftEntityClassName, fieldsType))
+              .addMethod(
+                  MethodSpec.methodBuilder("create")
+                      .addTypeVariable(thriftFieldsTypeVariable)
+                      .addTypeVariable(thriftUnionTypeVariable)
+                      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                      .addParameter(unionTypeParameterType, "type")
+                      .addParameter(thriftFieldsTypeVariable, "field")
+                      .addParameter(Object.class, "value")
+                      .returns(thriftUnionTypeVariable)
+                      .beginControlFlow("try")
+                      .addStatement(
+                          "return type.getConstructor(field.getFieldClass()).newInstance(value)")
+                      .nextControlFlow("catch ($T e)", ReflectiveOperationException.class)
+                      .addStatement("throw new $T(e)", IllegalStateException.class)
+                      .endControlFlow()
+                      .build())
               .addMethod(
                   MethodSpec.methodBuilder("getSetField")
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
@@ -1220,7 +1271,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addTypeVariable(thriftFieldsTypeVariable)
                       .addTypeVariable(thriftEntityTypeVariable)
                       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                      .addParameter(typeParameterType, "type")
+                      .addParameter(structTypeParameterType, "type")
                       .returns(fieldsReturnType)
                       .beginControlFlow("try")
                       .addStatement(
@@ -1569,17 +1620,17 @@ public class ThriftRestGenTask extends DefaultTask {
   @NotThreadSafe
   static class StructVisitor extends BaseVisitor<Struct> {
     private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
-    private final StructInterfaceFactory structInterfaceFactory;
+    private final ThriftEntityInterfaceFactory thriftEntityInterfaceFactory;
 
     StructVisitor(
-        StructInterfaceFactory structInterfaceFactory,
+        ThriftEntityInterfaceFactory thriftEntityInterfaceFactory,
         Logger logger,
         File outdir,
         SymbolTable symbolTable,
         String packageName) {
 
       super(logger, outdir, symbolTable, packageName);
-      this.structInterfaceFactory = structInterfaceFactory;
+      this.thriftEntityInterfaceFactory = thriftEntityInterfaceFactory;
     }
 
     @Override
@@ -1612,8 +1663,8 @@ public class ThriftRestGenTask extends DefaultTask {
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
       // TODO(John Sirois): XXX Tame this beast!
-      StructInterfaceFactory.EntityInterface entityInterface =
-          structInterfaceFactory.getEntityInterface();
+      ThriftEntityInterfaceFactory.EntityInterface entityInterface =
+          thriftEntityInterfaceFactory.getEntityInterface();
       Optional<ClassName> fieldsEnumClassName =
           maybeAddFieldsEnum(typeBuilder, struct, entityInterface.fieldsTypeName);
 
@@ -2344,23 +2395,23 @@ public class ThriftRestGenTask extends DefaultTask {
   }
 
   static class UnionVisitor extends BaseVisitor<Union> {
-    private final StructInterfaceFactory structInterfaceFactory;
+    private final ThriftEntityInterfaceFactory thriftEntityInterfaceFactory;
 
     UnionVisitor(
-        StructInterfaceFactory structInterfaceFactory,
+        ThriftEntityInterfaceFactory thriftEntityInterfaceFactory,
         Logger logger,
         File outdir,
         SymbolTable symbolTable,
         String packageName) {
 
       super(logger, outdir, symbolTable, packageName);
-      this.structInterfaceFactory = structInterfaceFactory;
+      this.thriftEntityInterfaceFactory = thriftEntityInterfaceFactory;
     }
 
     @Override
     public void visit(Union union) throws IOException {
-      StructInterfaceFactory.EntityInterface entityInterface =
-          structInterfaceFactory.getEntityInterface();
+      ThriftEntityInterfaceFactory.EntityInterface entityInterface =
+          thriftEntityInterfaceFactory.getEntityInterface();
 
       ClassName localFieldsTypeName = getClassName(union.getName(), "_Fields");
       TypeSpec.Builder typeBuilder =

@@ -918,10 +918,9 @@ public class ThriftRestGenTask extends DefaultTask {
         return Optional.absent();
       }
 
-      ClassName fieldsClassName = getClassName(struct.getName(), "_Fields");
+      ClassName fieldsClassName = getClassName(struct.getName(), "Fields");
       TypeSpec.Builder thriftFieldsEnumBuilder =
-          // TODO(John Sirois): Rename this (striking _) after transitioning to new thrift gen.
-          TypeSpec.enumBuilder("_Fields")
+          TypeSpec.enumBuilder("Fields")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
               .addSuperinterface(fieldsTypeName)
               .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
@@ -2418,7 +2417,7 @@ public class ThriftRestGenTask extends DefaultTask {
       ThriftEntityInterfaceFactory.EntityInterface entityInterface =
           thriftEntityInterfaceFactory.getEntityInterface();
 
-      ClassName localFieldsTypeName = getClassName(union.getName(), "_Fields");
+      ClassName localFieldsTypeName = getClassName(union.getName(), "Fields");
       TypeSpec.Builder typeBuilder =
           TypeSpec.classBuilder(union.getName())
               .addAnnotation(

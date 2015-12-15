@@ -149,9 +149,9 @@ public class DbJobUpdateStoreTest {
 
     StorageEntityUtil.assertFullyPopulated(
         update1,
-        JobUpdateSummary._Fields.STATE,
-        Range._Fields.FIRST,
-        Range._Fields.LAST);
+        JobUpdateSummary.Fields.STATE,
+        Range.Fields.FIRST,
+        Range.Fields.LAST);
     saveUpdate(update1, Optional.of("lock1"));
     assertUpdate(update1);
 
@@ -190,9 +190,9 @@ public class DbJobUpdateStoreTest {
 
     StorageEntityUtil.assertFullyPopulated(
         update,
-        JobUpdateSummary._Fields.STATE,
-        Range._Fields.FIRST,
-        Range._Fields.LAST);
+        JobUpdateSummary.Fields.STATE,
+        Range.Fields.FIRST,
+        Range.Fields.LAST);
     saveUpdate(update, Optional.of("lock1"));
     assertUpdate(update);
   }

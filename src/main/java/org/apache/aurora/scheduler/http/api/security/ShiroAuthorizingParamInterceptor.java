@@ -108,28 +108,28 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   private static final FieldGetter<JobUpdateRequest, TaskConfig> UPDATE_REQUEST_GETTER =
       new ThriftFieldGetter<>(
           JobUpdateRequest.class,
-          JobUpdateRequest._Fields.TASK_CONFIG,
+          JobUpdateRequest.Fields.TASK_CONFIG,
           TaskConfig.class);
 
   private static final FieldGetter<TaskConfig, JobKey> TASK_CONFIG_GETTER =
-      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobConfiguration, JobKey> JOB_CONFIGURATION_GETTER =
-      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration._Fields.KEY, JobKey.class);
+      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration.Fields.KEY, JobKey.class);
 
   private static final FieldGetter<Lock, LockKey> LOCK_GETTER =
-      new ThriftFieldGetter<>(Lock.class, Lock._Fields.KEY, LockKey.class);
+      new ThriftFieldGetter<>(Lock.class, Lock.Fields.KEY, LockKey.class);
 
   private static final FieldGetter<LockKey, JobKey> LOCK_KEY_GETTER =
-      new ThriftFieldGetter<>(LockKey.class, LockKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(LockKey.class, LockKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobUpdateKey, JobKey> JOB_UPDATE_KEY_GETTER =
-      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<AddInstancesConfig, JobKey> ADD_INSTANCES_CONFIG_GETTER =
       new ThriftFieldGetter<>(
           AddInstancesConfig.class,
-          AddInstancesConfig._Fields.KEY,
+          AddInstancesConfig.Fields.KEY,
           JobKey.class);
 
   @SuppressWarnings("unchecked")

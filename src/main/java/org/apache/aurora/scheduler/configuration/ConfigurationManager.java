@@ -32,7 +32,7 @@ import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.TaskConfig._Fields;
+import org.apache.aurora.gen.TaskConfig.Fields;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.gen.Constraint;
@@ -55,8 +55,8 @@ public final class ConfigurationManager {
 
   @CmdLine(name = "allowed_container_types",
       help = "Container types that are allowed to be used by jobs.")
-  private static final Arg<List<Container._Fields>> ALLOWED_CONTAINER_TYPES =
-      Arg.create(ImmutableList.of(Container._Fields.MESOS));
+  private static final Arg<List<Container.Fields>> ALLOWED_CONTAINER_TYPES =
+      Arg.create(ImmutableList.of(Container.Fields.MESOS));
 
   @CmdLine(name = "allow_docker_parameters",
       help = "Allow to pass docker container parameters in the job.")
@@ -90,10 +90,10 @@ public final class ConfigurationManager {
   }
 
   private static class RequiredFieldValidator<T> implements Validator<TaskConfig> {
-    private final _Fields field;
+    private final Fields field;
     private final Validator<T> validator;
 
-    RequiredFieldValidator(_Fields field, Validator<T> validator) {
+    RequiredFieldValidator(Fields field, Validator<T> validator) {
       this.field = field;
       this.validator = validator;
     }
@@ -110,9 +110,9 @@ public final class ConfigurationManager {
 
   private static final Iterable<RequiredFieldValidator<?>> REQUIRED_FIELDS_VALIDATORS =
       ImmutableList.of(
-          new RequiredFieldValidator<>(_Fields.NUM_CPUS, new GreaterThan(0.0, "num_cpus")),
-          new RequiredFieldValidator<>(_Fields.RAM_MB, new GreaterThan(0.0, "ram_mb")),
-          new RequiredFieldValidator<>(_Fields.DISK_MB, new GreaterThan(0.0, "disk_mb")));
+          new RequiredFieldValidator<>(Fields.NUM_CPUS, new GreaterThan(0.0, "num_cpus")),
+          new RequiredFieldValidator<>(Fields.RAM_MB, new GreaterThan(0.0, "ram_mb")),
+          new RequiredFieldValidator<>(Fields.DISK_MB, new GreaterThan(0.0, "disk_mb")));
 
   private ConfigurationManager() {
     // Utility class.
@@ -157,7 +157,7 @@ public final class ConfigurationManager {
   }
 
   private static boolean isValueConstraint(TaskConstraint taskConstraint) {
-    return taskConstraint.getSetField() == TaskConstraint._Fields.VALUE;
+    return taskConstraint.getSetField() == TaskConstraint.Fields.VALUE;
   }
 
   public static boolean isDedicated(Iterable<Constraint> taskConstraints) {
@@ -299,7 +299,7 @@ public final class ConfigurationManager {
     }
 
     Container containerConfig = rawConfig.getContainer();
-    Optional<Container._Fields> containerType = Optional.of(containerConfig.getSetField());
+    Optional<Container.Fields> containerType = Optional.of(containerConfig.getSetField());
     if (containerConfig.isSetDocker()) {
       if (!containerConfig.getDocker().isSetImage()) {
         throw new TaskDescriptionException("A container must specify an image");

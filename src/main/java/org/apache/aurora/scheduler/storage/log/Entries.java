@@ -21,7 +21,7 @@ import com.google.common.base.Preconditions;
 import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.storage.LogEntry;
-import org.apache.aurora.gen.storage.LogEntry._Fields;
+import org.apache.aurora.gen.storage.LogEntry.Fields;
 
 /**
  * Utility class for working with log entries.
@@ -63,7 +63,7 @@ final class Entries {
    * @throws CodingException If the value could not be inflated or decoded.
    */
   static LogEntry inflate(LogEntry entry) throws CodingException {
-    Preconditions.checkArgument(entry.isSet(_Fields.DEFLATED_ENTRY));
+    Preconditions.checkArgument(entry.isSet(Fields.DEFLATED_ENTRY));
 
     ByteBuffer data = entry.getDeflatedEntry();
     LOG.info("Inflating deflated log entry of size " + data.remaining());

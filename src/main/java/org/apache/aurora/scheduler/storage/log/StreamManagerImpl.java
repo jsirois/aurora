@@ -115,7 +115,7 @@ class StreamManagerImpl implements StreamManager {
         logEntry = tryDecodeFrame(logEntry.getFrame(), entries);
       }
       if (logEntry != null) {
-        if (logEntry.isSet(LogEntry._Fields.DEFLATED_ENTRY)) {
+        if (logEntry.isSet(LogEntry.Fields.DEFLATED_ENTRY)) {
           logEntry = Entries.inflate(logEntry);
           vars.deflatedEntriesRead.incrementAndGet();
         }
@@ -173,15 +173,15 @@ class StreamManagerImpl implements StreamManager {
   }
 
   private static boolean isFrame(LogEntry logEntry) {
-    return logEntry.getSetField() == LogEntry._Fields.FRAME;
+    return logEntry.getSetField() == LogEntry.Fields.FRAME;
   }
 
   private static boolean isChunk(Frame frame) {
-    return frame.getSetField() == Frame._Fields.CHUNK;
+    return frame.getSetField() == Frame.Fields.CHUNK;
   }
 
   private static boolean isHeader(Frame frame) {
-    return frame.getSetField() == Frame._Fields.HEADER;
+    return frame.getSetField() == Frame.Fields.HEADER;
   }
 
   private void logBadFrame(FrameHeader header, int chunkIndex) {
@@ -303,7 +303,7 @@ class StreamManagerImpl implements StreamManager {
      */
     @Nullable
     private Optional<Op> coalesce(Op prior, Op next) {
-      Op._Fields priorType = prior.getSetField();
+      Op.Fields priorType = prior.getSetField();
       if (!priorType.equals(next.getSetField())) {
         return Optional.empty();
       }

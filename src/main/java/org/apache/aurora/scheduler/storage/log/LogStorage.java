@@ -210,8 +210,8 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   private final SlidingStats writerWaitStats =
       new SlidingStats("log_storage_write_lock_wait", "ns");
 
-  private final Map<LogEntry._Fields, Closure<LogEntry>> logEntryReplayActions;
-  private final Map<Op._Fields, Closure<Op>> transactionReplayActions;
+  private final Map<LogEntry.Fields, Closure<LogEntry>> logEntryReplayActions;
+  private final Map<Op.Fields, Closure<Op>> transactionReplayActions;
 
   @Inject
   LogStorage(
@@ -309,9 +309,9 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   @VisibleForTesting
-  final Map<LogEntry._Fields, Closure<LogEntry>> buildLogEntryReplayActions() {
-    return ImmutableMap.<LogEntry._Fields, Closure<LogEntry>>builder()
-        .put(LogEntry._Fields.SNAPSHOT, new Closure<LogEntry>() {
+  final Map<LogEntry.Fields, Closure<LogEntry>> buildLogEntryReplayActions() {
+    return ImmutableMap.<LogEntry.Fields, Closure<LogEntry>>builder()
+        .put(LogEntry.Fields.SNAPSHOT, new Closure<LogEntry>() {
           @Override
           public void execute(LogEntry logEntry) {
             Snapshot snapshot = logEntry.getSnapshot();
@@ -319,7 +319,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             snapshotStore.applySnapshot(snapshot);
           }
         })
-        .put(LogEntry._Fields.TRANSACTION, new Closure<LogEntry>() {
+        .put(LogEntry.Fields.TRANSACTION, new Closure<LogEntry>() {
           @Override
           public void execute(final LogEntry logEntry) {
             write(new MutateWork.NoResult.Quiet() {
@@ -332,7 +332,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             });
           }
         })
-        .put(LogEntry._Fields.NOOP, new Closure<LogEntry>() {
+        .put(LogEntry.Fields.NOOP, new Closure<LogEntry>() {
           @Override
           public void execute(LogEntry item) {
             // Nothing to do here
@@ -342,34 +342,34 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   @VisibleForTesting
-  final Map<Op._Fields, Closure<Op>> buildTransactionReplayActions() {
-    return ImmutableMap.<Op._Fields, Closure<Op>>builder()
-        .put(Op._Fields.SAVE_FRAMEWORK_ID, new Closure<Op>() {
+  final Map<Op.Fields, Closure<Op>> buildTransactionReplayActions() {
+    return ImmutableMap.<Op.Fields, Closure<Op>>builder()
+        .put(Op.Fields.SAVE_FRAMEWORK_ID, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindSchedulerStore.saveFrameworkId(op.getSaveFrameworkId().getId());
           }
         })
-        .put(Op._Fields.SAVE_CRON_JOB, new Closure<Op>() {
+        .put(Op.Fields.SAVE_CRON_JOB, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             SaveCronJob cronJob = op.getSaveCronJob();
             writeBehindJobStore.saveAcceptedJob(cronJob.getJobConfig());
           }
         })
-        .put(Op._Fields.REMOVE_JOB, new Closure<Op>() {
+        .put(Op.Fields.REMOVE_JOB, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindJobStore.removeJob(op.getRemoveJob().getJobKey());
           }
         })
-        .put(Op._Fields.SAVE_TASKS, new Closure<Op>() {
+        .put(Op.Fields.SAVE_TASKS, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindTaskStore.saveTasks(op.getSaveTasks().getTasks());
           }
         })
-        .put(Op._Fields.REWRITE_TASK, new Closure<Op>() {
+        .put(Op.Fields.REWRITE_TASK, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             RewriteTask rewriteTask = op.getRewriteTask();
@@ -378,13 +378,13 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
                 rewriteTask.getTask());
           }
         })
-        .put(Op._Fields.REMOVE_TASKS, new Closure<Op>() {
+        .put(Op.Fields.REMOVE_TASKS, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindTaskStore.deleteTasks(op.getRemoveTasks().getTaskIds());
           }
         })
-        .put(Op._Fields.SAVE_QUOTA, new Closure<Op>() {
+        .put(Op.Fields.SAVE_QUOTA, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             SaveQuota saveQuota = op.getSaveQuota();
@@ -393,13 +393,13 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
                 saveQuota.getQuota());
           }
         })
-        .put(Op._Fields.REMOVE_QUOTA, new Closure<Op>() {
+        .put(Op.Fields.REMOVE_QUOTA, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindQuotaStore.removeQuota(op.getRemoveQuota().getRole());
           }
         })
-        .put(Op._Fields.SAVE_HOST_ATTRIBUTES, new Closure<Op>() {
+        .put(Op.Fields.SAVE_HOST_ATTRIBUTES, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             HostAttributes attributes = op.getSaveHostAttributes().getHostAttributes();
@@ -413,19 +413,19 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
             }
           }
         })
-        .put(Op._Fields.SAVE_LOCK, new Closure<Op>() {
+        .put(Op.Fields.SAVE_LOCK, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindLockStore.saveLock(op.getSaveLock().getLock());
           }
         })
-        .put(Op._Fields.REMOVE_LOCK, new Closure<Op>() {
+        .put(Op.Fields.REMOVE_LOCK, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindLockStore.removeLock(op.getRemoveLock().getLockKey());
           }
         })
-        .put(Op._Fields.SAVE_JOB_UPDATE, new Closure<Op>() {
+        .put(Op.Fields.SAVE_JOB_UPDATE, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             JobUpdate update = op.getSaveJobUpdate().getJobUpdate();
@@ -434,7 +434,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
                 Optional.fromNullable(op.getSaveJobUpdate().getLockToken()));
           }
         })
-        .put(Op._Fields.SAVE_JOB_UPDATE_EVENT, new Closure<Op>() {
+        .put(Op.Fields.SAVE_JOB_UPDATE_EVENT, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             SaveJobUpdateEvent event = op.getSaveJobUpdateEvent();
@@ -443,7 +443,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
                 op.getSaveJobUpdateEvent().getEvent());
           }
         })
-        .put(Op._Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, new Closure<Op>() {
+        .put(Op.Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             SaveJobInstanceUpdateEvent event = op.getSaveJobInstanceUpdateEvent();
@@ -452,7 +452,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
                 op.getSaveJobInstanceUpdateEvent().getEvent());
           }
         })
-        .put(Op._Fields.PRUNE_JOB_UPDATE_HISTORY, new Closure<Op>() {
+        .put(Op.Fields.PRUNE_JOB_UPDATE_HISTORY, new Closure<Op>() {
           @Override
           public void execute(Op op) {
             writeBehindJobUpdateStore.pruneHistory(
@@ -524,7 +524,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   private void replay(final LogEntry logEntry) {
-    LogEntry._Fields entryField = logEntry.getSetField();
+    LogEntry.Fields entryField = logEntry.getSetField();
     if (!logEntryReplayActions.containsKey(entryField)) {
       throw new IllegalStateException("Unknown log entry type: " + entryField);
     }
@@ -533,7 +533,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   private void replayOp(Op op) {
-    Op._Fields opField = op.getSetField();
+    Op.Fields opField = op.getSetField();
     if (!transactionReplayActions.containsKey(opField)) {
       throw new IllegalStateException("Unknown transaction op: " + opField);
     }

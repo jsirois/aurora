@@ -59,7 +59,7 @@ public class Locks {
   private static final Function<Lock, String> TO_LOCK_KEY = new Function<Lock, String>() {
     @Override
     public String apply(Lock lock) {
-      return lock.getKey().getSetField() == LockKey._Fields.JOB
+      return lock.getKey().getSetField() == LockKey.Fields.JOB
           ? JobKeys.canonicalString(lock.getKey().getJob())
           : "Unknown lock key type: " + lock.getKey().getSetField();
     }

@@ -14,7 +14,7 @@
 package org.apache.aurora.scheduler.http.api.security;
 
 import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobConfiguration._Fields;
+import org.apache.aurora.gen.JobConfiguration.Fields;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskConfig;
 import org.junit.Test;
@@ -27,7 +27,7 @@ public class ThriftFieldGetterTest {
   public void testStructFieldGetter() {
     JobKey jobKey = JobKey.builder().build();
     FieldGetter<JobConfiguration, JobKey> fieldGetter =
-        new ThriftFieldGetter<>(JobConfiguration.class, _Fields.KEY, JobKey.class);
+        new ThriftFieldGetter<>(JobConfiguration.class, Fields.KEY, JobKey.class);
 
     JobConfiguration jobConfiguration = JobConfiguration.builder().setKey(jobKey).build();
 
@@ -37,7 +37,7 @@ public class ThriftFieldGetterTest {
   @Test
   public void testStructFieldGetterUnsetField() {
     FieldGetter<JobConfiguration, TaskConfig> fieldGetter =
-        new ThriftFieldGetter<>(JobConfiguration.class, _Fields.TASK_CONFIG, TaskConfig.class);
+        new ThriftFieldGetter<>(JobConfiguration.class, Fields.TASK_CONFIG, TaskConfig.class);
 
     JobConfiguration jobConfiguration = JobConfiguration.builder().setInstanceCount(5).build();
 

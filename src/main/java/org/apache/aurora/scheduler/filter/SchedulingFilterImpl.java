@@ -121,7 +121,7 @@ public class SchedulingFilterImpl implements SchedulingFilter {
   }
 
   private static boolean isValueConstraint(Constraint constraint) {
-    return constraint.getConstraint().getSetField() == TaskConstraint._Fields.VALUE;
+    return constraint.getConstraint().getSetField() == TaskConstraint.Fields.VALUE;
   }
 
   private static final Ordering<Constraint> VALUES_FIRST = Ordering.from(

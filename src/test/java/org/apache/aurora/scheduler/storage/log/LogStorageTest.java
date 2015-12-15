@@ -268,14 +268,14 @@ public class LogStorageTest extends EasyMockTest {
     // the decoding routine making handling them in replay unnecessary.
     assertEquals(
         Sets.complementOf(EnumSet.of(
-            LogEntry._Fields.FRAME,
-            LogEntry._Fields.DEDUPLICATED_SNAPSHOT,
-            LogEntry._Fields.DEFLATED_ENTRY)),
+            LogEntry.Fields.FRAME,
+            LogEntry.Fields.DEDUPLICATED_SNAPSHOT,
+            LogEntry.Fields.DEFLATED_ENTRY)),
         EnumSet.copyOf(logStorage.buildLogEntryReplayActions().keySet()));
 
     // Assert all Transaction types have handlers defined.
     assertEquals(
-        EnumSet.allOf(Op._Fields.class),
+        EnumSet.allOf(Op.Fields.class),
         EnumSet.copyOf(logStorage.buildTransactionReplayActions().keySet()));
   }
 

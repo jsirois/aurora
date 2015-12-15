@@ -1126,6 +1126,10 @@ public class ThriftRestGenTask extends DefaultTask {
       TypeVariableName fieldsType = TypeVariableName.get("T", thriftFieldsClassName);
 
       TypeVariableName thriftFieldsTypeVariable = TypeVariableName.get("F", thriftFieldsClassName);
+      TypeVariableName thriftEntityTypeVariable =
+          TypeVariableName.get(
+              "S",
+              ParameterizedTypeName.get(thriftEntityClassName, thriftFieldsTypeVariable));
       TypeVariableName thriftStructTypeVariable =
           TypeVariableName.get(
               "S",
@@ -1155,7 +1159,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .build())
               .build();
 
-      ParameterizedTypeName typeParameterTpe =
+      ParameterizedTypeName typeParameterType =
           ParameterizedTypeName.get(
               ClassName.get(Class.class),
               thriftStructTypeVariable);
@@ -1176,9 +1180,7 @@ public class ThriftRestGenTask extends DefaultTask {
                       .addTypeVariable(thriftFieldsTypeVariable)
                       .addTypeVariable(thriftStructTypeVariable)
                       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                      .addParameter(
-                          typeParameterTpe,
-                          "type")
+                      .addParameter(typeParameterType, "type")
                       .returns(builderReturnType)
                       .beginControlFlow("try")
                       .addStatement(
@@ -1216,11 +1218,9 @@ public class ThriftRestGenTask extends DefaultTask {
               .addMethod(
                   MethodSpec.methodBuilder("fields")
                       .addTypeVariable(thriftFieldsTypeVariable)
-                      .addTypeVariable(thriftStructTypeVariable)
+                      .addTypeVariable(thriftEntityTypeVariable)
                       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                      .addParameter(
-                          typeParameterTpe,
-                          "type")
+                      .addParameter(typeParameterType, "type")
                       .returns(fieldsReturnType)
                       .beginControlFlow("try")
                       .addStatement(
@@ -2381,16 +2381,23 @@ public class ThriftRestGenTask extends DefaultTask {
           FieldSpec.builder(short.class, "id", Modifier.PRIVATE, Modifier.FINAL).build();
       typeBuilder.addField(idField);
 
+      MethodSpec fieldsMethod = MethodSpec.methodBuilder("fields")
+          .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+          .returns(
+              ParameterizedTypeName.get(ClassName.get(ImmutableSet.class), localFieldsTypeName))
+          .addStatement(
+              "return $T.copyOf($T.allOf($T.class))",
+              ImmutableSet.class,
+              EnumSet.class,
+              localFieldsTypeName)
+          .build();
+      typeBuilder.addMethod(fieldsMethod);
+
       typeBuilder.addMethod(
           MethodSpec.methodBuilder("getFields")
               .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .returns(
-                  ParameterizedTypeName.get(ClassName.get(ImmutableSet.class), localFieldsTypeName))
-              .addStatement(
-                  "return $T.copyOf($T.allOf($T.class))",
-                  ImmutableSet.class,
-                  EnumSet.class,
-                  localFieldsTypeName)
+              .returns(fieldsMethod.returnType)
+              .addStatement("return $N()", fieldsMethod)
               .build());
 
       ClassName unionClassName = getClassName(union.getName());

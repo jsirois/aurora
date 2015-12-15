@@ -214,12 +214,9 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
     assertQueryResults(Query.jobScoped(JobKeys.from("role-b", "env-b", "job-b")).active(), TASK_B);
     assertQueryResults(Query.jobScoped(JobKeys.from("role-b", "devel", "job-b")).active());
 
-    // Explicitly call out the current differing behaviors for types of empty query conditions.
-    // Specifically - null task IDs and empty task IDs are different than other 'IN' conditions..
-    assertQueryResults(TaskQuery.builder().setTaskIds().build(), TASK_A, TASK_B, TASK_C, TASK_D);
-    assertQueryResults(TaskQuery.builder().setTaskIds(ImmutableSet.of()).build());
-    // TODO(John Sirois): XXX The above is broken - can no longer signal unset for collections!
-
+    assertQueryResults(
+        TaskQuery.builder().setTaskIds().build(),
+        TASK_A, TASK_B, TASK_C, TASK_D);
     assertQueryResults(
         TaskQuery.builder().setInstanceIds().build(),
         TASK_A, TASK_B, TASK_C, TASK_D);

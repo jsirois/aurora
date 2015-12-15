@@ -19,12 +19,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.Produces;
@@ -36,11 +34,10 @@ import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.gson.ExclusionStrategy;
-import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
@@ -51,10 +48,11 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
-import org.apache.thrift.TFieldIdEnum;
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
+import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
 import org.apache.thrift.TUnion;
-import org.apache.thrift.meta_data.FieldMetaData;
-import org.apache.thrift.meta_data.StructMetaData;
 
 /**
  * A message body reader/writer that uses gson to translate JSON to and from java objects produced
@@ -148,85 +146,174 @@ public class GsonMessageBodyHandler
     return -1;
   }
 
-  private static final Set<String> THRIFT_CONTROL_FIELDS = ImmutableSet.of(
-      "__isset_bitfield",
-      "optionals");
-
-  private static final ExclusionStrategy EXCLUDE_THRIFT_FIELDS = new ExclusionStrategy() {
-    @Override
-    public boolean shouldSkipField(FieldAttributes f) {
-      return THRIFT_CONTROL_FIELDS.contains(f.getName());
-    }
-
-    @Override
-    public boolean shouldSkipClass(Class<?> clazz) {
-      return false;
-    }
-  };
-
   @SuppressWarnings({"unchecked", "rawtypes"})
-  private static TUnion<?, ?> createUnion(
-      Class<?> unionType,
-      TFieldIdEnum setField,
-      Object fieldValue) throws IllegalAccessException, InstantiationException {
+  private static ThriftUnion<ThriftFields> createUnion(
+      Class<ThriftUnion<ThriftFields>> unionType,
+      ThriftFields setField,
+      Object fieldValue) throws ReflectiveOperationException {
 
-    TUnion union = (TUnion) unionType.newInstance();
-    union.setFieldValue(setField, fieldValue);
-    return union;
+    Class<?> fieldType;
+    if (setField.getFieldType() instanceof Class) {
+      fieldType = (Class<?>) setField.getFieldType();
+    } else {
+      fieldType =
+          (Class<?>) ((ParameterizedType) setField.getFieldType()).getRawType();
+    }
+
+    return unionType.getConstructor(fieldType).newInstance(fieldValue);
   }
 
   public static final Gson GSON = new GsonBuilder()
-      .addSerializationExclusionStrategy(EXCLUDE_THRIFT_FIELDS)
-      .registerTypeHierarchyAdapter(TUnion.class, new JsonSerializer<TUnion<?, ?>>() {
+      .registerTypeAdapter(ImmutableList.class, new JsonDeserializer<ImmutableList<?>>() {
         @Override
-        public JsonElement serialize(
-            TUnion<?, ?> src,
-            Type typeOfSrc,
-            JsonSerializationContext context) {
-
-          return context.serialize(
-              ImmutableMap.of(src.getSetField().getFieldName(), src.getFieldValue()));
-        }
-      })
-      .registerTypeHierarchyAdapter(TUnion.class, new JsonDeserializer<TUnion<?, ?>>() {
-        @Override
-        public TUnion<?, ?> deserialize(
+        @SuppressWarnings("unchecked")
+        public ImmutableList<?> deserialize(
             JsonElement json,
             Type typeOfT,
             JsonDeserializationContext context) throws JsonParseException {
 
-          JsonObject jsonObject = json.getAsJsonObject();
-          if (jsonObject.entrySet().size() != 1) {
-            throw new JsonParseException(
-                typeOfT.getClass().getName() + " must have exactly one element");
+          Type[] typeArguments = ((ParameterizedType) typeOfT).getActualTypeArguments();
+          Type typeArgument = typeArguments[0];
+
+          @SuppressWarnings("rawtypes")
+          ImmutableList.Builder builder = ImmutableList.builder();
+          for (JsonElement element : json.getAsJsonArray()) {
+            Object value = context.deserialize(element, typeArgument);
+            builder.add(value);
           }
-
-          if (typeOfT instanceof Class) {
-            Class<?> clazz = (Class<?>) typeOfT;
-            Entry<String, JsonElement> item = Iterables.getOnlyElement(jsonObject.entrySet());
-
-            try {
-              Field metaDataMapField = clazz.getField("metaDataMap");
-              @SuppressWarnings("unchecked")
-              Map<TFieldIdEnum, FieldMetaData> metaDataMap =
-                  (Map<TFieldIdEnum, FieldMetaData>) metaDataMapField.get(null);
-
-              for (Map.Entry<TFieldIdEnum, FieldMetaData> entry : metaDataMap.entrySet()) {
-                if (entry.getKey().getFieldName().equals(item.getKey())) {
-                  StructMetaData valueMetaData = (StructMetaData) entry.getValue().valueMetaData;
-                  Object result = context.deserialize(item.getValue(), valueMetaData.structClass);
-                  return createUnion(clazz, entry.getKey(), result);
-                }
-              }
-
-              throw new RuntimeException("Failed to deserialize " + typeOfT);
-            } catch (NoSuchFieldException | IllegalAccessException | InstantiationException e) {
-              throw Throwables.propagate(e);
-            }
-          } else {
-            throw new RuntimeException("Unable to deserialize " + typeOfT);
-          }
+          return builder.build();
         }
       })
+      .registerTypeAdapter(ImmutableSet.class, new JsonDeserializer<ImmutableSet<?>>() {
+        @Override
+        @SuppressWarnings("unchecked")
+        public ImmutableSet<?> deserialize(
+            JsonElement json,
+            Type typeOfT,
+            JsonDeserializationContext context) throws JsonParseException {
+
+          Type[] typeArguments = ((ParameterizedType) typeOfT).getActualTypeArguments();
+          Type typeArgument = typeArguments[0];
+
+          @SuppressWarnings("rawtypes")
+          ImmutableSet.Builder builder = ImmutableSet.builder();
+          for (JsonElement element : json.getAsJsonArray()) {
+            Object value = context.deserialize(element, typeArgument);
+            builder.add(value);
+          }
+          return builder.build();
+        }
+      })
+      .registerTypeAdapter(ImmutableMap.class, new JsonDeserializer<ImmutableMap<?, ?>>() {
+        @Override
+        @SuppressWarnings("unchecked")
+        public ImmutableMap<?, ?> deserialize(
+            JsonElement json,
+            Type typeOfT,
+            JsonDeserializationContext context) throws JsonParseException {
+
+          Type[] typeArguments = ((ParameterizedType) typeOfT).getActualTypeArguments();
+          Type valueTypeArg = typeArguments[1];
+
+          @SuppressWarnings("rawtypes")
+          ImmutableMap.Builder builder = ImmutableMap.builder();
+          for (Entry<String, JsonElement> entry : json.getAsJsonObject().entrySet()) {
+            Object value = context.deserialize(entry.getValue(), valueTypeArg);
+            builder.put(entry.getKey(), value);
+          }
+          return builder.build();
+        }
+      })
+      .registerTypeHierarchyAdapter(ThriftStruct.class,
+          new JsonSerializer<ThriftStruct<ThriftFields>>() {
+            @Override
+            public JsonElement serialize(
+                ThriftStruct<ThriftFields> src,
+                Type typeOfSrc,
+                JsonSerializationContext context) {
+
+              ImmutableMap.Builder<String, Object> data = ImmutableMap.builder();
+              for (ThriftFields field : src.getFields()) {
+                if (src.isSet(field)) {
+                  data.put(field.getFieldName(), src.getFieldValue(field));
+                }
+              }
+              return context.serialize(data.build());
+            }
+          })
+      .registerTypeHierarchyAdapter(ThriftStruct.class,
+          new JsonDeserializer<ThriftStruct<ThriftFields>>() {
+            @Override
+            public ThriftStruct<ThriftFields> deserialize(
+                JsonElement json,
+                Type typeOfT,
+                JsonDeserializationContext context) throws JsonParseException {
+
+              JsonObject jsonObject = json.getAsJsonObject();
+              if (typeOfT instanceof Class) {
+                @SuppressWarnings("unchecked")
+                Class<ThriftStruct<ThriftFields>> clazz =
+                    (Class<ThriftStruct<ThriftFields>>) typeOfT;
+
+                ThriftStruct.Builder<ThriftFields, ThriftStruct<ThriftFields>> builder =
+                    ThriftStruct.builder(clazz);
+                for (ThriftFields field : ThriftEntity.fields(clazz)) {
+                  JsonElement element = jsonObject.get(field.getFieldName());
+                  Object value = context.deserialize(element, field.getFieldType());
+                  builder.set(field, value);
+                }
+                return builder.build();
+              } else {
+                throw new RuntimeException("Unable to deserialize " + typeOfT);
+              }
+            }
+          })
+      .registerTypeHierarchyAdapter(ThriftUnion.class,
+          new JsonSerializer<ThriftUnion<ThriftFields>>() {
+            @Override
+            public JsonElement serialize(
+                ThriftUnion<ThriftFields> src,
+                Type typeOfSrc,
+                JsonSerializationContext context) {
+
+              return context.serialize(
+                  ImmutableMap.of(src.getSetField().getFieldName(), src.getFieldValue()));
+            }
+          })
+      .registerTypeHierarchyAdapter(ThriftUnion.class,
+          new JsonDeserializer<ThriftUnion<ThriftFields>>() {
+            @Override
+            public ThriftUnion<ThriftFields> deserialize(
+                JsonElement json,
+                Type typeOfT,
+                JsonDeserializationContext context) throws JsonParseException {
+
+              JsonObject jsonObject = json.getAsJsonObject();
+              if (jsonObject.entrySet().size() != 1) {
+                throw new JsonParseException(
+                    typeOfT.getClass().getName() + " must have exactly one element");
+              }
+
+              if (typeOfT instanceof Class) {
+                @SuppressWarnings("unchecked")
+                Class<ThriftUnion<ThriftFields>> clazz = (Class<ThriftUnion<ThriftFields>>) typeOfT;
+                Entry<String, JsonElement> item = Iterables.getOnlyElement(jsonObject.entrySet());
+
+                for (ThriftFields field : ThriftEntity.fields(clazz)) {
+                  if (field.getFieldName().equals(item.getKey())) {
+                    Object value = context.deserialize(item.getValue(), field.getFieldType());
+                    try {
+                      return createUnion(clazz, field, value);
+                    } catch (ReflectiveOperationException e) {
+                      throw Throwables.propagate(e);
+                    }
+                  }
+                }
+                throw new RuntimeException("Failed to deserialize " + typeOfT);
+              } else {
+                throw new RuntimeException("Unable to deserialize " + typeOfT);
+              }
+            }
+          })
       .create();
 }

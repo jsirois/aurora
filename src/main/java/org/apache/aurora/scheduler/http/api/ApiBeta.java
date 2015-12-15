@@ -129,7 +129,7 @@ public class ApiBeta {
     }
 
     // First, verify that this is a valid method on the interface.
-    ImmutableMap<String, Type> methodMetadata = api.getThriftMethods().get(methodName);
+    ImmutableMap<String, Type> methodMetadata = AuroraAdmin.Sync.thriftMethods().get(methodName);
     if (methodMetadata == null) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }

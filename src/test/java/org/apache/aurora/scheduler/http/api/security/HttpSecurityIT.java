@@ -15,11 +15,13 @@ package org.apache.aurora.scheduler.http.api.security;
 
 import java.net.URI;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import com.facebook.nifty.client.HttpClientChannel;
 import com.facebook.nifty.client.HttpClientConnector;
 import com.facebook.nifty.client.NettyClientConfig;
 import com.facebook.nifty.duplex.TDuplexProtocolFactory;
+import com.facebook.swift.service.RuntimeTTransportException;
 import com.facebook.swift.service.ThriftClientManager;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
@@ -32,7 +34,6 @@ import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.sun.jersey.api.client.ClientResponse;
 
-import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Lock;
@@ -56,7 +57,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.shiro.authz.UnauthenticatedException;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
 import org.apache.thrift.TException;
@@ -166,7 +166,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     return "http://" + httpServer.getHostText() + ":" + httpServer.getPort() + endpoint;
   }
 
-  private AuroraAdmin.Sync getClient(Closure<HttpClientChannel> channelModifier) throws Exception {
+  private AuroraAdmin.Sync getClient(Consumer<HttpClientChannel> channelModifier) throws Exception {
     URI uri = URI.create(formatUrl(API_PATH));
     TDuplexProtocolFactory protocolFactory =
         TDuplexProtocolFactory.fromSingleFactory(new TJSONProtocol.Factory());
@@ -175,7 +175,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
       @Override
       public HttpClientChannel newThriftClientChannel(Channel channel, NettyClientConfig config) {
         HttpClientChannel httpChannel = super.newThriftClientChannel(channel, config);
-        channelModifier.execute(httpChannel);
+        channelModifier.accept(httpChannel);
         return httpChannel;
       }
     };
@@ -215,7 +215,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     try {
       client.killTasks(null, null);
       fail("killTasks should fail.");
-    } catch (UnauthenticatedException e) {
+    } catch (RuntimeTTransportException e) {
       // Expected.
     }
   }
@@ -269,7 +269,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     try {
       client.snapshot();
       fail("snapshot should fail");
-    } catch (UnauthenticatedException e) {
+    } catch (RuntimeTTransportException e) {
       // Expected.
     }
   }

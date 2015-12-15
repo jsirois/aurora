@@ -182,7 +182,7 @@ project(':commons') {
     compile "com.google.inject:guice:${guiceRev}"
     compile "commons-lang:commons-lang:${commonsLangRev}"
     compile "javax.servlet:servlet-api:${servletRev}"
-    compile "javax.ws.rs:javax.ws.rs-api:2.0.1"
+    compile "javax.ws.rs:jsr311-api:1.1.1"
     compile "joda-time:joda-time:2.3"
     compile "log4j:log4j:${log4jRev}"
     compile "org.antlr:stringtemplate:${stringTemplateRev}"
@@ -269,7 +269,6 @@ compileJava {
   options.compilerArgs << '-Xlint:-serial'
   // Don't fail for third party classfile warnings.
   options.compilerArgs << '-Xlint:-classfile'
-  options.compilerArgs << '-Xmaxerrs' << '1000'
 }
 
 task enforceVersion {

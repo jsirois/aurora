@@ -1727,6 +1727,7 @@ public class ThriftRestGenTask extends DefaultTask {
         isSetMethod =
             Optional.of(
                 MethodSpec.methodBuilder("isSet")
+                    .addAnnotation(Override.class)
                     .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                     .addParameter(fieldParam)
                     .returns(boolean.class));
@@ -1738,6 +1739,7 @@ public class ThriftRestGenTask extends DefaultTask {
         getFieldValueMethod =
             Optional.of(
                 MethodSpec.methodBuilder("getFieldValue")
+                    .addAnnotation(Override.class)
                     .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                     .addParameter(fieldParam)
                     .returns(Object.class));
@@ -1782,6 +1784,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
         typeBuilder.addMethod(
             MethodSpec.methodBuilder("isSet")
+                .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(fieldParam)
                 .returns(boolean.class)
@@ -1790,6 +1793,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
         typeBuilder.addMethod(
             MethodSpec.methodBuilder("getFieldValue")
+                .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(fieldParam)
                 .returns(Object.class)
@@ -1812,6 +1816,7 @@ public class ThriftRestGenTask extends DefaultTask {
       typeBuilder.addMethod(fieldsMethod);
       typeBuilder.addMethod(
           MethodSpec.methodBuilder("getFields")
+              .addAnnotation(Override.class)
               .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
               .returns(fieldsMethod.returnType)
               .addStatement("return $N()", fieldsMethod)

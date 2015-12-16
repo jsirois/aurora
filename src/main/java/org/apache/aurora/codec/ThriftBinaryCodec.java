@@ -18,7 +18,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.logging.Logger;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
@@ -79,8 +78,6 @@ public final class ThriftBinaryCodec {
   private static TByteArrayOutputStream createBuffer() {
     return new TByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
   }
-
-  private static final Logger LOG = Logger.getLogger(ThriftBinaryCodec.class.getName());
 
   private static final ThriftCodecManager CODEC_MANAGER =
       new ThriftCodecManager(

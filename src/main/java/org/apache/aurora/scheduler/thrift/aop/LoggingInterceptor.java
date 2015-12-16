@@ -40,15 +40,16 @@ class LoggingInterceptor implements MethodInterceptor {
   private static String renderJobConfiguration(JobConfiguration configuration) {
     if (configuration.isSetTaskConfig()) {
       TaskConfig taskConfig = configuration.getTaskConfig();
-      configuration =
-          configuration.toBuilder()
-              .setTaskConfig(
-                  taskConfig.toBuilder()
-                      .setExecutorConfig(ExecutorConfig.create("BLANKED", "BLANKED"))
-                      .build())
-              .build();
+      return configuration.toBuilder()
+          .setTaskConfig(
+              taskConfig.toBuilder()
+                  .setExecutorConfig(ExecutorConfig.create("BLANKED", "BLANKED"))
+                  .build())
+          .build()
+          .toString();
+    } else {
+      return configuration.toString();
     }
-    return configuration.toString();
   }
 
   @Override

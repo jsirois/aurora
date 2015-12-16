@@ -28,8 +28,6 @@ import com.google.inject.Inject;
 
 import org.apache.aurora.common.application.Lifecycle;
 
-import autovalue.shaded.com.google.common.common.collect.Iterables;
-
 import static java.util.stream.Collector.Characteristics.UNORDERED;
 
 /**

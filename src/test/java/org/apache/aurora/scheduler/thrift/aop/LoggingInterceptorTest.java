@@ -119,8 +119,10 @@ public class LoggingInterceptorTest extends EasyMockTest {
     Response response = Response.builder().build();
     expect(methodInvocation.getMethod())
         .andReturn(InterceptedClass.class.getDeclaredMethod("respond", JobConfiguration.class));
-    JobConfiguration.Builder blankedConfig =
-        JobConfiguration.builder().setTaskConfig(TaskConfig.builder().build());
+    JobConfiguration blankedConfig =
+        JobConfiguration.builder()
+            .setTaskConfig(TaskConfig.builder().build())
+            .build();
     expect(methodInvocation.getArguments())
         .andReturn(new Object[] {blankedConfig});
     expect(methodInvocation.proceed()).andReturn(response);

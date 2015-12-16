@@ -14,13 +14,10 @@
 package org.apache.aurora.scheduler.thrift.aop;
 
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.common.base.Function;
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
 import org.aopalliance.intercept.MethodInterceptor;
@@ -40,27 +37,19 @@ import org.apache.shiro.ShiroException;
 class LoggingInterceptor implements MethodInterceptor {
   private static final Logger LOG = Logger.getLogger(LoggingInterceptor.class.getName());
 
-  private final Map<Class<?>, Function<Object, String>> printFunctions =
-      ImmutableMap.of(
-          JobConfiguration.class,
-          new Function<Object, String>() {
-            @Override
-            public String apply(Object input) {
-              JobConfiguration configuration = (JobConfiguration) input;
-              if (configuration.isSetTaskConfig()) {
-                TaskConfig taskConfig = configuration.getTaskConfig();
-                configuration =
-                    configuration.toBuilder()
-                        .setTaskConfig(
-                            taskConfig.toBuilder()
-                                .setExecutorConfig(ExecutorConfig.create("BLANKED", "BLANKED"))
-                                .build())
-                        .build();
-              }
-              return configuration.toString();
-            }
-          }
-      );
+  private static String renderJobConfiguration(JobConfiguration configuration) {
+    if (configuration.isSetTaskConfig()) {
+      TaskConfig taskConfig = configuration.getTaskConfig();
+      configuration =
+          configuration.toBuilder()
+              .setTaskConfig(
+                  taskConfig.toBuilder()
+                      .setExecutorConfig(ExecutorConfig.create("BLANKED", "BLANKED"))
+                      .build())
+              .build();
+    }
+    return configuration.toString();
+  }
 
   @Override
   public Object invoke(MethodInvocation invocation) throws Throwable {
@@ -69,8 +58,11 @@ class LoggingInterceptor implements MethodInterceptor {
       if (arg == null) {
         argStrings.add("null");
       } else {
-        Function<Object, String> printFunction = printFunctions.get(arg.getClass());
-        argStrings.add((printFunction == null) ? arg.toString() : printFunction.apply(arg));
+        if (JobConfiguration.class.isInstance(arg)) {
+          argStrings.add(renderJobConfiguration((JobConfiguration) arg));
+        } else {
+          argStrings.add(arg.toString());
+        }
       }
     }
     String methodName = invocation.getMethod().getName();

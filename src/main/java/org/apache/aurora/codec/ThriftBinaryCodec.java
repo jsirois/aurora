@@ -303,7 +303,7 @@ public final class ThriftBinaryCodec {
     }
 
     @Override
-    public int read() throws IOException {
+    public int read() {
       if (!buffer.hasRemaining()) {
         return -1;
       }
@@ -311,7 +311,7 @@ public final class ThriftBinaryCodec {
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(byte[] b, int off, int len) {
       if (!buffer.hasRemaining()) {
         return -1;
       }

@@ -470,7 +470,7 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
   @Override
   public Response restartShards(
       JobKey rawJobKey,
-      ImmutableSet<Integer> shardIds,
+      Set<Integer> shardIds,
       @Nullable Lock lock) {
 
     JobKey jobKey = JobKeys.assertValid(rawJobKey);

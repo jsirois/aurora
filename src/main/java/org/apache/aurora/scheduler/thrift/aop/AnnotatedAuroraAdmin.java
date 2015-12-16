@@ -13,6 +13,8 @@
  */
 package org.apache.aurora.scheduler.thrift.aop;
 
+import java.util.Set;
+
 import javax.annotation.Nullable;
 
 import com.google.common.collect.ImmutableSet;
@@ -62,7 +64,7 @@ public interface AnnotatedAuroraAdmin extends AuroraAdmin.Sync {
   @Override
   Response restartShards(
       @AuthorizingParam @Nullable JobKey job,
-      @Nullable ImmutableSet<Integer> shardIds,
+      @Nullable Set<Integer> shardIds,
       @Nullable Lock lock);
 
   @Override

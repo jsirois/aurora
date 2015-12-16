@@ -674,6 +674,10 @@ public class ThriftRestGenTask extends DefaultTask {
     }
 
     protected final TypeName typeName(ThriftType thriftType) {
+      return typeName(thriftType, /* mutable */ false);
+    }
+
+    protected final TypeName typeName(ThriftType thriftType, boolean mutable) {
       if (thriftType instanceof BaseType) {
         BaseType baseType = (BaseType) thriftType;
         switch (baseType.getType()) {
@@ -692,13 +696,13 @@ public class ThriftRestGenTask extends DefaultTask {
         MapType mapType = (MapType) thriftType;
         ThriftType keyType = mapType.getKeyType();
         ThriftType valueType = mapType.getValueType();
-        return parameterizedTypeName(ImmutableMap.class, keyType, valueType);
+        return parameterizedTypeName(mutable ? Map.class : ImmutableMap.class, keyType, valueType);
       } else if (thriftType instanceof ListType) {
         ThriftType elementType = ((ListType) thriftType).getElementType();
-        return parameterizedTypeName(ImmutableList.class, elementType);
+        return parameterizedTypeName(mutable ? List.class : ImmutableList.class, elementType);
       } else if (thriftType instanceof SetType) {
         ThriftType elementType = ((SetType) thriftType).getElementType();
-        return parameterizedTypeName(ImmutableSet.class, elementType);
+        return parameterizedTypeName(mutable ? Set.class : ImmutableSet.class, elementType);
       }
       throw new UnexpectedTypeException("Unknown thrift type: " + thriftType);
     }
@@ -707,8 +711,16 @@ public class ThriftRestGenTask extends DefaultTask {
         Class<?> type,
         ThriftType... parameters) {
 
+      return parameterizedTypeName(type, /* mutable */ false, parameters);
+    }
+
+    protected final ParameterizedTypeName parameterizedTypeName(
+        Class<?> type,
+        boolean mutable,
+        ThriftType... parameters) {
+
       return ParameterizedTypeName.get(ClassName.get(type),
-          Stream.of(parameters).map(p -> typeName(p).box()).toArray(TypeName[]::new));
+          Stream.of(parameters).map(p -> typeName(p, mutable).box()).toArray(TypeName[]::new));
     }
 
     protected final CodeBlock renderValue(
@@ -1472,8 +1484,13 @@ public class ThriftRestGenTask extends DefaultTask {
 
         asyncServiceBuilder.addMethod(
             renderMethod(
-                method, parameterizedTypeName(ListenableFuture.class, method.getReturnType())));
-        syncServiceBuilder.addMethod(renderMethod(method, typeName(method.getReturnType())));
+                method,
+                parameterizedTypeName(
+                    ListenableFuture.class,
+                    /* mutable */ true,
+                    method.getReturnType())));
+        syncServiceBuilder.addMethod(
+            renderMethod(method, typeName(method.getReturnType(), /* mutable */ true)));
       }
 
       CodeBlock methodMapInitializer =
@@ -1526,7 +1543,7 @@ public class ThriftRestGenTask extends DefaultTask {
               .indent();
 
       for (ThriftField field : method.getArguments()) {
-        TypeName fieldType = typeName(field.getType());
+        TypeName fieldType = typeName(field.getType(), /* mutable */ true);
         if (fieldType instanceof ParameterizedTypeName) {
           ParameterizedTypeName typeToken =
               ParameterizedTypeName.get(ClassName.get(TypeToken.class), fieldType);
@@ -1600,7 +1617,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
       for (ThriftField field : method.getArguments()) {
         ParameterSpec.Builder paramBuilder =
-            ParameterSpec.builder(typeName(field.getType()), field.getName())
+            ParameterSpec.builder(typeName(field.getType(), /* mutable */ true), field.getName())
                 .addAnnotation(renderThriftFieldAnnotation(field));
         if (!field.getAnnotations().isEmpty()) {
           paramBuilder.addAnnotation(

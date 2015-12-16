@@ -13,7 +13,7 @@
  */
 package org.apache.aurora.scheduler.thrift.aop;
 
-import com.google.common.collect.ImmutableSet;
+import java.util.Set;
 
 import org.apache.aurora.gen.AddInstancesConfig;
 import org.apache.aurora.gen.Hosts;
@@ -139,7 +139,7 @@ abstract class ForwardingThrift implements AnnotatedAuroraAdmin {
   }
 
   @Override
-  public Response restartShards(JobKey job, ImmutableSet<Integer> shardIds, Lock lock) {
+  public Response restartShards(JobKey job, Set<Integer> shardIds, Lock lock) {
     return delegate.restartShards(job, shardIds, lock);
   }
 

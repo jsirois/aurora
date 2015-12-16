@@ -58,8 +58,6 @@ import org.apache.aurora.scheduler.storage.TaskStore;
 
 import static java.util.Objects.requireNonNull;
 
-import static org.apache.aurora.GuavaUtils.hasElements;
-
 /**
  * An in-memory task store.
  */

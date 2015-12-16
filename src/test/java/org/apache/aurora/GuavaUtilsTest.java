@@ -29,10 +29,4 @@ public class GuavaUtilsTest {
         ImmutableSet.of("b", "c", "a"),
         ImmutableList.of("a", "b", "c").stream().collect(GuavaUtils.toImmutableSet()));
   }
-
-  @Test
-  public void testHasElements() {
-    assertTrue(GuavaUtils.hasElements(ImmutableList.of(42)));
-    assertFalse(GuavaUtils.hasElements(ImmutableList.of()));
-  }
 }

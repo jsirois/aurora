@@ -86,10 +86,10 @@ class MemTaskStore implements TaskStore.Mutable {
         @Override
         public Optional<Set<String>> apply(Query.Builder queryBuilder) {
           TaskQuery query = queryBuilder.get();
-          if (hasElements(query.getSlaveHosts())) {
-            return Optional.of(query.getSlaveHosts());
-          } else {
+          if (query.getSlaveHosts().isEmpty()) {
             return Optional.absent();
+          } else {
+            return Optional.of(query.getSlaveHosts());
           }
         }
       };
@@ -275,10 +275,7 @@ class MemTaskStore implements TaskStore.Mutable {
   private FluentIterable<Task> matches(Query.Builder query) {
     // Apply the query against the working set.
     Optional<? extends Iterable<Task>> from = Optional.absent();
-    if (hasElements(query.get().getTaskIds())) {
-      taskQueriesById.incrementAndGet();
-      from = Optional.of(fromIdIndex(query.get().getTaskIds()));
-    } else {
+    if (query.get().getTaskIds().isEmpty()) {
       for (SecondaryIndex<?> index : secondaryIndices) {
         Optional<Iterable<String>> indexMatch = index.getMatches(query);
         if (indexMatch.isPresent()) {
@@ -295,6 +292,9 @@ class MemTaskStore implements TaskStore.Mutable {
         taskQueriesAll.incrementAndGet();
         from = Optional.of(tasks.values());
       }
+    } else {
+      taskQueriesById.incrementAndGet();
+      from = Optional.of(fromIdIndex(query.get().getTaskIds()));
     }
 
     return FluentIterable.from(from.get()).filter(queryFilter(query));

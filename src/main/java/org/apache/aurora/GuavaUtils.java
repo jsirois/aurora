@@ -130,15 +130,4 @@ public final class GuavaUtils {
       }
     };
   }
-
-  /**
-   * Checks if the given iterable has at least one element.
-   * This can be used as a positive way to ask the equivalent {@code !Iterables.isEmpty(iterable)}.
-   *
-   * @param iterable The iterable to check for elements.
-   * @return {@code true} if the given iterable has at least one element.
-   */
-  public static boolean hasElements(Iterable<?> iterable) {
-    return !Iterables.isEmpty(iterable);
-  }
 }

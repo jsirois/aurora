@@ -16,14 +16,23 @@ package org.apache.aurora.codec;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import com.facebook.swift.codec.ThriftCodec;
+import com.google.common.collect.ImmutableSet;
+
 import org.apache.aurora.codec.ThriftBinaryCodec.ByteBufferInputStream;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftEntity.ThriftFields.NoFields;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 public class ThriftBinaryCodecTest {
 
@@ -54,6 +63,57 @@ public class ThriftBinaryCodecTest {
   @Test(expected = NullPointerException.class)
   public void testDecodeNonNull() throws CodingException {
     ThriftBinaryCodec.decodeNonNull(Identity.class, null);
+  }
+
+  @Test
+  public void testCodecForThrift() {
+    ThriftCodec<Identity> identityCodec = ThriftBinaryCodec.codecForType(Identity.class);
+    assertNotNull(identityCodec);
+
+    assertSame(identityCodec, ThriftBinaryCodec.codecForType(Identity.class));
+
+    ThriftCodec<LockKey> lockKeyCodec = ThriftBinaryCodec.codecForType(LockKey.class);
+    assertNotNull(identityCodec);
+    assertNotSame(identityCodec, lockKeyCodec);
+  }
+
+  static class MyThriftEntity implements ThriftEntity<NoFields> {
+    @Override public boolean isSet(NoFields field) {
+      throw new IllegalStateException("Not implemented");
+    }
+
+    @Override public Object getFieldValue(NoFields field) {
+      throw new IllegalStateException("Not implemented");
+    }
+
+    @Override public ImmutableSet<NoFields> getFields() {
+      throw new IllegalStateException("Not implemented");
+    }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCodecForUnregisteredThrift() {
+    ThriftBinaryCodec.codecForType(MyThriftEntity.class);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDecodeUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.decodeNonNull(MyThriftEntity.class, new byte[0]);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testEncodeUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.encodeNonNull(new MyThriftEntity());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDeflateUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.deflateNonNull(new MyThriftEntity());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testInflateUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.inflateNonNull(MyThriftEntity.class, new byte[0]);
   }
 
   @Test

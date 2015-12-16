@@ -98,7 +98,23 @@ public final class ThriftBinaryCodec {
           }),
           ImmutableSet.of()); // A priori known codecs,
 
-  // TODO(John Sirois): XXX DOCME
+  /**
+   * Returns a thrift request processor that can route calls to the given thrift services.
+   * <p>
+   * The given services must meet the following criteria:
+   * <ul>
+   *   <li>Each service object must implement one or more service interfaces annotated with
+   *   {@link com.facebook.swift.service.ThriftService}</li>
+   *   <li>There must be no overlap in service method names across the given services.  Only
+   *   {@link com.facebook.swift.service.ThriftService} methods annotated with
+   *   {@link com.facebook.swift.service.ThriftMethod} count towards this rule.</li>
+   * </ul>
+   * </p>
+   *
+   * @param services The services to route.
+   * @throws IllegalArgumentException If the given services violate the rules described above.
+   * @return A thrift processor that can route calls to the given services.
+   */
   public static TProcessor processorFor(ServiceDescriptor... services) {
     NiftyProcessor processor =
         new ThriftServiceProcessor(CODEC_MANAGER, ImmutableList.of(), services);
@@ -108,8 +124,16 @@ public final class ThriftBinaryCodec {
   private static final Predicate<Class<?>> UNION_OR_STRUCT =
       Predicates.in(ImmutableSet.of(ThriftStruct.class, ThriftUnion.class));
 
-  @SuppressWarnings("unchecked")
-  public static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<T> clazz) {
+  /**
+   * Returns a thrift binary protocol codec for the given thrift entity class.
+   *
+   * @param clazz The thrift entity class.
+   * @param <T> The thrift entity type.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
+   * @return A codec that can translate objects of the given type to and from the thrift binary
+   *         protocol format.
+   */
+  public static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<? extends T> clazz) {
     Class<?> thriftEntity = clazz;
     while (thriftEntity != null
         && !FluentIterable.of(thriftEntity.getInterfaces()).anyMatch(UNION_OR_STRUCT)) {
@@ -119,13 +143,17 @@ public final class ThriftBinaryCodec {
       throw new IllegalArgumentException(
           String.format("%s is not a thrift struct", clazz.getTypeName()));
     }
-    return CODEC_MANAGER.getCodec((Class<T>) thriftEntity);
+    // Trivially safe under erasure and the getCodec call below will handle unknown types.
+    @SuppressWarnings("unchecked")
+    Class<T> entityType = (Class<T>) thriftEntity;
+    return CODEC_MANAGER.getCodec(entityType);
   }
 
   private static <T extends ThriftEntity<?>> ThriftCodec<T> codecForObject(T thriftEntity) {
-    @SuppressWarnings("unchecked") // Trivially safe under erasure
-    Class<T> aClass = (Class<T>) thriftEntity.getClass();
-    return codecForType(aClass);
+    // Trivially safe under erasure and the codecForType call below will handle unknown types.
+    @SuppressWarnings("unchecked")
+    Class<T> clazz = (Class<T>) thriftEntity.getClass();
+    return codecForType(clazz);
   }
 
   private ThriftBinaryCodec() {
@@ -139,6 +167,7 @@ public final class ThriftBinaryCodec {
    * @param buffer Buffer to decode.
    * @param <T> Target type.
    * @return A populated message, or {@code null} if the buffer was {@code null}.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
    * @throws CodingException If the message could not be decoded.
    */
   @Nullable
@@ -158,6 +187,7 @@ public final class ThriftBinaryCodec {
    * @param buffer Buffer to decode.
    * @param <T> Target type.
    * @return A populated message.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
    * @throws CodingException If the message could not be decoded.
    */
   public static <T extends ThriftEntity<?>> T decodeNonNull(Class<T> clazz, byte[] buffer)
@@ -166,9 +196,10 @@ public final class ThriftBinaryCodec {
     requireNonNull(clazz);
     requireNonNull(buffer);
 
+    ThriftCodec<T> codec = codecForType(clazz);
     try {
       TProtocol protocol = createProtocol(new TIOStreamTransport(new ByteArrayInputStream(buffer)));
-      return codecForType(clazz).read(protocol);
+      return codec.read(protocol);
     } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
       throw new CodingException("Failed to deserialize thrift object.", e);
     }
@@ -177,37 +208,41 @@ public final class ThriftBinaryCodec {
   /**
    * Identical to {@link #encodeNonNull(ThriftEntity)}, but allows for a null input.
    *
-   * @param tBase Object to encode.
+   * @param thriftEntity Object to encode.
    * @return Encoded object, or {@code null} if the argument was {@code null}.
+   * @throws IllegalArgumentException If the given object is not of a known thrift entity type.
    * @throws CodingException If the object could not be encoded.
    */
   @Nullable
-  public static <T extends ThriftEntity<?>> byte[] encode(@Nullable T tBase)
+  public static <T extends ThriftEntity<?>> byte[] encode(@Nullable T thriftEntity)
       throws CodingException {
 
-    if (tBase == null) {
+    if (thriftEntity == null) {
       return null;
     }
-    return encodeNonNull(tBase);
+    return encodeNonNull(thriftEntity);
   }
 
   /**
    * Encodes a thrift object into a binary array.
    *
-   * @param tBase Object to encode.
+   * @param thriftEntity Object to encode.
    * @return Encoded object.
+   * @throws IllegalArgumentException If the given object is not of a known thrift entity type.
    * @throws CodingException If the object could not be encoded.
    */
-  public static <T extends ThriftEntity<?>> byte[] encodeNonNull(T tBase) throws CodingException {
-    requireNonNull(tBase);
+  public static <T extends ThriftEntity<?>> byte[] encodeNonNull(T thriftEntity)
+      throws CodingException {
 
+    requireNonNull(thriftEntity);
+
+    ThriftCodec<T> codec = codecForObject(thriftEntity);
+    TByteArrayOutputStream buffer = createBuffer();
     try {
-      ThriftCodec<T> codec = codecForObject(tBase);
-      TByteArrayOutputStream buffer = createBuffer();
-      codec.write(tBase, getProtocol(new TIOStreamTransport(buffer)));
+      codec.write(thriftEntity, getProtocol(new TIOStreamTransport(buffer)));
       return buffer.toByteArray();
-    } catch (Exception e) {  // Unfortunately swift ThriftCodec.read throws Exception.
-      throw new CodingException("Failed to serialize: " + tBase, e);
+    } catch (Exception e) {  // Unfortunately swift ThriftCodec.write throws Exception.
+      throw new CodingException("Failed to serialize: " + thriftEntity, e);
     }
   }
 
@@ -225,6 +260,7 @@ public final class ThriftBinaryCodec {
    *
    * @param thriftEntity Object to encode.
    * @return Deflated, encoded object.
+   * @throws IllegalArgumentException If the given object is not of a known thrift entity type.
    * @throws CodingException If the object could not be encoded.
    */
   public static <T extends ThriftEntity<?>> byte[] deflateNonNull(T thriftEntity)
@@ -232,6 +268,7 @@ public final class ThriftBinaryCodec {
 
     requireNonNull(thriftEntity);
 
+    ThriftCodec<T> codec = codecForObject(thriftEntity);
     ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
     try {
       // NOTE: Buffering is needed here for performance.
@@ -246,11 +283,10 @@ public final class ThriftBinaryCodec {
               DEFLATER_BUFFER_SIZE));
       TProtocol protocol = getProtocol(transport);
 
-      ThriftCodec<T> codec = codecForObject(thriftEntity);
       codec.write(thriftEntity, protocol);
       transport.close();
       return outBytes.toByteArray();
-    } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
+    } catch (Exception e) { // Unfortunately swift ThriftCodec.write throws Exception.
       throw new CodingException("Failed to serialize: " + thriftEntity, e);
     }
   }
@@ -264,6 +300,7 @@ public final class ThriftBinaryCodec {
    * @param clazz Class to instantiate and deserialize to.
    * @param buffer Compressed buffer to decode.
    * @return A populated message.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
    * @throws CodingException If the message could not be decoded.
    */
   public static <T extends ThriftEntity<?>> T inflateNonNull(Class<T> clazz, byte[] buffer)
@@ -277,6 +314,7 @@ public final class ThriftBinaryCodec {
    * @param clazz Class to instantiate and deserialize to.
    * @param buffer Compressed buffer to decode.
    * @return A populated message.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
    * @throws CodingException If the message could not be decoded.
    */
   public static <T extends ThriftEntity<?>> T inflateNonNull(Class<T> clazz, ByteBuffer buffer)
@@ -284,11 +322,13 @@ public final class ThriftBinaryCodec {
 
     requireNonNull(clazz);
     requireNonNull(buffer);
+
+    ThriftCodec<T> codec = codecForType(clazz);
     try {
       TTransport transport = new TIOStreamTransport(
           new InflaterInputStream(new ByteBufferInputStream(buffer)));
       TProtocol protocol = getProtocol(transport);
-      return codecForType(clazz).read(protocol);
+      return codec.read(protocol);
     } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
       throw new CodingException("Failed to deserialize: " + e, e);
     }

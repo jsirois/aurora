@@ -88,14 +88,7 @@ public final class ThriftBinaryCodec {
   private static final ThriftCodecManager CODEC_MANAGER =
       new ThriftCodecManager(
           new CompilerThriftCodecFactory(/* debug */ false),
-          new ThriftCatalog(new MetadataErrors.Monitor() {
-            @Override public void onError(MetadataErrorException errorMessage) {
-              LOG.severe(errorMessage.toString());
-            }
-            @Override public void onWarning(MetadataWarningException warningMessage) {
-              LOG.warning(warningMessage.toString());
-            }
-          }),
+          new ThriftCatalog(),
           ImmutableSet.of()); // A priori known codecs,
 
   /**

@@ -26,7 +26,6 @@ import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
-import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.scheduler.http.CorsFilter;
 import org.apache.aurora.scheduler.http.JettyServerModule;
 import org.apache.aurora.scheduler.http.LeaderRedirectFilter;

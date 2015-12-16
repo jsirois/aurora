@@ -14,6 +14,7 @@
 package org.apache.aurora.scheduler.http.api.security;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.Set;
 
@@ -82,7 +83,7 @@ public class HttpSecurityModule extends ServletModule {
       GuiceUtils.interfaceMatcher(AuroraSchedulerManager.Sync.class, true)
           .and(new AbstractMatcher<Method>() {
             @Override public boolean matches(Method method) {
-              return !method.isDefault();
+              return !method.isDefault() && !Modifier.isStatic(method.getModifiers());
             }
           });
 

@@ -200,15 +200,12 @@ public class HttpSecurityIT extends JettyServerModuleTest {
 
   @Test
   public void testReadOnlyScheduler() throws Exception {
-    expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(3);
+    expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(2);
 
     replayAndStart();
 
     assertEquals(OK, getUnauthenticatedClient().getRoleSummary());
     assertEquals(OK, getAuthenticatedClient(ROOT).getRoleSummary());
-    // Incorrect works because the server doesn't challenge for credentials to execute read-only
-    // methods.
-    assertEquals(OK, getAuthenticatedClient(INCORRECT).getRoleSummary());
   }
 
   private void assertKillTasksFails(AuroraAdmin.Sync client) throws TException {

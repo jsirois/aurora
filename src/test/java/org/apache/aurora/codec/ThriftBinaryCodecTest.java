@@ -13,6 +13,7 @@
  */
 package org.apache.aurora.codec;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.aurora.codec.ThriftBinaryCodec.ByteBufferInputStream;
@@ -67,34 +68,35 @@ public class ThriftBinaryCodecTest {
   }
 
   @Test
-  public void testByteBufferInputStreamRead() {
+  public void testByteBufferInputStreamRead() throws IOException {
     ByteBuffer buffer = ByteBuffer.wrap(new byte[] {0x0, 0x1});
-    ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
-    assertEquals(0x0, stream.read());
-    assertEquals(0x1, stream.read());
-    assertEquals(-1, stream.read());
-    assertEquals(-1, stream.read());
+    try (ByteBufferInputStream stream = new ByteBufferInputStream(buffer)) {
+      assertEquals(0x0, stream.read());
+      assertEquals(0x1, stream.read());
+      assertEquals(-1, stream.read());
+      assertEquals(-1, stream.read());
+    }
   }
 
   @Test
-  public void testByteBufferInputStreamReadArray() {
-    ByteBuffer buffer = ByteBuffer.wrap(new byte[] {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8});
-    ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
+  public void testByteBufferInputStreamReadArray() throws IOException {
+    ByteBuffer buffer = ByteBuffer.wrap(new byte[] {0xC, 0xA, 0xF, 0xE, 0xB, 0xA, 0xB, 0xE, 0x9});
+    try (ByteBufferInputStream stream = new ByteBufferInputStream(buffer)) {
+      byte[] copyBuf = new byte[4];
+      assertEquals(2, stream.read(copyBuf, 0, 2));
+      assertArrayEquals(new byte[] {0xC, 0xA, 0x0, 0x0}, copyBuf);
 
-    byte[] copyBuf = new byte[4];
-    assertEquals(2, stream.read(copyBuf, 0, 2));
-    assertArrayEquals(new byte[] {0x0, 0x1, 0x0, 0x0}, copyBuf);
+      assertEquals(2, stream.read(copyBuf, 2, 2));
+      assertArrayEquals(new byte[] {0xC, 0xA, 0xF, 0xE}, copyBuf);
 
-    assertEquals(2, stream.read(copyBuf, 2, 2));
-    assertArrayEquals(new byte[] {0x0, 0x1, 0x2, 0x3}, copyBuf);
+      assertEquals(4, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0xB, 0xA, 0xB, 0xE}, copyBuf);
 
-    assertEquals(4, stream.read(copyBuf, 0, 4));
-    assertArrayEquals(new byte[] {0x4, 0x5, 0x6, 0x7}, copyBuf);
+      assertEquals(1, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0x9, 0xA, 0xB, 0xE}, copyBuf);
 
-    assertEquals(1, stream.read(copyBuf, 0, 4));
-    assertArrayEquals(new byte[] {0x8, 0x5, 0x6, 0x7}, copyBuf);
-
-    assertEquals(-1, stream.read(copyBuf, 0, 4));
-    assertArrayEquals(new byte[] {0x8, 0x5, 0x6, 0x7}, copyBuf);
+      assertEquals(-1, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0x9, 0xA, 0xB, 0xE}, copyBuf);
+    }
   }
 }

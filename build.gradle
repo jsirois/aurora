@@ -503,6 +503,14 @@ jacocoTestReport {
   reports {
     xml.enabled true
   }
+
+  // @AutoValue generated code should never count against coverage.
+  afterEvaluate {
+    classDirectories = files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: ['**/AutoValue_*'])
+    })
+  }
+
   doLast {
     println "Coverage report generated: file://$reportPath/html/index.html"
   }

@@ -158,7 +158,6 @@ public class UtilTest extends EasyMockTest {
     expect(stringField.getFieldName()).andReturn("fred");
     expect(doubleField.getFieldName()).andReturn("jake");
 
-
     control.replay();
 
     String expected =

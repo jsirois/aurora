@@ -78,11 +78,11 @@ public class UtilTest extends EasyMockTest {
     control.replay();
 
     String expected =
-        "bob: [\n" +
-        "  Item[0] = 1,\n" +
-        "  Item[1] = 2,\n" +
-        "  Item[2] = 3\n" +
-        "]";
+        "bob: [\n"
+        + "  Item[0] = 1,\n"
+        + "  Item[1] = 2,\n"
+        + "  Item[2] = 3\n"
+        + "]";
     String actual = Util.prettyPrint(struct);
     assertEquals(expected, actual);
   }
@@ -98,11 +98,11 @@ public class UtilTest extends EasyMockTest {
     control.replay();
 
     String expected =
-        "bob: {\n" +
-        "  Item = 1,\n" +
-        "  Item = 2,\n" +
-        "  Item = 3\n" +
-        "}";
+        "bob: {\n"
+        + "  Item = 1,\n"
+        + "  Item = 2,\n"
+        + "  Item = 3\n"
+        + "}";
     String actual = Util.prettyPrint(struct);
     assertEquals(expected, actual);
   }
@@ -118,11 +118,11 @@ public class UtilTest extends EasyMockTest {
     control.replay();
 
     String expected =
-        "bob: {\n" +
-        "  \"a\" = 1,\n" +
-        "  \"b\" = 2,\n" +
-        "  \"c\" = 3\n" +
-        "}";
+        "bob: {\n"
+        + "  \"a\" = 1,\n"
+        + "  \"b\" = 2,\n"
+        + "  \"c\" = 3\n"
+        + "}";
     String actual = Util.prettyPrint(struct);
     assertEquals(expected, actual);
   }
@@ -162,11 +162,11 @@ public class UtilTest extends EasyMockTest {
     control.replay();
 
     String expected =
-        "bob: \n" +
-        "  f_int: 42\n" +
-        "  f_list: []\n" +
-        "fred: not set\n" +
-        "jake: 42.0";
+        "bob: \n"
+        + "  f_int: 42\n"
+        + "  f_list: []\n"
+        + "fred: not set\n"
+        + "jake: 42.0";
     String actual = Util.prettyPrint(outerStruct);
     assertEquals(expected, actual);
   }

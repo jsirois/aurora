@@ -110,7 +110,7 @@ final class Util {
     }
 
     return entries.isEmpty() ? "{}"
-        : String.format("{\n%s\n%s}", Joiner.on(",\n").join(entries), tabs(depth - 1));
+        : String.format("{%n%s%n%s}", Joiner.on(",\n").join(entries), tabs(depth - 1));
   }
 
   /**
@@ -128,7 +128,7 @@ final class Util {
     }
 
     return entries.isEmpty() ? "[]"
-        : String.format("[\n%s\n%s]", Joiner.on(",\n").join(entries), tabs(depth - 1));
+        : String.format("[%n%s%n%s]", Joiner.on(",\n").join(entries), tabs(depth - 1));
   }
   /**
    * Prints a set in a style that is consistent with TBase pretty printing.
@@ -145,7 +145,7 @@ final class Util {
     }
 
     return entries.isEmpty() ? "{}"
-        : String.format("{\n%s\n%s}", Joiner.on(",\n").join(entries), tabs(depth - 1));
+        : String.format("{%n%s%n%s}", Joiner.on(",\n").join(entries), tabs(depth - 1));
   }
 
   private static String tabs(int n) {

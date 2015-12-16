@@ -58,6 +58,8 @@ import org.apache.aurora.scheduler.storage.TaskStore;
 
 import static java.util.Objects.requireNonNull;
 
+import static org.apache.aurora.GuavaUtils.hasElements;
+
 /**
  * An in-memory task store.
  */
@@ -84,7 +86,7 @@ class MemTaskStore implements TaskStore.Mutable {
         @Override
         public Optional<Set<String>> apply(Query.Builder queryBuilder) {
           TaskQuery query = queryBuilder.get();
-          if (!query.getSlaveHosts().isEmpty()) {
+          if (hasElements(query.getSlaveHosts())) {
             return Optional.of(query.getSlaveHosts());
           } else {
             return Optional.absent();
@@ -273,7 +275,7 @@ class MemTaskStore implements TaskStore.Mutable {
   private FluentIterable<Task> matches(Query.Builder query) {
     // Apply the query against the working set.
     Optional<? extends Iterable<Task>> from = Optional.absent();
-    if (!query.get().getTaskIds().isEmpty()) {
+    if (hasElements(query.get().getTaskIds())) {
       taskQueriesById.incrementAndGet();
       from = Optional.of(fromIdIndex(query.get().getTaskIds()));
     } else {

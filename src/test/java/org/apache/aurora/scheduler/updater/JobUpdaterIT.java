@@ -1163,7 +1163,7 @@ public class JobUpdaterIT extends EasyMockTest {
     store.saveJobUpdate(update, Optional.of(lock.getToken()));
     store.saveJobUpdateEvent(
         update.getSummary().getKey(),
-        JobUpdateEvent.create(status, clock.nowMillis()));;
+        JobUpdateEvent.create(status, clock.nowMillis()));
     return lock;
   }
 

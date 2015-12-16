@@ -51,7 +51,7 @@ public final class Query {
    */
   public static boolean isJobScoped(Builder taskQuery) {
     TaskQuery q = taskQuery.get();
-    return (q.isSetRole() && q.isSetEnvironment() && q.isSetJobName()) || !q.getJobKeys().isEmpty();
+    return q.isSetRole() && q.isSetEnvironment() && q.isSetJobName() || !q.getJobKeys().isEmpty();
   }
 
   public static Builder arbitrary(TaskQuery query) {

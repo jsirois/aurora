@@ -60,7 +60,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
-import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TJSONProtocol;
 import org.jboss.netty.channel.Channel;
@@ -161,7 +160,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
   }
 
   private AuroraAdmin.Sync getUnauthenticatedClient() throws Exception {
-    return getClient(channel -> {});
+    return getClient(channel -> { });
   }
 
   private String formatUrl(String endpoint) {

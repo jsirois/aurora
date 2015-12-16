@@ -1227,13 +1227,6 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
     control.replay();
 
     // Validate key is populated during sanitizing.
-    // TODO(John Sirois): XXX requestConfig is unused - is this an existing test bug?
-    JobConfiguration requestConfig = oldJob.toBuilder()
-        .setTaskConfig(oldJob.getTaskConfig().toBuilder()
-            .setJob(null)
-            .build())
-        .build();
-
     RewriteConfigsRequest request = RewriteConfigsRequest.create(
         ImmutableList.of(ConfigRewrite.jobRewrite(
             JobConfigRewrite.create(oldJob, newJob))));

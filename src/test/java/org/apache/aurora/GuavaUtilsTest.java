@@ -19,6 +19,8 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class GuavaUtilsTest {
   @Test
@@ -26,5 +28,11 @@ public class GuavaUtilsTest {
     assertEquals(
         ImmutableSet.of("b", "c", "a"),
         ImmutableList.of("a", "b", "c").stream().collect(GuavaUtils.toImmutableSet()));
+  }
+
+  @Test
+  public void testHasElements() {
+    assertTrue(GuavaUtils.hasElements(ImmutableList.of(42)));
+    assertFalse(GuavaUtils.hasElements(ImmutableList.of()));
   }
 }

@@ -14,6 +14,7 @@
 package org.apache.aurora.scheduler.storage.log;
 
 import java.nio.ByteBuffer;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -254,7 +255,7 @@ class StreamManagerImpl implements StreamManager {
   }
 
   final class StreamTransactionImpl implements StreamTransaction {
-    private final LinkedList<Op> ops = new LinkedList<>();
+    private final Deque<Op> ops = new LinkedList<>();
     private final AtomicBoolean committed = new AtomicBoolean(false);
 
     StreamTransactionImpl() {
@@ -270,7 +271,10 @@ class StreamManagerImpl implements StreamManager {
         return null;
       }
 
-      Transaction transaction = Transaction.create(ops, Constants.CURRENT_SCHEMA_VERSION);
+      Transaction transaction =
+          Transaction.builder()
+              .setOps(ops)
+              .setSchemaVersion(Constants.CURRENT_SCHEMA_VERSION).build();
       Log.Position position = appendAndGetPosition(LogEntry.transaction(transaction));
       vars.unSnapshottedTransactions.incrementAndGet();
       return position;

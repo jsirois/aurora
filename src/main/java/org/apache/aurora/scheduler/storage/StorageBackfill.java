@@ -51,7 +51,9 @@ public final class StorageBackfill {
   }
 
   private static TaskConfig populateJobKey(TaskConfig config, AtomicLong counter) {
-    if (!config.isSetJob() || !JobKeys.isValid(config.getJob())) {
+    if (config.isSetJob() && JobKeys.isValid(config.getJob())) {
+      return config;
+    } else {
       counter.incrementAndGet();
       return config.toBuilder()
           .setJob(JobKey.builder()
@@ -60,8 +62,6 @@ public final class StorageBackfill {
               .setName(config.getJobName())
               .build())
           .build();
-    } else {
-      return config;
     }
   }
 

@@ -33,7 +33,6 @@ import org.junit.Test;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 
 public class AopModuleTest extends EasyMockTest {
   private AnnotatedAuroraAdmin mockThrift;

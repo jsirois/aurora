@@ -139,7 +139,7 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
 
     schedulingFilter = createMock(SchedulingFilter.class);
     expect(tierManager.getTier(EasyMock.anyObject())).andReturn(DEFAULT);
-    ScheduledTask lowPriority = assignToHost(makeTask(USER_A, JOB_A, TASK_ID_A, 10));
+    assignToHost(makeTask(USER_A, JOB_A, TASK_ID_A, 10));
 
     ScheduledTask lowerPriority = assignToHost(makeTask(USER_A, JOB_A, TASK_ID_B, 1));
 
@@ -455,7 +455,6 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
         mutateTaskConfig(
             assignToHost(makeTask(USER_A, JOB_A, TASK_ID_A + "_a1")),
             tcb -> tcb.setNumCpus(1).setRamMb(512));
-
 
     expect(storageUtil.attributeStore.getHostAttributes(HOST)).andReturn(Optional.absent());
 

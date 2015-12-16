@@ -420,7 +420,7 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
   private static Query.Builder implicitKillQuery(TaskQuery mutableQuery) {
     Query.Builder query = Query.arbitrary(mutableQuery);
     // Unless statuses were specifically supplied, only attempt to kill active tasks.
-    return !query.get().getStatuses().isEmpty() ? query : query.byStatus(ACTIVE_STATES);
+    return query.get().getStatuses().isEmpty() ? query.byStatus(ACTIVE_STATES) : query;
   }
 
   @Override

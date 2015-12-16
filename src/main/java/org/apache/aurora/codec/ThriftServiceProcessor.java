@@ -14,7 +14,9 @@
 package org.apache.aurora.codec;
 
 import java.lang.reflect.Constructor;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,6 +57,13 @@ import static org.apache.thrift.TApplicationException.INTERNAL_ERROR;
 import static org.apache.thrift.TApplicationException.INVALID_MESSAGE_TYPE;
 import static org.apache.thrift.TApplicationException.UNKNOWN_METHOD;
 
+/**
+ * A Nifty processor that handles {@link com.facebook.swift.service.ThriftService} services.
+ * <p>
+ * NB: This is essentially a copy of {@link com.facebook.swift.service.ThriftServiceProcessor} that
+ * allows for direct specification of the service interface being mapped.
+ * </p>
+ */
 public class ThriftServiceProcessor implements NiftyProcessor {
   private static final Logger LOG = Logger.getLogger(ThriftServiceProcessor.class.getName());
   private final ImmutableList<? extends ThriftEventHandler> eventHandlers;
@@ -85,18 +94,29 @@ public class ThriftServiceProcessor implements NiftyProcessor {
     requireNonNull(services);
 
     ImmutableMap.Builder<String, ThriftMethodProcessor> processors = ImmutableMap.builder();
-    for (ServiceDescriptor descriptor : services) {
+    Map<String, ServiceDescriptor> methodNames = new HashMap<>();
+    for (ServiceDescriptor service : services) {
       ThriftServiceMetadata serviceMetadata =
-          new ThriftServiceMetadata(descriptor.getInterface(), codecManager.getCatalog());
+          new ThriftServiceMetadata(service.getInterface(), codecManager.getCatalog());
 
       for (ThriftMethodMetadata thriftMethodMetadata : serviceMetadata.getMethods().values()) {
         ThriftMethodProcessor methodProcessor =
             new ThriftMethodProcessor(
-                descriptor.getService(),
+                service.getService(),
                 serviceMetadata.getName(),
                 thriftMethodMetadata,
                 codecManager);
-        processors.put(thriftMethodMetadata.getName(), methodProcessor);
+        String methodName = thriftMethodMetadata.getName();
+        ServiceDescriptor priorService = methodNames.put(methodName, service);
+        if (priorService != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Service %s has service method %s in conflict with service %s.",
+                  service,
+                  methodName,
+                  priorService));
+        }
+        processors.put(methodName, methodProcessor);
       }
     }
     methodProcessors = processors.build();

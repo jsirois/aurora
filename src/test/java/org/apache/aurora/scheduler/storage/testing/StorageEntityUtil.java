@@ -57,13 +57,14 @@ public final class StorageEntityUtil {
         assertFullyPopulated(name + "[" + entry.getKey() + "]", entry.getValue(), ignoredFields);
       }
     } else if (object instanceof ThriftUnion) {
+      @SuppressWarnings("unchecked") // Trivially safe under erasure.
       ThriftUnion<ThriftFields> union = (ThriftUnion<ThriftFields>) object;
       assertFullyPopulated(
           name + "." + union.getSetField().getFieldName(),
           union.getFieldValue(),
           ignoredFields);
     } else if (object instanceof ThriftStruct) {
-      @SuppressWarnings("unchecked")
+      @SuppressWarnings("unchecked") // Trivially safe under erasure.
       ThriftStruct<ThriftFields> struct = (ThriftStruct<ThriftFields>) object;
       for (ThriftFields field : struct.getFields()) {
         if (!ignoredFields.contains(field)) {

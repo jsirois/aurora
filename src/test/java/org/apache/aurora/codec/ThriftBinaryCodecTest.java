@@ -96,22 +96,22 @@ public class ThriftBinaryCodecTest {
     ThriftBinaryCodec.codecForType(MyThriftEntity.class);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = CodingException.class)
   public void testDecodeUnregisteredThrift() throws CodingException {
     ThriftBinaryCodec.decodeNonNull(MyThriftEntity.class, new byte[0]);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = CodingException.class)
   public void testEncodeUnregisteredThrift() throws CodingException {
     ThriftBinaryCodec.encodeNonNull(new MyThriftEntity());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = CodingException.class)
   public void testDeflateUnregisteredThrift() throws CodingException {
     ThriftBinaryCodec.deflateNonNull(new MyThriftEntity());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = CodingException.class)
   public void testInflateUnregisteredThrift() throws CodingException {
     ThriftBinaryCodec.inflateNonNull(MyThriftEntity.class, new byte[0]);
   }

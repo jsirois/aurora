@@ -30,14 +30,14 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StorageException;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.TaskConfig;
 
 import static org.apache.aurora.scheduler.quota.QuotaManager.DEDICATED;
 import static org.apache.aurora.scheduler.quota.QuotaManager.NON_PROD_SHARED;

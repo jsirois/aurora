@@ -18,9 +18,9 @@ import java.util.Set;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Sets;
 
-import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.gen.Constants;
 import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobUpdateStatus;
 import org.apache.aurora.gen.Range;
 
 /**

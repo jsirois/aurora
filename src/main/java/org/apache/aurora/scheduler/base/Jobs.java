@@ -41,10 +41,10 @@ public final class Jobs {
   }
 
   static class Stats {
-    int pending;
-    int active;
-    int finished;
-    int failed;
+    private int pending;
+    private int active;
+    private int finished;
+    private int failed;
 
     void accumulate(ScheduleStatus status) {
       switch (status) {

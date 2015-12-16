@@ -29,10 +29,10 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
-import org.apache.aurora.gen.ResourceAggregate;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**

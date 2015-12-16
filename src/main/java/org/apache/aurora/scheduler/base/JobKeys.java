@@ -22,10 +22,10 @@ import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.gen.JobConfiguration;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

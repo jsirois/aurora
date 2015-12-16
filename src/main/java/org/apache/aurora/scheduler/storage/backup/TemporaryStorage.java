@@ -20,6 +20,7 @@ import com.google.common.collect.FluentIterable;
 
 import org.apache.aurora.common.util.BuildInfo;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
@@ -30,7 +31,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 
 import static org.apache.aurora.common.util.testing.FakeBuildInfo.generateBuildInfo;

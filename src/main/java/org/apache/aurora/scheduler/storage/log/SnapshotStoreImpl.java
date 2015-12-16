@@ -16,6 +16,7 @@ package org.apache.aurora.scheduler.storage.log;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
+
 import javax.inject.Inject;
 
 import com.google.common.base.Optional;
@@ -25,10 +26,12 @@ import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.util.BuildInfo;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobInstanceUpdateEvent;
 import org.apache.aurora.gen.JobUpdateDetails;
 import org.apache.aurora.gen.JobUpdateEvent;
 import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.gen.storage.QuotaConfiguration;
 import org.apache.aurora.gen.storage.SchedulerMetadata;
 import org.apache.aurora.gen.storage.Snapshot;
@@ -42,11 +45,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Volatile;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.JobUpdate;
-import org.apache.aurora.gen.JobUpdateKey;
-import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -195,7 +193,6 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
             updateStore.saveJobUpdate(
                 details.getUpdate(),
                 Optional.fromNullable(storedDetails.getLockToken()));
-
 
             for (JobUpdateEvent updateEvent : details.getUpdateEvents()) {
               updateStore.saveJobUpdateEvent(

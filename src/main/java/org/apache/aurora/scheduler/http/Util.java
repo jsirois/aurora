@@ -28,7 +28,7 @@ import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
  *
  * @author William Farner
  */
-class Util {
+final class Util {
   /**
    * Pretty-prints a thrift object contents.
    *
@@ -89,7 +89,7 @@ class Util {
       } else {
         strValue = "not set";
       }
-      fields.add(tabs(depth) + field.getFieldName()+ ": " + strValue);
+      fields.add(tabs(depth) + field.getFieldName() + ": " + strValue);
     }
 
     return Joiner.on("\n").join(fields);

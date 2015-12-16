@@ -21,10 +21,10 @@ import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 
-import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.gen.InstanceKey;
 import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.TaskQuery;
 
 import static java.util.Objects.requireNonNull;
 

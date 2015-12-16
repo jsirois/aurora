@@ -21,8 +21,8 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 
-import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
 
 /**
  * Wrapper for a configuration that has been fully-sanitized and populated with defaults.

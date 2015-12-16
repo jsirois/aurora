@@ -19,10 +19,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 
-import org.apache.aurora.gen.JobUpdatePulseStatus;
 import org.apache.aurora.gen.InstanceKey;
 import org.apache.aurora.gen.JobUpdate;
 import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdatePulseStatus;
 import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;

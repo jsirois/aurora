@@ -20,10 +20,10 @@ import java.lang.annotation.Target;
 
 import javax.inject.Qualifier;
 
-import org.apache.aurora.scheduler.base.Query.Builder;
-import org.apache.aurora.scheduler.base.SchedulerException;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.scheduler.base.Query.Builder;
+import org.apache.aurora.scheduler.base.SchedulerException;
 
 /**
  * Manages scheduler storage operations providing an interface to perform atomic changes.

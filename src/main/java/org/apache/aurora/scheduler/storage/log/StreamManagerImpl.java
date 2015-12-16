@@ -14,7 +14,6 @@
 package org.apache.aurora.scheduler.storage.log;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;

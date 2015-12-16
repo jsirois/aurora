@@ -17,9 +17,9 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
-import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.scheduler.ResourceSlot;
 
 import static java.util.Objects.requireNonNull;
 

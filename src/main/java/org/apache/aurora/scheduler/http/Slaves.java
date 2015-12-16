@@ -28,16 +28,15 @@ import com.google.common.collect.Ordering;
 
 import org.antlr.stringtemplate.StringTemplate;
 import org.apache.aurora.common.base.Closure;
-import org.apache.aurora.gen.MaintenanceMode;
-import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.ServerInfo;
+import org.apache.aurora.scheduler.storage.Storage;
 
 import static java.util.Objects.requireNonNull;
 
 import static org.apache.aurora.common.base.MorePreconditions.checkNotBlank;
-
 import static org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import static org.apache.aurora.scheduler.storage.Storage.Work;
 

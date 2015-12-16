@@ -16,7 +16,6 @@ package org.apache.aurora.scheduler;
 import com.google.common.collect.Ordering;
 
 import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.gen.ResourceAggregate;
 
 /**
  * Convenience class for normalizing resource measures between tasks and offers.

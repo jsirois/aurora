@@ -37,8 +37,8 @@ import org.apache.aurora.common.util.StateMachine;
 import org.apache.aurora.common.util.StateMachine.Rule;
 import org.apache.aurora.common.util.StateMachine.Transition;
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.scheduler.base.Tasks;
 
 import static java.util.Objects.requireNonNull;
 

@@ -21,8 +21,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 
-import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.scheduler.stats.CachedCounters;
 
 import static java.util.Objects.requireNonNull;
 

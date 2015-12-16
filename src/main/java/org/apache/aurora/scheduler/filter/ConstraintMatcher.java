@@ -22,11 +22,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 import org.apache.aurora.gen.Attribute;
-import org.apache.aurora.scheduler.base.SchedulerException;
-import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.TaskConstraint;
+import org.apache.aurora.scheduler.base.SchedulerException;
+import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 
 /**
  * Filter that determines whether a task's constraints are satisfied.

@@ -84,7 +84,7 @@ public class ThriftServiceProcessor implements NiftyProcessor {
     requireNonNull(eventHandlers);
     requireNonNull(services);
 
-    ImmutableMap.Builder<String, ThriftMethodProcessor> methodProcessors = ImmutableMap.builder();
+    ImmutableMap.Builder<String, ThriftMethodProcessor> processors = ImmutableMap.builder();
     for (ServiceDescriptor descriptor : services) {
       ThriftServiceMetadata serviceMetadata =
           new ThriftServiceMetadata(descriptor.getInterface(), codecManager.getCatalog());
@@ -96,10 +96,10 @@ public class ThriftServiceProcessor implements NiftyProcessor {
                 serviceMetadata.getName(),
                 thriftMethodMetadata,
                 codecManager);
-        methodProcessors.put(thriftMethodMetadata.getName(), methodProcessor);
+        processors.put(thriftMethodMetadata.getName(), methodProcessor);
       }
     }
-    this.methodProcessors = methodProcessors.build();
+    methodProcessors = processors.build();
     this.eventHandlers = ImmutableList.copyOf(eventHandlers);
   }
 
@@ -223,8 +223,7 @@ public class ThriftServiceProcessor implements NiftyProcessor {
           });
 
       return resultFuture;
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       return Futures.immediateFailedFuture(e);
     }
   }

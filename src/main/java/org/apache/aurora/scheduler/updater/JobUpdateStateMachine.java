@@ -27,7 +27,6 @@ import com.google.common.collect.Sets;
 
 import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateStatus;
-import org.apache.aurora.gen.JobUpdateQuery;
 
 import static org.apache.aurora.gen.JobUpdateStatus.ABORTED;
 import static org.apache.aurora.gen.JobUpdateStatus.ERROR;

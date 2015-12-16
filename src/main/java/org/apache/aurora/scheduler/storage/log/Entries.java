@@ -37,8 +37,8 @@ final class Entries {
   /**
    * Deflates a log entry and wraps it in a deflated entry.
    * <p>
-   * This will encode the entry using the thrift binary codecForType, and will apply deflate compression to
-   * the resulting encoded data.
+   * This will encode the entry using the thrift binary codecForType, and will apply deflate
+   * compression to the resulting encoded data.
    * <p>
    * This operation is symmetric with {@link #inflate(LogEntry)}.
    *

@@ -112,7 +112,7 @@ public final class ThriftBinaryCodec {
   @SuppressWarnings("unchecked")
   public static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<T> clazz) {
     Class<?> thriftEntity = clazz;
-    while(thriftEntity != null
+    while (thriftEntity != null
         && !FluentIterable.of(thriftEntity.getInterfaces()).anyMatch(UNION_OR_STRUCT)) {
       thriftEntity = thriftEntity.getSuperclass();
     }
@@ -228,7 +228,9 @@ public final class ThriftBinaryCodec {
    * @return Deflated, encoded object.
    * @throws CodingException If the object could not be encoded.
    */
-  public static <T extends ThriftEntity<?>> byte[] deflateNonNull(T thriftEntity) throws CodingException {
+  public static <T extends ThriftEntity<?>> byte[] deflateNonNull(T thriftEntity)
+      throws CodingException {
+
     requireNonNull(thriftEntity);
 
     ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
@@ -255,6 +257,11 @@ public final class ThriftBinaryCodec {
   }
 
   /**
+   * Hydrates a thrift entity from its serialized form.
+   * <p>
+   * Equivalent to {@code inflateNonNull(ByteBuffer.wrap(buffer))}.
+   * </p>
+   *
    * @param clazz Class to instantiate and deserialize to.
    * @param buffer Compressed buffer to decode.
    * @return A populated message.
@@ -266,6 +273,8 @@ public final class ThriftBinaryCodec {
   }
 
   /**
+   * Hydrates a thrift entity from its serialized form.
+   *
    * @param clazz Class to instantiate and deserialize to.
    * @param buffer Compressed buffer to decode.
    * @return A populated message.

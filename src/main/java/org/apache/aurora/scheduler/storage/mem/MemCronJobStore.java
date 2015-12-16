@@ -19,10 +19,10 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
-import org.apache.aurora.scheduler.base.JobKeys;
-import org.apache.aurora.scheduler.storage.CronJobStore;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.scheduler.base.JobKeys;
+import org.apache.aurora.scheduler.storage.CronJobStore;
 
 /**
  * An in-memory cron job store.

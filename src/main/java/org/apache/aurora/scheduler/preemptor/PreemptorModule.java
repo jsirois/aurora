@@ -29,13 +29,13 @@ import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.scheduler.SchedulerServicesModule;
 import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.events.PubsubEventModule;
 import org.apache.aurora.scheduler.filter.AttributeAggregate;
 import org.apache.aurora.scheduler.preemptor.BiCache.BiCacheSettings;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.gen.AssignedTask;
 
 import static java.util.Objects.requireNonNull;
 

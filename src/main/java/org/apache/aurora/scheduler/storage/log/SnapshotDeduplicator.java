@@ -125,7 +125,6 @@ public interface SnapshotDeduplicator {
           numOutputTasks,
           100.0 * numInputTasks / numOutputTasks));
 
-
       return built;
     }
 

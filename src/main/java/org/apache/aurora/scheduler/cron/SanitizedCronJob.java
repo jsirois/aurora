@@ -23,9 +23,9 @@ import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
 import org.apache.aurora.gen.CronCollisionPolicy;
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.configuration.SanitizedConfiguration;
-import org.apache.aurora.gen.JobConfiguration;
 
 import static java.util.Objects.requireNonNull;
 

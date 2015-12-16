@@ -29,13 +29,13 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.Range;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Numbers;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.Range;
-import org.apache.aurora.gen.TaskConfig;
 
 import static java.util.Objects.requireNonNull;
 

@@ -878,7 +878,8 @@ class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
         Maps.transformValues(instancesByConfig.asMap(), Numbers::toRanges);
 
     ImmutableSet.Builder<InstanceTaskConfig> builder = ImmutableSet.builder();
-    for (Map.Entry<TaskConfig, Set<com.google.common.collect.Range<Integer>>> entry : rangesByConfig.entrySet()) {
+    for (Map.Entry<TaskConfig, Set<com.google.common.collect.Range<Integer>>> entry
+        : rangesByConfig.entrySet()) {
       builder.add(InstanceTaskConfig.builder()
           .setTask(entry.getKey())
           .setInstances(convertRanges(entry.getValue()))

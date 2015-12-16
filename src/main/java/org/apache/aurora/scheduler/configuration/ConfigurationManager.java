@@ -24,24 +24,19 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
-import org.apache.aurora.gen.Container;
-import org.apache.aurora.gen.JobConfiguration;
-import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.TaskConfig.Fields;
-import org.apache.aurora.gen.TaskConstraint;
-import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.TaskConfig.Fields;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.ValueConstraint;
+import org.apache.aurora.scheduler.base.JobKeys;
 
 import static org.apache.aurora.gen.Constants.GOOD_IDENTIFIER_PATTERN_JVM;
 
@@ -245,7 +240,8 @@ public final class ConfigurationManager {
     }
 
     if (rawConfig.isSetTier() && !isGoodIdentifier(rawConfig.getTier())) {
-      throw new TaskDescriptionException("Tier contains illegal characters: " + rawConfig.getTier());
+      throw new TaskDescriptionException(
+          "Tier contains illegal characters: " + rawConfig.getTier());
     }
 
     if (rawConfig.isSetJob()) {

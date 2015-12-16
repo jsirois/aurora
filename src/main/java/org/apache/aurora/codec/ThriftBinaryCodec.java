@@ -30,9 +30,6 @@ import com.facebook.nifty.processor.NiftyProcessorAdapters;
 import com.facebook.swift.codec.ThriftCodec;
 import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
-import com.facebook.swift.codec.metadata.MetadataErrorException;
-import com.facebook.swift.codec.metadata.MetadataErrors;
-import com.facebook.swift.codec.metadata.MetadataWarningException;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.google.common.primitives.UnsignedBytes;
 

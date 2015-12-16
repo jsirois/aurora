@@ -21,6 +21,7 @@ import com.facebook.nifty.client.HttpClientChannel;
 import com.facebook.nifty.client.HttpClientConnector;
 import com.facebook.nifty.client.NettyClientConfig;
 import com.facebook.nifty.duplex.TDuplexProtocolFactory;
+import com.facebook.swift.service.RuntimeTException;
 import com.facebook.swift.service.RuntimeTTransportException;
 import com.facebook.swift.service.ThriftClientManager;
 import com.google.common.base.Charsets;
@@ -59,6 +60,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TJSONProtocol;
 import org.jboss.netty.channel.Channel;
@@ -212,7 +214,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
     try {
       client.killTasks(null, null);
       fail("killTasks should fail.");
-    } catch (RuntimeTTransportException e) {
+    } catch (RuntimeTException e) {
       // Expected.
     }
   }

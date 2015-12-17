@@ -53,9 +53,11 @@ class ShiroAuthenticatingThriftInterceptor implements MethodInterceptor {
     if (subject.isAuthenticated()) {
       return invocation.proceed();
     } else {
-      // This is a special exception that will signal the BasicHttpAuthenticationFilter to send
-      // a 401 with a challenge. This is necessary at this layer since we only apply this
-      // interceptor to methods that require authentication.
+      // This is a special error designed to tunnel out through the thrift processing layer (and
+      // thus not be encoded as a TException in the thrift serialized response) and up to the
+      // Servlet layer where it will be converted into a signal to the Shiro
+      // BasicHttpAuthenticationFilter to send a 401 with a challenge. This is necessary at this
+      // layer since we only apply this interceptor to methods that require authentication.
       throw new UnauthenticatedError();
     }
   }

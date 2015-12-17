@@ -97,6 +97,11 @@ public class ApiModule extends ServletModule {
     ThriftEventHandler propagateUnauthenticatedError = new ThriftEventHandler() {
       @Override
       public void preWriteException(Object context, String methodName, Throwable t) {
+        // We need to abort standard thrift error handling here (which marshals exceptions into the
+        // response payload) and raise an Exception that can be bubbled up to the Shiro
+        // authentication Servlet filter layer.  With Swift/Netty/Futures pipeline, this can only be
+        // done via an Error; thus the UnauthenticatedError is re-thrown here to reach the TServlet
+        // Servlet layer just a few lines below.
         if (t instanceof UnauthenticatedError) {
           throw (UnauthenticatedError) t;
         }
@@ -111,10 +116,14 @@ public class ApiModule extends ServletModule {
       @Override
       protected void doPost(HttpServletRequest request, HttpServletResponse response)
           throws ServletException, IOException {
+
+        // NB: All TServlet handling routes through doPost.
         try {
           super.doPost(request, response);
         } catch (UnauthenticatedError e) {
-          throw e.unauthenticated();
+          // This throws a special exception type up through the Servlet filter layer that will
+          // signal the Shiro BasicHttpAuthenticationFilter to send a 401 with a challenge.
+          throw e.authenticationChallenge();
         }
       }
     };

@@ -15,13 +15,25 @@ package org.apache.aurora.scheduler.http.api.security;
 
 import org.apache.shiro.authz.UnauthenticatedException;
 
+/**
+ * A special error type designed to tunnel through the normal thrift exception handling layers.
+ *
+ * This permits catching and re-throwing (see: {@link #authenticationChallenge()}) a special
+ * authentication challenge initiating exception to the servlet filter layer which then communicates
+ * this at the HTTP protocol layer.
+ */
 public class UnauthenticatedError extends Error {
-  // Package-private since these should only originate from this layer.
   UnauthenticatedError() {
     super();
   }
 
-  public RuntimeException unauthenticated() {
+  /**
+   * Throws a special exception type that will be handled in higher servlet filter layers to trigger
+   * an authentication challenge response at the HTTP protocol layer.
+   *
+   * @return A runtime exception to throw to satisfy the compiler.
+   */
+  public RuntimeException authenticationChallenge() {
     throw new UnauthenticatedException();
   }
 }

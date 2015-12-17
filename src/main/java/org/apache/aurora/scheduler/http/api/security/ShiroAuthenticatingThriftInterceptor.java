@@ -19,7 +19,6 @@ import com.google.inject.Inject;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.apache.shiro.authz.UnauthenticatedException;
 import org.apache.shiro.subject.Subject;
 
 import static java.util.Objects.requireNonNull;
@@ -57,7 +56,7 @@ class ShiroAuthenticatingThriftInterceptor implements MethodInterceptor {
       // This is a special exception that will signal the BasicHttpAuthenticationFilter to send
       // a 401 with a challenge. This is necessary at this layer since we only apply this
       // interceptor to methods that require authentication.
-      throw new UnauthenticatedException();
+      throw new UnauthenticatedError();
     }
   }
 }

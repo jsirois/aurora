@@ -13,9 +13,15 @@
  */
 package org.apache.aurora.scheduler.http.api;
 
+import java.io.IOException;
+
 import javax.inject.Singleton;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
 
+import com.facebook.swift.service.ThriftEventHandler;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Provides;
@@ -29,7 +35,9 @@ import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.scheduler.http.CorsFilter;
 import org.apache.aurora.scheduler.http.JettyServerModule;
 import org.apache.aurora.scheduler.http.LeaderRedirectFilter;
+import org.apache.aurora.scheduler.http.api.security.UnauthenticatedError;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TJSONProtocol;
 import org.apache.thrift.server.TServlet;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -85,8 +93,30 @@ public class ApiModule extends ServletModule {
   TServlet provideApiThriftServlet(AnnotatedAuroraAdmin schedulerThriftInterface) {
     ServiceDescriptor serviceDescriptor =
         ServiceDescriptor.create(schedulerThriftInterface, AnnotatedAuroraAdmin.class);
-    return new TServlet(
-        ThriftBinaryCodec.processorFor(serviceDescriptor),
-        new TJSONProtocol.Factory());
+
+    ThriftEventHandler propagateUnauthenticatedError = new ThriftEventHandler() {
+      @Override
+      public void preWriteException(Object context, String methodName, Throwable t) {
+        if (t instanceof UnauthenticatedError) {
+          throw (UnauthenticatedError) t;
+        }
+        super.preWriteException(context, methodName, t);
+      }
+    };
+
+    TProcessor processor =
+        ThriftBinaryCodec.processorFor(propagateUnauthenticatedError, serviceDescriptor);
+
+    return new TServlet(processor, new TJSONProtocol.Factory()) {
+      @Override
+      protected void doPost(HttpServletRequest request, HttpServletResponse response)
+          throws ServletException, IOException {
+        try {
+          super.doPost(request, response);
+        } catch (UnauthenticatedError e) {
+          throw e.unauthenticated();
+        }
+      }
+    };
   }
 }

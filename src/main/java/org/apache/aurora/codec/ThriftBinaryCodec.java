@@ -30,6 +30,7 @@ import com.facebook.swift.codec.ThriftCodec;
 import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
+import com.facebook.swift.service.ThriftEventHandler;
 import com.google.common.primitives.UnsignedBytes;
 
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
@@ -102,9 +103,12 @@ public final class ThriftBinaryCodec {
    * @throws IllegalArgumentException If the given services violate the rules described above.
    * @return A thrift processor that can route calls to the given services.
    */
-  public static TProcessor processorFor(ServiceDescriptor... services) {
+  public static TProcessor processorFor(
+      ThriftEventHandler eventHandler,
+      ServiceDescriptor... services) {
+
     NiftyProcessor processor =
-        new ThriftServiceProcessor(CODEC_MANAGER, ImmutableList.of(), services);
+        new ThriftServiceProcessor(CODEC_MANAGER, ImmutableList.of(eventHandler), services);
     return NiftyProcessorAdapters.processorToTProcessor(processor);
   }
 

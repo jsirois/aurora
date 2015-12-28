@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -437,6 +438,10 @@ public class ThriftRestGenTask extends DefaultTask {
     } else {
       return "get" + upperCamelCaseFieldName;
     }
+  }
+
+  private static String witherName(ThriftField field) {
+    return "with" + toUpperCamelCaseName(field);
   }
 
   private static String setterName(ThriftField field) {
@@ -1940,6 +1945,24 @@ public class ThriftRestGenTask extends DefaultTask {
                 .returns(builderBuilderName)
                 .build();
         builderBuilder.addMethod(methodSpec);
+
+        // TODO(John Sirois): Add collection overloads.
+        MethodSpec simpleWither =
+            MethodSpec.methodBuilder(witherName(field))
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addParameter(typeName(type), field.getName())
+              .returns(structClassName)
+              .addStatement("return toBuilder().$N($L).build()", methodSpec, field.getName())
+              .build();
+        typeBuilder.addMethod(simpleWither);
+
+        typeBuilder.addMethod(
+            MethodSpec.methodBuilder(witherName(field))
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(parameterizedTypeName(UnaryOperator.class, type), "mutator")
+                .returns(structClassName)
+                .addStatement("return $N(mutator.apply($N()))", simpleWither, accessor)
+                .build());
 
         ImmutableList.Builder<AnnotationSpec> annotations = ImmutableList.builder();
         annotations.add(AnnotationSpec.builder(Override.class).build());

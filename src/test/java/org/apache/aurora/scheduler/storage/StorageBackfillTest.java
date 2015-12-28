@@ -71,12 +71,7 @@ public class StorageBackfillTest {
   }
 
   private static ScheduledTask setMesosContainer(ScheduledTask task) {
-    return task.toBuilder()
-        .setAssignedTask(task.getAssignedTask().toBuilder()
-            .setTask(task.getAssignedTask().getTask().toBuilder()
-                .setContainer(Container.mesos(MesosContainer.create()))
-                .build())
-            .build())
-        .build();
+    return task.withAssignedTask(
+        at -> at.withTask(tc -> tc.withContainer(Container.mesos(MesosContainer.create()))));
   }
 }

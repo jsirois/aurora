@@ -72,23 +72,15 @@ public class MesosTaskFactoryImplTest extends EasyMockTest {
       .setAssignedPorts(ImmutableMap.of("http", 80))
       .setTask(TASK_CONFIG)
       .build();
-  private static final AssignedTask TASK_WITH_DOCKER = TASK.toBuilder()
-      .setTask(
-          TASK.getTask().toBuilder()
-              .setContainer(Container.docker(
-                  DockerContainer.create("testimage")))
-              .build())
-      .build();
-  private static final AssignedTask TASK_WITH_DOCKER_PARAMS = TASK.toBuilder()
-      .setTask(
-          TASK.getTask().toBuilder()
-              .setContainer(Container.docker(
+  private static final AssignedTask TASK_WITH_DOCKER = TASK.withTask(
+      task -> task.withContainer(Container.docker(DockerContainer.create("testimage"))));
+
+  private static final AssignedTask TASK_WITH_DOCKER_PARAMS = TASK.withTask(
+      task -> task.withContainer(Container.docker(
                   DockerContainer.builder()
                       .setImage("testimage")
                       .setParameters(DockerParameter.create("label", "testparameter"))
-                      .build()))
-              .build())
-      .build();
+                      .build())));
 
   private static final SlaveID SLAVE = SlaveID.newBuilder().setValue("slave-id").build();
 

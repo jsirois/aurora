@@ -17,8 +17,6 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import com.google.common.collect.ImmutableSet;
-
 import org.apache.aurora.gen.AddInstancesConfig;
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.JobConfiguration;

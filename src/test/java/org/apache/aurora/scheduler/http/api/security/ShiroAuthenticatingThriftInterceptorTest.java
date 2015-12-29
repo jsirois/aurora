@@ -19,7 +19,6 @@ import org.aopalliance.intercept.MethodInvocation;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.shiro.authz.UnauthenticatedException;
 import org.apache.shiro.subject.Subject;
 import org.junit.Before;
 import org.junit.Test;

@@ -44,7 +44,7 @@ public class ShiroAuthenticatingThriftInterceptorTest extends EasyMockTest {
     interceptor.initialize(Providers.of(subject));
   }
 
-  @Test(expected = UnauthenticatedException.class)
+  @Test(expected = UnauthenticatedError.class)
   public void testInvokeNotAuthenticated() throws Throwable {
     expect(subject.isAuthenticated()).andReturn(false);
 

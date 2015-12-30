@@ -454,8 +454,7 @@ public class ServerSetImpl implements ServerSet {
         this.additionalEndpoints = Maps.newHashMap();
       }
       this.status  = instance.getStatus();
-      // TODO(John Sirois): XXX
-      this.shard = instance.getShard(); // instance.isSetShard() ? instance.getShard() : null;
+      this.shard = instance.isSetShard() ? instance.getShard() : null;
     }
 
     EndpointSchema getServiceEndpoint() {

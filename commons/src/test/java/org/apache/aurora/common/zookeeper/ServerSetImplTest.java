@@ -46,6 +46,7 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.createControl;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -225,8 +226,7 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
     assertEquals(
         1000,
         ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
-    // TODO(John Sirois): XXX primitive isSet is not supported!
-    // assertTrue(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
+    assertTrue(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
     ServiceInstance instance2 = ServiceInstance.builder()
         .setServiceEndpoint(Endpoint.create("foo", 1000))
@@ -237,8 +237,7 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
     assertEquals(
         1000,
         ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
-    // TODO(John Sirois): XXX primitive isSet is not supported!
-    // assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
+    assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
     ServiceInstance instance3 = ServiceInstance.builder()
         .setServiceEndpoint(Endpoint.create("foo", 1000))
@@ -249,8 +248,7 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
     assertEquals(
         1000,
         ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
-    // TODO(John Sirois): XXX primitive isSet is not supported!
-    // assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
+    assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
   }
 
   @Test

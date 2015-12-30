@@ -240,7 +240,7 @@ struct TaskConfig {
  11: i32 priority
  13: i32 maxTaskFailures
  /** Whether this is a production task, which can preempt. */
- 18: optional bool production
+ 18: optional bool production = 1  // Explicitly default to false since we model this as not null.
  /** Task tier type. */
  30: optional string tier
 

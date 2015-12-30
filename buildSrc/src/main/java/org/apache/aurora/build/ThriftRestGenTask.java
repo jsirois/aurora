@@ -59,6 +59,7 @@ import com.facebook.swift.parser.model.StringEnum;
 import com.facebook.swift.parser.model.Struct;
 import com.facebook.swift.parser.model.ThriftException;
 import com.facebook.swift.parser.model.ThriftField;
+import com.facebook.swift.parser.model.ThriftField.Requiredness;
 import com.facebook.swift.parser.model.ThriftMethod;
 import com.facebook.swift.parser.model.ThriftType;
 import com.facebook.swift.parser.model.TypeAnnotation;
@@ -433,7 +434,7 @@ public class ThriftRestGenTask extends DefaultTask {
   private static String getterName(ThriftField field) {
     String upperCamelCaseFieldName = toUpperCamelCaseName(field);
     ThriftType type = field.getType();
-    if (type instanceof BaseType && ((BaseType) type).getType() == BaseType.Type.BOOL) {
+    if (isBoolean(type)) {
       return "is" + upperCamelCaseFieldName;
     } else {
       return "get" + upperCamelCaseFieldName;
@@ -734,7 +735,15 @@ public class ThriftRestGenTask extends DefaultTask {
         ConstValue value) {
 
       CodeBlock.Builder codeBuilder = CodeBlock.builder();
-      if (value instanceof ConstInteger || value instanceof ConstDouble) {
+      if (value instanceof ConstInteger) {
+        long val = ((ConstInteger) value).value();
+        if (isBoolean(type)) {
+          // Thrift uses 0/1 for boolean literals.
+          codeBuilder.add("$L", val == 0L);
+        } else {
+          codeBuilder.add("$L", val);
+        }
+      } else if (value instanceof ConstDouble) {
         codeBuilder.add("$L", value.value());
       } else if (value instanceof ConstString) {
         codeBuilder.add("\"$L\"", value.value());
@@ -906,6 +915,7 @@ public class ThriftRestGenTask extends DefaultTask {
         String name = Iterables.getLast(Splitter.on('.').limit(3).splitToList(identifier));
         codeBuilder.add("$T.$L", className, name);
       } else {
+        // Or else its a constant value reference:
         // Up to 2 components, the rightmost is the name:
         // package local constant: CONSTANT_VALUE
         // via include.thrift: included.CONSTANT_VALUE
@@ -1049,6 +1059,10 @@ public class ThriftRestGenTask extends DefaultTask {
     protected final TypeSpec writeType(TypeSpec.Builder typeBuilder) throws IOException {
       return writeType(getPackageName(), typeBuilder);
     }
+  }
+
+  private static boolean isBoolean(ThriftType type) {
+    return type instanceof BaseType && ((BaseType) type).getType() == BaseType.Type.BOOL;
   }
 
   @NotThreadSafe
@@ -1628,7 +1642,7 @@ public class ThriftRestGenTask extends DefaultTask {
           paramBuilder.addAnnotation(
               TypeAnnotationVisitor.createAnnotation(field.getAnnotations()));
         }
-        if (field.getRequiredness() != ThriftField.Requiredness.REQUIRED) {
+        if (field.getRequiredness() != Requiredness.REQUIRED) {
           paramBuilder.addAnnotation(javax.annotation.Nullable.class);
         }
         methodBuilder.addParameter(paramBuilder.build());
@@ -1712,7 +1726,6 @@ public class ThriftRestGenTask extends DefaultTask {
       TypeSpec.Builder wrapperBuilder =
           TypeSpec.classBuilder("Builder")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .addSuperinterface(builderBuilderName)
               .addSuperinterface(
                   ParameterizedTypeName.get(
                       entityInterface.builderTypeName,
@@ -1892,30 +1905,55 @@ public class ThriftRestGenTask extends DefaultTask {
 
       for (ThriftField field : struct.getFields()) {
         ThriftType type = field.getType();
-        Optional<CodeBlock> unsetValue = renderZero(type);
+        TypeName rawTypeName = typeName(type);
+        boolean isPrimitive = rawTypeName.isPrimitive();
+        Requiredness requiredness = field.getRequiredness();
+
         boolean nullable =
-            (field.getRequiredness() != ThriftField.Requiredness.REQUIRED)
+            ((isPrimitive && requiredness == Requiredness.OPTIONAL)
+                || (!isPrimitive && requiredness != Requiredness.REQUIRED))
             && !field.getValue().isPresent()
             && !(type instanceof ContainerType);
 
-        MethodSpec.Builder accessorBuilder =
-            MethodSpec.methodBuilder(getterName(field))
+        Optional<CodeBlock> unsetValue = nullable ? Optional.absent() : renderZero(type);
+
+        TypeName typeName = rawTypeName;
+        if (nullable) {
+          if (isPrimitive) {
+            typeName = typeName.box();
+          }
+          AnnotationSpec nullableAnnotation = AnnotationSpec.builder(Nullable.class).build();
+          typeName = typeName.annotated(nullableAnnotation);
+        }
+
+        MethodSpec autoValueAccessor =
+            MethodSpec.methodBuilder(field.getName())
                 .addAnnotation(renderThriftFieldAnnotation(field))
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .returns(typeName(type));
-        if (nullable && !unsetValue.isPresent()) {
-          accessorBuilder.addAnnotation(javax.annotation.Nullable.class);
+                .returns(typeName)
+                .build();
+        typeBuilder.addMethod(autoValueAccessor);
+
+        MethodSpec.Builder publicAccessor =
+            MethodSpec.methodBuilder(getterName(field))
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        if (isPrimitive && nullable) {
+          publicAccessor
+              .returns(rawTypeName)
+              .addStatement("$T value = $N()", autoValueAccessor.returnType, autoValueAccessor)
+              .addStatement("return value == null ? $L : value", renderZero(type).get());
+        } else {
+          publicAccessor.returns(typeName).addStatement("return $N()", autoValueAccessor);
         }
-        MethodSpec accessor = accessorBuilder.build();
-        typeBuilder.addMethod(accessor);
+        typeBuilder.addMethod(publicAccessor.build());
 
         String fieldsValueName = toUpperSnakeCaseName(field);
-        if (nullable && !unsetValue.isPresent()) {
+        if (nullable) {
           MethodSpec isSetFieldMethod =
               MethodSpec.methodBuilder(isSetName(field))
                   .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                   .returns(TypeName.BOOLEAN)
-                  .addStatement("return $N() != null", accessor)
+                  .addStatement("return $N() != null", autoValueAccessor)
                   .build();
           typeBuilder.addMethod(isSetFieldMethod);
 
@@ -1923,36 +1961,35 @@ public class ThriftRestGenTask extends DefaultTask {
         } else {
           isSetCode.get().addStatement("case $L: return true", fieldsValueName);
         }
-        getFieldValueCode.get().addStatement("case $L: return $N()", fieldsValueName, accessor);
+        getFieldValueCode.get().addStatement("case $L: return $N()", fieldsValueName, autoValueAccessor);
         builderSetCode.get()
             .add("case $L:\n", fieldsValueName)
             .indent()
-            .addStatement("$N(($T) value)", setterName(field), typeName(type))
+            .addStatement(
+                "$N(($T) value)",
+                setterName(field),
+                // TODO(John Sirois): DRY - this is calculated above and re-calculated here.
+                nullable && rawTypeName.isPrimitive() ? rawTypeName.box() : rawTypeName)
             .addStatement("break")
             .unindent();
 
-        ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName(type), field.getName());
-        if (nullable && !unsetValue.isPresent()) {
-          paramBuilder.addAnnotation(javax.annotation.Nullable.class);
-        }
-        ParameterSpec parameterSpec = paramBuilder.build();
+        ParameterSpec parameterSpec = ParameterSpec.builder(typeName, field.getName()).build();
 
-        String setterName = setterName(field);
-        MethodSpec methodSpec =
-            MethodSpec.methodBuilder(setterName)
+        MethodSpec autoValueBuilderMutator =
+            MethodSpec.methodBuilder(field.getName())
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(parameterSpec)
                 .returns(builderBuilderName)
                 .build();
-        builderBuilder.addMethod(methodSpec);
+        builderBuilder.addMethod(autoValueBuilderMutator);
 
         // TODO(John Sirois): Add collection overloads.
         MethodSpec simpleWither =
             MethodSpec.methodBuilder(witherName(field))
               .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(typeName(type), field.getName())
+              .addParameter(rawTypeName, field.getName())
               .returns(structClassName)
-              .addStatement("return toBuilder().$N($L).build()", methodSpec, field.getName())
+              .addStatement("return toBuilder().$N($L).build()", setterName(field), field.getName())
               .build();
         typeBuilder.addMethod(simpleWither);
 
@@ -1961,24 +1998,46 @@ public class ThriftRestGenTask extends DefaultTask {
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(parameterizedTypeName(UnaryOperator.class, type), "mutator")
                 .returns(structClassName)
-                .addStatement("return $N(mutator.apply($N()))", simpleWither, accessor)
+                .addStatement("return $N(mutator.apply($N()))", simpleWither, getterName(field))
                 .build());
 
         ImmutableList.Builder<AnnotationSpec> annotations = ImmutableList.builder();
-        annotations.add(AnnotationSpec.builder(Override.class).build());
         if (!(type instanceof ContainerType)) {
           annotations.add(renderThriftFieldAnnotation(field));
         }
+        MethodSpec swiftMutator =
+            MethodSpec.methodBuilder(field.getName())
+              .addAnnotations(annotations.build())
+              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+              .addParameter(parameterSpec)
+              .returns(wrapperBuilderName)
+              .addStatement("this.builder.$N($N)", autoValueBuilderMutator, parameterSpec)
+              .addStatement("return this")
+              .build();
+        wrapperBuilder.addMethod(swiftMutator);
+
+        String setterName = setterName(field);
         MethodSpec wrapperMethodSpec =
             MethodSpec.methodBuilder(setterName)
-                .addAnnotations(annotations.build())
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(parameterSpec)
                 .returns(wrapperBuilderName)
-                .addStatement("this.builder.$N($N)", methodSpec, parameterSpec)
-                .addStatement("return this")
+                .addStatement("return $N($N)", swiftMutator, parameterSpec)
                 .build();
         wrapperBuilder.addMethod(wrapperMethodSpec);
+        if (rawTypeName.isPrimitive() && !typeName.isPrimitive()) {
+          wrapperBuilder.addMethod(
+              MethodSpec.methodBuilder(setterName)
+                  .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                  .addParameter(parameterSpec.type.unbox(), parameterSpec.name)
+                  .returns(wrapperBuilderName)
+                  .addStatement(
+                      "return $N($T.valueOf($L))",
+                      wrapperMethodSpec,
+                      rawTypeName.box(),
+                      parameterSpec.name)
+                  .build());
+        }
 
         // The {List,Set,Map} builder overloads are added specifically for the SwiftCodec, the rest
         // are for convenience.
@@ -2016,19 +2075,19 @@ public class ThriftRestGenTask extends DefaultTask {
         if (field.getValue().isPresent()) {
           CodeBlock defaultValue = renderValue(structRenderers, type, field.getValue().get());
           wrapperConstructorBuilder
-              .add("\n.$N(", wrapperMethodSpec)
+              .add("\n.$N(", autoValueBuilderMutator)
               .add(defaultValue)
               .add(")");
         } else if (unsetValue.isPresent()) {
           wrapperConstructorBuilder
-              .add("\n.$N(", wrapperMethodSpec)
+              .add("\n.$N(", autoValueBuilderMutator)
               .add(unsetValue.get())
               .add(")");
         }
 
         // TODO(John Sirois): This signature, skipping OPTIONALs, is tailored to match apache
         // thrift: reconsider convenience factory methods after transition.
-        if (field.getRequiredness() != ThriftField.Requiredness.OPTIONAL) {
+        if (requiredness != Requiredness.OPTIONAL) {
           TypeName constructorParamType;
           if (type instanceof ListType) {
             ThriftType elementType = ((ListType) type).getElementType();
@@ -2042,14 +2101,10 @@ public class ThriftRestGenTask extends DefaultTask {
             ThriftType valueType = mapType.getValueType();
             constructorParamType = parameterizedTypeName(Map.class, keyType, valueType);
           } else {
-            constructorParamType = typeName(type);
+            constructorParamType = rawTypeName;
           }
-          ParameterSpec.Builder constructorParam =
-              ParameterSpec.builder(constructorParamType, field.getName());
-          if (nullable && !unsetValue.isPresent()) {
-            constructorParam.addAnnotation(javax.annotation.Nullable.class);
-          }
-          ParameterSpec param = constructorParam.build();
+          ParameterSpec param =
+              ParameterSpec.builder(constructorParamType, field.getName()).build();
           constructorParameters.add(param);
           constructorCode.add("\n.$N($N)", wrapperMethodSpec, param);
         }

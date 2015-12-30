@@ -259,8 +259,6 @@ struct TaskConfig {
  /** Used to display additional details in the UI. */
  27: optional set<Metadata> metadata
 
- // This field is deliberately placed at the end to work around a bug in the immutable wrapper
- // code generator.  See AURORA-1185 for details.
  /** the container the task should use to execute */
  29: Container container = { "mesos": {} }
 } (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbTaskConfig")

@@ -1360,12 +1360,17 @@ public class ThriftRestGenTask extends DefaultTask {
     public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
         throws IOException {
 
+      ImmutableList<Const> constants = consts.build();
+      if (constants.isEmpty()) {
+        return;
+      }
+
       TypeSpec.Builder typeBuilder =
           TypeSpec.classBuilder("Constants")
               .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
               .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
-      for (Const constant : consts.build()) {
+      for (Const constant : constants) {
         ThriftType fieldType = constant.getType();
         typeBuilder.addField(
             FieldSpec.builder(

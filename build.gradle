@@ -288,6 +288,8 @@ compileJava {
   options.compilerArgs << '-Xlint:-serial'
   // Don't fail for third party classfile warnings.
   options.compilerArgs << '-Xlint:-classfile'
+  // Capture method parameter names in classfiles.
+  options.compilerArgs << '-parameters'
 }
 
 task enforceVersion {

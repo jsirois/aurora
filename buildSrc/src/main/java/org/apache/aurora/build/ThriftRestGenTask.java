@@ -15,6 +15,7 @@ package org.apache.aurora.build;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -72,6 +74,10 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
@@ -1457,12 +1463,9 @@ public class ThriftRestGenTask extends DefaultTask {
   static class ServiceVisior extends BaseVisitor<Service> {
     private static final ParameterizedTypeName METHODS_MAP_TYPE =
         ParameterizedTypeName.get(
-        ClassName.get(ImmutableMap.class),
-        ClassName.get(String.class),
-        ParameterizedTypeName.get(
             ClassName.get(ImmutableMap.class),
             ClassName.get(String.class),
-            ClassName.get(Type.class)));
+            ArrayTypeName.of(Class.class));
 
     private TypeName thriftServiceInterface;
 
@@ -1479,19 +1482,18 @@ public class ThriftRestGenTask extends DefaultTask {
       CodeBlock.Builder methodsMapInitializerCode =
           CodeBlock.builder()
             .add(
-                "$[$T.<$T, $T<$T, $T>>builder()",
+                "$[$T.<$T, $T>builder()",
                 ImmutableMap.class,
                 String.class,
-                ImmutableMap.class,
-                String.class,
-                Type.class);
+                Class[].class);
 
       TypeSpec.Builder asyncServiceBuilder = createServiceBuilder(service, "Async");
       TypeSpec.Builder syncServiceBuilder = createServiceBuilder(service, "Sync");
 
       Optional<String> parent = service.getParent();
       if (parent.isPresent()) {
-        methodsMapInitializerCode.add("\n.putAll($T._METHODS)", getClassName(parent.get()));
+        methodsMapInitializerCode.add(
+            "\n.putAll($T._METHOD_PARAMETER_TYPES)", getClassName(parent.get()));
         asyncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Async"));
         syncServiceBuilder.addSuperinterface(getClassName(parent.get(), "Sync"));
       }
@@ -1523,63 +1525,121 @@ public class ThriftRestGenTask extends DefaultTask {
               .build();
 
       FieldSpec methodsField =
-          FieldSpec.builder(METHODS_MAP_TYPE, "_METHODS")
+          FieldSpec.builder(METHODS_MAP_TYPE, "_METHOD_PARAMETER_TYPES")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
               .initializer(methodMapInitializer)
               .build();
       serviceContainerBuilder.addField(methodsField);
 
-      MethodSpec thriftMethods =
-          MethodSpec.methodBuilder("thriftMethods")
-              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-              .returns(METHODS_MAP_TYPE)
-              .addStatement("return $N", methodsField)
-              .build();
-
-      MethodSpec getThriftMethods =
-          MethodSpec.methodBuilder("getThriftMethods")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-              .returns(METHODS_MAP_TYPE)
-              .addStatement("return $N()", thriftMethods)
-              .build();
-
-      asyncServiceBuilder.addMethod(thriftMethods);
-      asyncServiceBuilder.addMethod(getThriftMethods);
+      ClassName asyncServiceName = getClassName(service.getName(), "Async");
+      addMetadataMethods(asyncServiceBuilder, asyncServiceName, methodsField);
       serviceContainerBuilder.addType(asyncServiceBuilder.build());
 
-      syncServiceBuilder.addMethod(thriftMethods);
-      syncServiceBuilder.addMethod(getThriftMethods);
+      ClassName syncServiceName = getClassName(service.getName(), "Sync");
+      addMetadataMethods(syncServiceBuilder, syncServiceName, methodsField);
       serviceContainerBuilder.addType(syncServiceBuilder.build());
 
       writeType(serviceContainerBuilder);
     }
 
+    private void addMetadataMethods(
+        TypeSpec.Builder serviceBuilder,
+        ClassName className,
+        FieldSpec methodsField) {
+
+      ParameterizedTypeName loadingCacheType =
+          ParameterizedTypeName.get(LoadingCache.class, String.class, Method.class);
+
+      TypeSpec cacheLoader =
+          TypeSpec.anonymousClassBuilder("")
+              .superclass(ParameterizedTypeName.get(CacheLoader.class, String.class, Method.class))
+              .addMethod(
+                  MethodSpec.methodBuilder("load")
+                      .addAnnotation(Override.class)
+                      .addModifiers(Modifier.PUBLIC)
+                      .addParameter(String.class, "methodName")
+                      .returns(Method.class)
+                      .addException(NoSuchMethodException.class)
+                      .addStatement(
+                          "$T parameterTypes = $N.get(methodName)",
+                          Class[].class,
+                          methodsField)
+                      .beginControlFlow("if (parameterTypes == null)")
+                      .addStatement("throw new $T(methodName)", NoSuchMethodException.class)
+                      .endControlFlow()
+                      .addStatement(
+                          "return $T.class.getMethod(methodName, parameterTypes)",
+                          className)
+                      .build())
+              .build();
+
+      FieldSpec methodCacheField =
+          FieldSpec.builder(loadingCacheType, "_METHODS")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+              .initializer("$T.newBuilder().build(\n$>$>$L)$<$<", CacheBuilder.class, cacheLoader)
+              .build();
+      serviceBuilder.addField(methodCacheField);
+
+      serviceBuilder.addMethod(
+          MethodSpec.methodBuilder("thriftMethod")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .addParameter(String.class, "methodName")
+              .returns(Method.class)
+              .addException(NoSuchMethodException.class)
+              .beginControlFlow("try")
+              .addStatement("return $N.get(methodName)", methodCacheField)
+              .nextControlFlow("catch ($T e)", ExecutionException.class)
+              .addStatement("$T cause = e.getCause()", Throwable.class)
+              .addStatement(
+                  "$T.propagateIfInstanceOf(cause, $T.class)",
+                  Throwables.class,
+                  NoSuchMethodException.class)
+              .addStatement("throw new $T(cause)", IllegalStateException.class)
+              .endControlFlow()
+              .build());
+
+      MethodSpec thriftMethods =
+          MethodSpec.methodBuilder("thriftMethods")
+              .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+              .returns(ParameterizedTypeName.get(ImmutableMap.class, String.class, Method.class))
+              .beginControlFlow("try")
+              .addStatement("return $N.getAll($N.keySet())", methodCacheField, methodsField)
+              .nextControlFlow("catch ($T e)", ExecutionException.class)
+              .addStatement("throw new $T(e.getCause())", IllegalStateException.class)
+              .endControlFlow()
+              .build();
+      serviceBuilder.addMethod(thriftMethods);
+
+      serviceBuilder.addMethod(
+          MethodSpec.methodBuilder("getThriftMethods")
+              .addAnnotation(Override.class)
+              .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+              .returns(thriftMethods.returnType)
+              .addStatement("return $N()", thriftMethods)
+              .build());
+    }
+
     private CodeBlock renderParameterMapInitializer(ThriftMethod method) {
       if (method.getArguments().isEmpty()) {
-        return CodeBlock.builder().add("$T.of()", ImmutableMap.class).build();
+        return CodeBlock.builder().add("new $T[0]", Class.class).build();
       }
 
       CodeBlock.Builder parameterMapInitializerCode =
           CodeBlock.builder()
-              .add("$T.<$T, $T>builder()", ImmutableMap.class, String.class, Type.class)
+              .add("new $T[] {", Class.class)
               .indent()
               .indent();
 
       for (ThriftField field : method.getArguments()) {
         TypeName fieldType = typeName(field.getType(), /* mutable */ true);
         if (fieldType instanceof ParameterizedTypeName) {
-          ParameterizedTypeName typeToken =
-              ParameterizedTypeName.get(ClassName.get(TypeToken.class), fieldType);
-          parameterMapInitializerCode.add(
-              "\n.put($S, new $T() {}.getType())", field.getName(), typeToken);
-        } else {
-          parameterMapInitializerCode.add("\n.put($S, $T.class)", field.getName(), fieldType);
+          fieldType = ((ParameterizedTypeName) fieldType).rawType;
         }
+        parameterMapInitializerCode.add("\n$T.class,", fieldType);
       }
 
       return parameterMapInitializerCode
-          .add("\n.build()")
+          .add("\n}")
           .unindent()
           .unindent()
           .build();
@@ -1617,7 +1677,11 @@ public class ThriftRestGenTask extends DefaultTask {
               .addMethod(
                   MethodSpec.methodBuilder("getThriftMethods")
                       .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                      .returns(METHODS_MAP_TYPE)
+                      .returns(
+                          ParameterizedTypeName.get(
+                              ImmutableMap.class,
+                              String.class,
+                              Method.class))
                       .build());
       writeType(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, thriftService);
       return ClassName.get(BaseEmitter.AURORA_THRIFT_PACKAGE_NAME, "ThriftService");

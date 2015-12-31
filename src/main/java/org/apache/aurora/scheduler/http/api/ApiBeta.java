@@ -18,11 +18,10 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
+import java.lang.reflect.Parameter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,7 +39,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -90,33 +88,24 @@ public class ApiBeta {
    * will be substituted.
    *
    * @param json Incoming request data, to translate into method parameters.
-   * @param fields Field metadata map. Map <strong>iteration order must match</strong> the order
-   *               defined in the thrift method.
+   * @param method The thrift method to bind parameters for.
    * @return Parsed method parameters.
    * @throws WebApplicationException If a parameter could not be parsed.
    */
-  private Object[] readParams(JsonObject json, ImmutableMap<String, Type> fields)
+  private Object[] readParams(JsonObject json, Method method)
       throws WebApplicationException {
 
     List<Object> params = Lists.newArrayList();
-    for (Map.Entry<String, Type> entry : fields.entrySet()) {
+    for (Parameter parameter : method.getParameters()) {
       try {
-        params.add(GSON.fromJson(getJsonMember(json, entry.getKey()), entry.getValue()));
+        params.add(GSON.fromJson(getJsonMember(json, parameter.getName()), parameter.getType()));
       } catch (JsonParseException e) {
         throw new WebApplicationException(
             e,
-            badRequest("Failed to parse parameter " + entry.getKey() + ": " + e.getMessage()));
+            badRequest("Failed to parse parameter " + parameter.getName() + ": " + e.getMessage()));
       }
     }
     return params.toArray();
-  }
-
-  private Method getApiMethod(String name, ImmutableMap<String, Type> metadata) {
-    try {
-      return AuroraAdmin.Sync.class.getMethod(name, metadata.values().toArray(new Class<?>[0]));
-    } catch (NoSuchMethodException e) {
-      throw Throwables.propagate(e);
-    }
   }
 
   @POST
@@ -128,8 +117,10 @@ public class ApiBeta {
     }
 
     // First, verify that this is a valid method on the interface.
-    ImmutableMap<String, Type> methodMetadata = AuroraAdmin.Sync.thriftMethods().get(methodName);
-    if (methodMetadata == null) {
+    Method method;
+    try {
+      method = AuroraAdmin.Sync.thriftMethod(methodName);
+    } catch (NoSuchMethodException e) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }
 
@@ -147,8 +138,7 @@ public class ApiBeta {
       throw new WebApplicationException(e, badRequest("Request must be valid JSON"));
     }
 
-    final Method method = getApiMethod(methodName, methodMetadata);
-    final Object[] params = readParams(parameters, methodMetadata);
+    final Object[] params = readParams(parameters, method);
     return Response.ok(new StreamingOutput() {
       @Override
       public void write(OutputStream output) throws IOException {

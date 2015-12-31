@@ -35,12 +35,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class AopModuleTest extends EasyMockTest {
-  private AnnotatedAuroraAdmin mockThrift;
+  private AuroraAdmin.Sync mockThrift;
   private ServerInfo serverInfo;
 
   @Before
   public void setUp() throws Exception {
-    mockThrift = createMock(AnnotatedAuroraAdmin.class);
+    mockThrift = createMock(AuroraAdmin.Sync.class);
     serverInfo = ServerInfo.builder().build();
   }
 
@@ -54,7 +54,7 @@ public class AopModuleTest extends EasyMockTest {
           }
         },
         new AopModule(toggledMethods));
-    return injector.getInstance(AnnotatedAuroraAdmin.class);
+    return injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test

@@ -17,7 +17,6 @@ import com.google.inject.AbstractModule;
 
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.ReadOnlyScheduler;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.AopModule;
 
 /**
@@ -29,7 +28,6 @@ public class ThriftModule extends AbstractModule {
   protected void configure() {
     install(new ReadOnly());
     bind(AuroraAdmin.Sync.class).to(SchedulerThriftInterface.class);
-    bind(AnnotatedAuroraAdmin.class).to(SchedulerThriftInterface.class);
 
     // Promote to an explicit binding so it's created in the servlet container child injector.
     // See https://code.google.com/p/google-guice/issues/detail?id=461

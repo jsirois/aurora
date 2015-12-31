@@ -26,6 +26,7 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 
 import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.ExecutorConfig;
@@ -47,7 +48,6 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,11 +59,11 @@ import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 
 public class ApiBetaTest extends JettyServerModuleTest {
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
 
   @Before
   public void setUp() {
-    thrift = createMock(AnnotatedAuroraAdmin.class);
+    thrift = createMock(AuroraAdmin.Sync.class);
   }
 
   @Override
@@ -73,7 +73,7 @@ public class ApiBetaTest extends JettyServerModuleTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(AnnotatedAuroraAdmin.class).toInstance(thrift);
+            bind(AuroraAdmin.Sync.class).toInstance(thrift);
           }
         }
     );

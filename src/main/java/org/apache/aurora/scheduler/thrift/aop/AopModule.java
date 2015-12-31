@@ -39,6 +39,7 @@ import com.google.inject.matcher.Matchers;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.AuroraSchedulerManager;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
@@ -56,7 +57,7 @@ public class AopModule extends AbstractModule {
   private static final Arg<Boolean> ENABLE_JOB_CREATION = Arg.create(true);
 
   private static final Matcher<? super Class<?>> THRIFT_IFACE_MATCHER =
-      Matchers.subclassesOf(AnnotatedAuroraAdmin.class)
+      Matchers.subclassesOf(AuroraAdmin.Sync.class)
           .and(Matchers.annotatedWith(DecoratedThrift.class));
 
   private final Map<String, Boolean> toggledMethods;

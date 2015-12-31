@@ -41,14 +41,12 @@ public class MockDecoratedThrift extends ForwardingThrift {
   private @interface MockThrift { }
 
   @Inject
-  MockDecoratedThrift(@MockThrift AnnotatedAuroraAdmin delegate) {
+  MockDecoratedThrift(@MockThrift AuroraAdmin.Sync delegate) {
     super(delegate);
   }
 
-  public static void bindForwardedMock(Binder binder, AnnotatedAuroraAdmin mockThrift) {
-    binder.bind(AnnotatedAuroraAdmin.class).annotatedWith(MockThrift.class).toInstance(mockThrift);
-
-    binder.bind(AnnotatedAuroraAdmin.class).to(MockDecoratedThrift.class);
+  public static void bindForwardedMock(Binder binder, AuroraAdmin.Sync mockThrift) {
+    binder.bind(AuroraAdmin.Sync.class).annotatedWith(MockThrift.class).toInstance(mockThrift);
     binder.bind(AuroraAdmin.Sync.class).to(MockDecoratedThrift.class);
   }
 }

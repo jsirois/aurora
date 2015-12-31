@@ -40,6 +40,7 @@ import org.apache.aurora.common.args.constraints.Positive;
 import org.apache.aurora.gen.AcquireLockResult;
 import org.apache.aurora.gen.AddInstancesConfig;
 import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.ConfigRewrite;
 import org.apache.aurora.gen.DrainHostsResult;
 import org.apache.aurora.gen.EndMaintenanceResult;
@@ -104,7 +105,6 @@ import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.backup.Recovery;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 import org.apache.aurora.scheduler.updater.JobDiff;
 import org.apache.aurora.scheduler.updater.JobUpdateController;
@@ -135,7 +135,7 @@ import static org.apache.aurora.scheduler.thrift.Responses.ok;
  * administration tasks.
  */
 @DecoratedThrift
-class SchedulerThriftInterface implements AnnotatedAuroraAdmin {
+class SchedulerThriftInterface implements AuroraAdmin.Sync {
   private static final int DEFAULT_MAX_TASKS_PER_JOB = 4000;
   private static final int DEFAULT_MAX_UPDATE_INSTANCE_FAILURES =
       DEFAULT_MAX_TASKS_PER_JOB * 5;

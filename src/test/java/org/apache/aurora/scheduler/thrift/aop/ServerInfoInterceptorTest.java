@@ -20,6 +20,7 @@ import com.google.inject.Injector;
 import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.GetJobsResult;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
@@ -36,8 +37,8 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
 
   private static final String ROLE = "bob";
 
-  private AnnotatedAuroraAdmin realThrift;
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync realThrift;
+  private AuroraAdmin.Sync decoratedThrift;
 
   private static final ServerInfo SERVER_INFO =
       ServerInfo.builder()
@@ -51,7 +52,7 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
   @Before
   public void setUp() {
     interceptor = new ServerInfoInterceptor();
-    realThrift = createMock(AnnotatedAuroraAdmin.class);
+    realThrift = createMock(AuroraAdmin.Sync.class);
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override
       protected void configure() {
@@ -63,7 +64,7 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
             interceptor);
       }
     });
-    decoratedThrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    decoratedThrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test

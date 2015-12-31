@@ -46,7 +46,6 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.http.H2ConsoleModule;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
 import org.apache.aurora.scheduler.http.api.ApiModule;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -103,7 +102,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
   private static final JobKey ADS_STAGING_JOB = JobKeys.from("ads", "staging", "job");
 
   private Ini ini;
-  private AnnotatedAuroraAdmin auroraAdmin;
+  private AuroraAdmin.Sync auroraAdmin;
 
   private static final Joiner COMMA_JOINER = Joiner.on(", ");
   private static final String ADMIN_ROLE = "admin";
@@ -142,7 +141,7 @@ public class HttpSecurityIT extends JettyServerModuleTest {
             + ADS_STAGING_JOB.getName());
     roles.put(H2_ROLE, H2_PERM);
 
-    auroraAdmin = createMock(AnnotatedAuroraAdmin.class);
+    auroraAdmin = createMock(AuroraAdmin.Sync.class);
   }
 
   @Override

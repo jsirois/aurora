@@ -23,6 +23,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
 import org.apache.aurora.gen.TaskQuery;
@@ -36,13 +37,13 @@ import static org.junit.Assert.assertSame;
 
 public class FeatureToggleInterceptorTest extends EasyMockTest {
 
-  private AnnotatedAuroraAdmin realThrift;
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync realThrift;
+  private AuroraAdmin.Sync decoratedThrift;
   private Predicate<Method> predicate;
 
   @Before
   public void setUp() {
-    realThrift = createMock(AnnotatedAuroraAdmin.class);
+    realThrift = createMock(AuroraAdmin.Sync.class);
     predicate = createMock(new Clazz<Predicate<Method>>() { });
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override
@@ -55,7 +56,7 @@ public class FeatureToggleInterceptorTest extends EasyMockTest {
             new FeatureToggleInterceptor());
       }
     });
-    decoratedThrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    decoratedThrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test

@@ -20,6 +20,7 @@ import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.stats.Stats;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.GetJobsResult;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.Result;
@@ -36,14 +37,14 @@ public class ThriftStatsExporterInterceptorTest extends EasyMockTest {
 
   private static final String ROLE = "bob";
 
-  private AnnotatedAuroraAdmin realThrift;
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync realThrift;
+  private AuroraAdmin.Sync decoratedThrift;
   private ThriftStatsExporterInterceptor statsInterceptor;
 
   @Before
   public void setUp() {
     statsInterceptor = new ThriftStatsExporterInterceptor();
-    realThrift = createMock(AnnotatedAuroraAdmin.class);
+    realThrift = createMock(AuroraAdmin.Sync.class);
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override
       protected void configure() {
@@ -54,7 +55,7 @@ public class ThriftStatsExporterInterceptorTest extends EasyMockTest {
             statsInterceptor);
       }
     });
-    decoratedThrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    decoratedThrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test

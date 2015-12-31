@@ -32,11 +32,11 @@ import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.scheduler.http.CorsFilter;
 import org.apache.aurora.scheduler.http.JettyServerModule;
 import org.apache.aurora.scheduler.http.LeaderRedirectFilter;
 import org.apache.aurora.scheduler.http.api.security.UnauthenticatedError;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TJSONProtocol;
 import org.apache.thrift.server.TServlet;
@@ -90,9 +90,9 @@ public class ApiModule extends ServletModule {
 
   @Provides
   @Singleton
-  TServlet provideApiThriftServlet(AnnotatedAuroraAdmin schedulerThriftInterface) {
+  TServlet provideApiThriftServlet(AuroraAdmin.Sync schedulerThriftInterface) {
     ServiceDescriptor serviceDescriptor =
-        ServiceDescriptor.create(schedulerThriftInterface, AnnotatedAuroraAdmin.class);
+        ServiceDescriptor.create(schedulerThriftInterface, AuroraAdmin.Sync.class);
 
     ThriftEventHandler propagateUnauthenticatedError = new ThriftEventHandler() {
       @Override

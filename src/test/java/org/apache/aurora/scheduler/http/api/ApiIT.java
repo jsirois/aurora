@@ -20,9 +20,9 @@ import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.sun.jersey.api.client.ClientResponse;
 
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.http.JettyServerModuleTest;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,11 +30,11 @@ import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 
 public class ApiIT extends JettyServerModuleTest {
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
 
   @Before
   public void setUp() {
-    thrift = createMock(AnnotatedAuroraAdmin.class);
+    thrift = createMock(AuroraAdmin.Sync.class);
   }
 
   @Override
@@ -44,7 +44,7 @@ public class ApiIT extends JettyServerModuleTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(AnnotatedAuroraAdmin.class).toInstance(thrift);
+            bind(AuroraAdmin.Sync.class).toInstance(thrift);
           }
         });
   }

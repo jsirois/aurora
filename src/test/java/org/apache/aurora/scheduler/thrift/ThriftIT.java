@@ -38,7 +38,6 @@ import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.backup.Recovery;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.updater.JobUpdateController;
 import org.apache.shiro.subject.Subject;
 import org.junit.Before;
@@ -99,7 +98,7 @@ public class ThriftIT extends EasyMockTest {
           }
         }
     );
-    thrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    thrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test

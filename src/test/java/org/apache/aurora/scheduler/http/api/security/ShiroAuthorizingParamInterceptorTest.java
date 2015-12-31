@@ -22,6 +22,7 @@ import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Response;
@@ -31,7 +32,6 @@ import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
 import org.apache.shiro.subject.Subject;
 import org.apache.thrift.TException;
@@ -52,10 +52,10 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
   private ShiroAuthorizingParamInterceptor interceptor;
 
   private Subject subject;
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
   private StatsProvider statsProvider;
 
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync decoratedThrift;
 
   private static final JobKey JOB_KEY = JobKeys.from("role", "env", "name");
 
@@ -64,7 +64,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     interceptor = new ShiroAuthorizingParamInterceptor(DOMAIN);
     subject = createMock(Subject.class);
     statsProvider = createMock(StatsProvider.class);
-    thrift = createMock(AnnotatedAuroraAdmin.class);
+    thrift = createMock(AuroraAdmin.Sync.class);
   };
 
   private void replayAndInitialize() {
@@ -80,20 +80,20 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
             bind(Subject.class).toInstance(subject);
             MockDecoratedThrift.bindForwardedMock(binder(), thrift);
             bindInterceptor(
-                Matchers.subclassesOf(AnnotatedAuroraAdmin.class),
+                Matchers.subclassesOf(AuroraAdmin.Sync.class),
                 HttpSecurityModule.AURORA_SCHEDULER_MANAGER_SERVICE,
                 interceptor);
             bind(StatsProvider.class).toInstance(statsProvider);
             requestInjection(interceptor);
           }
-        }).getInstance(AnnotatedAuroraAdmin.class);
+        }).getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test
   public void testHandlesAllDecoratedParamTypes() {
     control.replay();
 
-    for (Method method : AnnotatedAuroraAdmin.class.getMethods()) {
+    for (Method method : AuroraAdmin.Sync.class.getMethods()) {
       if (HttpSecurityModule.AURORA_SCHEDULER_MANAGER_SERVICE.matches(method)) {
         interceptor.getAuthorizingParamGetters().getUnchecked(method);
       }

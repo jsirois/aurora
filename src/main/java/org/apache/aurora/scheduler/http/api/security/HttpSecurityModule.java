@@ -41,7 +41,6 @@ import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.AuroraSchedulerManager;
 import org.apache.aurora.scheduler.app.MoreModules;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.guice.aop.ShiroAopModule;
 import org.apache.shiro.guice.web.ShiroWebModule;
@@ -216,7 +215,7 @@ public class HttpSecurityModule extends ServletModule {
     MethodInterceptor adminInterceptor = new ShiroAuthorizingInterceptor(THRIFT_AURORA_ADMIN);
     requestInjection(adminInterceptor);
     bindInterceptor(
-        Matchers.subclassesOf(AnnotatedAuroraAdmin.class),
+        Matchers.subclassesOf(AuroraAdmin.Sync.class),
         AURORA_ADMIN_SERVICE,
         adminInterceptor);
   }

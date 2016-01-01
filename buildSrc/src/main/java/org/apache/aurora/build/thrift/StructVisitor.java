@@ -98,6 +98,10 @@ class StructVisitor extends BaseVisitor<Struct> {
             .addAnnotation(com.google.auto.value.AutoValue.class)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
+    if (!struct.getAnnotations().isEmpty()) {
+      typeBuilder.addAnnotation(TypeAnnotationVisitor.createAnnotation(struct.getAnnotations()));
+    }
+
     // TODO(John Sirois): XXX Tame this beast!
     ThriftEntityInterfaceFactory.EntityInterface entityInterface =
         thriftEntityInterfaceFactory.getEntityInterface();
@@ -607,8 +611,6 @@ class StructVisitor extends BaseVisitor<Struct> {
       }
     }
   }
-
-
 
   private Iterable<MethodSpec> createCollectionBuilderOverloads(
       ThriftField field,

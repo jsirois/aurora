@@ -84,6 +84,14 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
     this.packageName = requireNonNull(packageName);
   }
 
+  protected final SymbolTable getSymbolTable() {
+    return symbolTable;
+  }
+
+  protected final String getPackageName() {
+    return packageName;
+  }
+
   protected final SymbolTable.Symbol lookup(String identifier) {
     return symbolTable.lookup(getPackageName(), identifier);
   }
@@ -103,10 +111,6 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   protected final ClassName getClassName(String identifier, String... simpleNames) {
     ClassName className = lookup(identifier).getClassName();
     return ClassName.get(className.packageName(), className.simpleName(), simpleNames);
-  }
-
-  protected final String getPackageName() {
-    return packageName;
   }
 
   protected final TypeName typeName(ThriftType thriftType) {

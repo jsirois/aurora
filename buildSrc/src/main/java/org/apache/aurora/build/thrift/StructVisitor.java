@@ -36,9 +36,7 @@ import com.facebook.swift.parser.model.SetType;
 import com.facebook.swift.parser.model.Struct;
 import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.ThriftType;
-import com.facebook.swift.parser.model.TypeAnnotation;
 import com.google.common.base.Optional;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -598,180 +596,19 @@ class StructVisitor extends BaseVisitor<Struct> {
 
     TypeSpec typeSpec = writeType(typeBuilder);
 
-    Optional<PeerInfo> peerInfo = PeerInfo.from(getPackageName(), struct);
-    if (peerInfo.isPresent()) {
-      PeerInfo mutablePeer = peerInfo.get();
-      if (mutablePeer.render) {
-        TypeSpec.Builder peerType =
-            createMutablePeer(struct, typeSpec, mutablePeer);
-        writeType(mutablePeer.packageName, peerType);
+    Optional<PeerInfo> maybePeerInfo = PeerInfo.from(getPackageName(), struct);
+    if (maybePeerInfo.isPresent()) {
+      PeerInfo peerInfo = maybePeerInfo.get();
+      if (peerInfo.render) {
+        MutablePeer mutablePeer =
+            new MutablePeer(getLogger(), getOutdir(), getSymbolTable(), getPackageName());
+        TypeSpec peerType = mutablePeer.render(struct, typeSpec, peerInfo);
+        writeType(peerInfo.packageName, peerType.toBuilder());
       }
     }
   }
 
-  static class PeerInfo {
-    static Optional<PeerInfo> from(String packageName, AbstractStruct struct) {
-      return FluentIterable.from(struct.getAnnotations())
-          .filter(a -> "mutablePeer".equals(a.getName()))
-          .transform(TypeAnnotation::getValue)
-          .first()
-          .transform(value -> new PeerInfo(packageName, struct, value));
-    }
 
-    final boolean render;
-    final String packageName;
-    final String className;
-
-    private PeerInfo(String structPackageName, AbstractStruct struct, String mutablePeerValue) {
-      render = Boolean.parseBoolean(mutablePeerValue);
-      if (render) {
-        packageName = structPackageName + ".peer";
-        className = "Mutable" + struct.getName();
-      } else {
-        int i = mutablePeerValue.lastIndexOf('.');
-        if (i == -1) {
-          packageName = "";
-          className = mutablePeerValue;
-        } else {
-          packageName = mutablePeerValue.substring(0, i);
-          className = mutablePeerValue.substring(i + 1);
-        }
-      }
-    }
-  }
-
-  private TypeSpec.Builder createMutablePeer(Struct struct, TypeSpec typeSpec, PeerInfo peerInfo) {
-    TypeSpec.Builder typeBuilder =
-        TypeSpec.classBuilder(peerInfo.className)
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
-
-    CodeBlock.Builder toThriftCode =
-        CodeBlock.builder()
-            .add("$[return $N.builder()", typeSpec);
-
-    for (ThriftField field : struct.getFields()) {
-      // TODO(John Sirois): XXX here we only want the mutable peer if the identifier type does not
-      // resolve to an enum ...
-      // + this implies the need to operate off of a symbol table - type identifier to ThriftType
-      // + this further implies just labeling storage roots and then walking and creating peers
-      // + OR just creating peers for everything (minus enums and structs).
-
-      // TODO(John Sirois): XXX the structTable needs to map identifier to AbstractStruct
-      // I need to be able to say:
-      // getIdentifiedType(
-      //     callerPackage=getPackageName(),
-      //     identifier=((Identifier) field.getType()))
-      ThriftType fieldType = field.getType();
-      FieldSpec fieldSpec =
-          FieldSpec.builder(typeName(fieldType), field.getName())
-              .addModifiers(Modifier.PRIVATE)
-              .build();
-      CodeBlock code = CodeBlock.builder().add("$N", fieldSpec).build();
-
-      toThriftCode.add("\n.$L(", setterName(field));
-      if (fieldType instanceof IdentifierType) {
-        SymbolTable.Symbol symbol = lookup(((IdentifierType) fieldType));
-        if (symbol.getSymbol() instanceof AbstractStruct) {
-          Optional<PeerInfo> peer =
-              PeerInfo.from(symbol.getPackageName(), (AbstractStruct) symbol.getSymbol());
-          if (peer.isPresent()) {
-            ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
-            fieldSpec =
-                FieldSpec.builder(peerType, field.getName())
-                    .addModifiers(Modifier.PRIVATE)
-                    .build();
-            code =
-                CodeBlock.builder()
-                    .add("$N == null ? null : $N.toThrift()", fieldSpec, fieldSpec)
-                    .build();
-          }
-        }
-      } else if (fieldType instanceof ListType) {
-        ThriftType elementType = ((ListType) fieldType).getElementType();
-        if (elementType instanceof IdentifierType) {
-          SymbolTable.Symbol symbol = lookup(((IdentifierType) elementType));
-          if (symbol.getSymbol() instanceof AbstractStruct) {
-            Optional<PeerInfo> peer =
-                PeerInfo.from(symbol.getPackageName(), (AbstractStruct) symbol.getSymbol());
-            if (peer.isPresent()) {
-              ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
-              ParameterizedTypeName listType =
-                  ParameterizedTypeName.get(ClassName.get(List.class), peerType);
-              fieldSpec =
-                  FieldSpec.builder(listType, field.getName())
-                      .addModifiers(Modifier.PRIVATE)
-                      .build();
-              code =
-                  CodeBlock.builder()
-                      .add(
-                          "$N.stream().map($T::toThrift).collect($T.toList())",
-                          fieldSpec,
-                          peerType,
-                          Collectors.class)
-                      .build();
-            }
-          }
-        } else {
-          ParameterizedTypeName listType =
-              ParameterizedTypeName.get(ClassName.get(List.class), typeName(elementType));
-          fieldSpec =
-              FieldSpec.builder(listType, field.getName())
-                  .addModifiers(Modifier.PRIVATE)
-                  .build();
-        }
-      } else if (fieldType instanceof SetType) {
-        ThriftType elementType = ((SetType) fieldType).getElementType();
-        if (elementType instanceof IdentifierType) {
-          SymbolTable.Symbol symbol = lookup(((IdentifierType) elementType));
-          if (symbol.getSymbol() instanceof AbstractStruct) {
-            Optional<PeerInfo> peer =
-                PeerInfo.from(symbol.getPackageName(), (AbstractStruct) symbol.getSymbol());
-            if (peer.isPresent()) {
-              ClassName peerType = ClassName.get(peer.get().packageName, peer.get().className);
-              ParameterizedTypeName setType =
-                  ParameterizedTypeName.get(ClassName.get(Set.class), peerType);
-              fieldSpec =
-                  FieldSpec.builder(setType, field.getName())
-                      .addModifiers(Modifier.PRIVATE)
-                      .build();
-              code =
-                  CodeBlock.builder()
-                      .add(
-                          "$N.stream().map($T::toThrift).collect($T.toSet())",
-                          fieldSpec,
-                          peerType,
-                          Collectors.class)
-                      .build();
-            }
-          }
-        } else {
-          ParameterizedTypeName listType =
-              ParameterizedTypeName.get(ClassName.get(Set.class), typeName(elementType));
-          fieldSpec =
-              FieldSpec.builder(listType, field.getName())
-                  .addModifiers(Modifier.PRIVATE)
-                  .build();
-        }
-      } // TODO(John Sirois): XXX Handle maps
-
-      typeBuilder.addField(fieldSpec);
-      toThriftCode.add(code);
-      toThriftCode.add(")");
-    }
-
-    typeBuilder.addMethod(
-        MethodSpec.methodBuilder("toThrift")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .returns(getClassName(typeSpec.name))
-            .addCode(
-                toThriftCode
-                    .add("\n.build();\n$]")
-                    .build())
-            .build());
-
-    return typeBuilder;
-  }
 
   private Iterable<MethodSpec> createCollectionBuilderOverloads(
       ThriftField field,

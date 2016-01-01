@@ -55,17 +55,6 @@ class MutablePeer extends BaseVisitor {
             .add("$[return $N.builder()", typeSpec);
 
     for (ThriftField field : struct.getFields()) {
-      // TODO(John Sirois): XXX here we only want the mutable peer if the identifier type does not
-      // resolve to an enum ...
-      // + this implies the need to operate off of a symbol table - type identifier to ThriftType
-      // + this further implies just labeling storage roots and then walking and creating peers
-      // + OR just creating peers for everything (minus enums and structs).
-
-      // TODO(John Sirois): XXX the structTable needs to map identifier to AbstractStruct
-      // I need to be able to say:
-      // getIdentifiedType(
-      //     callerPackage=getPackageName(),
-      //     identifier=((Identifier) field.getType()))
       ThriftType fieldType = field.getType();
       FieldSpec fieldSpec =
           FieldSpec.builder(typeName(fieldType), field.getName())

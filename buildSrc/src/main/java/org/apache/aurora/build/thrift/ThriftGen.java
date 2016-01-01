@@ -11,63 +11,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build;
+package org.apache.aurora.build.thrift;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.facebook.swift.parser.ThriftIdlParser;
 import com.facebook.swift.parser.model.Document;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.CharSource;
 import com.google.common.io.Files;
 
-import org.gradle.api.DefaultTask;
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.TaskAction;
+import org.slf4j.Logger;
 
-/**
- * Generates thrift stubs for structs and services.
- */
-public class ThriftRestGenTask extends DefaultTask {
+public final class ThriftGen {
+  private final File outdir;
+  private final Optional<String> packageSuffix;
+  private final Logger logger;
 
-  private Optional<String> packageSuffix = Optional.absent();
-
-  @Input
-  public void setPackageSuffix(String packageSuffix) {
-    String normalizedSuffix = packageSuffix.trim();
-    if (normalizedSuffix.isEmpty()) {
-      throw new IllegalArgumentException("Invalid packageSuffix, cannot be blank.");
-    }
-    this.packageSuffix = Optional.of(normalizedSuffix);
+  public ThriftGen(File outdir, Optional<String> packageSuffix, Logger logger) {
+    this.outdir = outdir;
+    this.packageSuffix = packageSuffix;
+    this.logger = logger;
   }
 
-  @TaskAction
-  public void gen() throws IOException {
-    // TODO(John Sirois): The parser does not carry over doc comments and we want these for the
-    // rest api, investigate a patch to add support before copying/moving comments to annotations.
-
-    // TODO(John Sirois): The parser does not carry over annotations in all possible locations -
-    // we may want this - partially depends on TODO above.
-
-    File outdir = getOutputs().getFiles().getSingleFile();
+  public void generate(ImmutableSet<File> thriftFiles) throws IOException {
     SymbolTable symbolTable = new SymbolTable();
-    Set<File> thriftFiles =
-        getInputs().getFiles().getFiles()
-            .stream()
-            .map(File::getAbsoluteFile)
-            .collect(Collectors.toSet());
-    processThriftFiles(symbolTable, thriftFiles, outdir, false);
+    processThriftFiles(symbolTable, thriftFiles, /* required */ false);
   }
 
   private SymbolTable processThriftFiles(
       SymbolTable symbolTable,
-      Set<File> thriftFiles,
-      File outdir,
+      ImmutableSet<File> thriftFiles,
       boolean required)
       throws IOException {
 
@@ -81,17 +61,16 @@ public class ThriftRestGenTask extends DefaultTask {
           throw new IllegalArgumentException(
               String.format("%s must declare a 'java' namespace", thriftFile.getPath()));
         } else {
-          getLogger().warn("Skipping {} - no java namespace", thriftFile);
+          logger.warn("Skipping {} - no java namespace", thriftFile);
         }
       } else {
         symbolTable = symbolTable.updated(thriftFile, packageName, document.getDefinitions());
-        Set<File> includes =
-            document.getHeader().getIncludes()
-                .stream()
-                .map(inc -> new File(thriftFile.getParentFile(), inc).getAbsoluteFile())
+        ImmutableSet<File> includes =
+            FluentIterable.from(document.getHeader().getIncludes())
+                .transform(inc -> new File(thriftFile.getParentFile(), inc).getAbsoluteFile())
                 .filter(f -> !processed.contains(f))
-                .collect(Collectors.toSet());
-        symbolTable = processThriftFiles(symbolTable, includes, outdir, true);
+                .toSet();
+        symbolTable = processThriftFiles(symbolTable, includes, /* required */ true);
 
         if (packageSuffix.isPresent()) {
           packageName = packageName + packageSuffix.get();
@@ -99,7 +78,7 @@ public class ThriftRestGenTask extends DefaultTask {
 
         ThriftGenVisitor visitor =
             new ThriftGenVisitor(
-                getLogger(),
+                logger,
                 outdir,
                 symbolTable,
                 packageName);

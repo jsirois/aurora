@@ -11,16 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build;
+package org.apache.aurora.build.thrift;
 
 /**
- * Indicates an unexpected semantic parsing error.
- *
- * If thrown, the thrift IDL was itself was valid, but it expressed relationships not supported
- * by the thrift spec.
+ * Indicates a thrift IDL feature was encountered that is not supported.
  */
-public class ParseException extends RuntimeException {
-  public ParseException(String message) {
+class UnsupportedFeatureException extends RuntimeException {
+  UnsupportedFeatureException(String message) {
     super(message);
   }
 }

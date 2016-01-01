@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build;
+package org.apache.aurora.build.thrift;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import com.facebook.swift.parser.visitor.DocumentVisitor;
 import com.facebook.swift.parser.visitor.Visitable;
 import com.google.common.collect.ImmutableMap;
 
-import org.gradle.api.logging.Logger;
+import org.slf4j.Logger;
 
 @NotThreadSafe
 class ThriftGenVisitor implements DocumentVisitor {

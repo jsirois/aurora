@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build;
+package org.apache.aurora.build.thrift;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,7 +28,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
-import org.gradle.api.logging.Logger;
+import org.slf4j.Logger;
 
 class TypeAnnotationVisitor extends BaseVisitor<TypeAnnotation> {
   private static final ClassName ANNOTATION_CLASS =

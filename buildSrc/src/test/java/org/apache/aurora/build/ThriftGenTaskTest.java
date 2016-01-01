@@ -13,12 +13,13 @@
  */
 package org.apache.aurora.build;
 
-/**
- * Indicates a combination of parsed thrift IDL value and type that is unexpected according to
- * the thrift spec.
- */
-public class UnexpectedTypeException extends ParseException {
-  public UnexpectedTypeException(String message) {
-    super(message);
+import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
+
+public class ThriftGenTaskTest {
+  @Test
+  public void testTest() {
+    assertTrue("I'm alive!", true);
   }
 }

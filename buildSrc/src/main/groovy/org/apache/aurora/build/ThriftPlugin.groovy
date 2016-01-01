@@ -13,6 +13,7 @@
  */
 package org.apache.aurora.build
 
+import org.apache.aurora.build.thrift.task.ThriftGenTask
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -42,7 +43,7 @@ class ThriftPlugin implements Plugin<Project> {
         }
       }
 
-      task(type: ThriftRestGenTask, 'generateThriftJava') {
+      task(type: ThriftGenTask, 'generateThriftJava') {
         inputs.files {
           thrift.inputFiles
         }

@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +39,7 @@ import com.facebook.swift.parser.model.MapType;
 import com.facebook.swift.parser.model.SetType;
 import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.ThriftType;
+import com.facebook.swift.parser.model.TypeAnnotation;
 import com.facebook.swift.parser.visitor.Visitable;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
@@ -56,6 +57,8 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
+import org.apache.aurora.thrift.Annotation;
+import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
 import org.slf4j.Logger;
 
 import static java.util.Objects.requireNonNull;
@@ -73,6 +76,20 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
       throw new ParseException("All ids are expected to be shorts, given " + id);
     }
     return value;
+  }
+
+  protected static AnnotationSpec createAnnotation(List<TypeAnnotation> typeAnnotations) {
+    AnnotationSpec.Builder annotationBuilder = AnnotationSpec.builder(Annotation.class);
+    for (TypeAnnotation typeAnnotation : typeAnnotations) {
+      annotationBuilder.addMember(
+          "value",
+          "$L",
+          AnnotationSpec.builder(Annotation.Parameter.class)
+              .addMember("name", "$S", typeAnnotation.getName())
+              .addMember("value", "$S", typeAnnotation.getValue())
+              .build());
+    }
+    return annotationBuilder.build();
   }
 
   private final SymbolTable symbolTable;
@@ -379,8 +396,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
 
   protected final Optional<ClassName> maybeAddFieldsEnum(
       TypeSpec.Builder typeBuilder,
-      AbstractStruct struct,
-      TypeName fieldsTypeName) {
+      AbstractStruct struct) {
 
     // Enum types must have at least one enum constant, so skip adding the type for empty structs.
     if (struct.getFields().isEmpty()) {
@@ -391,7 +407,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
     TypeSpec.Builder thriftFieldsEnumBuilder =
         TypeSpec.enumBuilder("Fields")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addSuperinterface(fieldsTypeName)
+            .addSuperinterface(ThriftFields.class)
             .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
             .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
             .addField(Type.class, "fieldType", Modifier.PRIVATE, Modifier.FINAL)

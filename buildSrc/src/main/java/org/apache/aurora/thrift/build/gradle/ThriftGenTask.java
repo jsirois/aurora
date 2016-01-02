@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift.task;
+package org.apache.aurora.thrift.build.gradle;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +20,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
-import org.apache.aurora.build.thrift.ThriftGen;
+import org.apache.aurora.thrift.build.ThriftGen;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;

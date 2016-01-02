@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,15 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
-import com.facebook.swift.parser.model.AbstractStruct;
 import com.facebook.swift.parser.model.ContainerType;
-import com.facebook.swift.parser.model.IdentifierType;
 import com.facebook.swift.parser.model.ListType;
 import com.facebook.swift.parser.model.MapType;
 import com.facebook.swift.parser.model.SetType;
@@ -44,29 +41,27 @@ import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
+import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
+import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
 import org.slf4j.Logger;
 
 @NotThreadSafe
 class StructVisitor extends BaseVisitor<Struct> {
   private final ImmutableList.Builder<Struct> structs = ImmutableList.builder();
-  private final ThriftEntityInterfaceFactory thriftEntityInterfaceFactory;
 
   StructVisitor(
-      ThriftEntityInterfaceFactory thriftEntityInterfaceFactory,
       Logger logger,
       File outdir,
       SymbolTable symbolTable,
       String packageName) {
 
     super(logger, outdir, symbolTable, packageName);
-    this.thriftEntityInterfaceFactory = thriftEntityInterfaceFactory;
   }
 
   @Override
@@ -99,22 +94,19 @@ class StructVisitor extends BaseVisitor<Struct> {
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
     if (!struct.getAnnotations().isEmpty()) {
-      typeBuilder.addAnnotation(TypeAnnotationVisitor.createAnnotation(struct.getAnnotations()));
+      typeBuilder.addAnnotation(BaseVisitor.createAnnotation(struct.getAnnotations()));
     }
 
     // TODO(John Sirois): XXX Tame this beast!
-    ThriftEntityInterfaceFactory.EntityInterface entityInterface =
-        thriftEntityInterfaceFactory.getEntityInterface();
-    Optional<ClassName> fieldsEnumClassName =
-        maybeAddFieldsEnum(typeBuilder, struct, entityInterface.fieldsTypeName);
+    Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, struct);
 
     ClassName localFieldsTypeName =
-        fieldsEnumClassName.or(entityInterface.noThriftFieldsTypeName);
+        fieldsEnumClassName.or(ClassName.get(ThriftFields.NoFields.class));
 
     ParameterSpec fieldParam = ParameterSpec.builder(localFieldsTypeName, "field").build();
 
     typeBuilder.addSuperinterface(
-        ParameterizedTypeName.get(entityInterface.structTypeName, localFieldsTypeName));
+        ParameterizedTypeName.get(ClassName.get(ThriftStruct.class), localFieldsTypeName));
 
 
     TypeSpec.Builder builderBuilder =
@@ -133,7 +125,7 @@ class StructVisitor extends BaseVisitor<Struct> {
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addSuperinterface(
                 ParameterizedTypeName.get(
-                    entityInterface.builderTypeName,
+                    ClassName.get(ThriftStruct.Builder.class),
                     localFieldsTypeName,
                     getClassName(struct.getName())))
             .addField(builderBuilderName, "builder", Modifier.PRIVATE, Modifier.FINAL);

@@ -18,6 +18,8 @@
 /build/*
 /buildSrc/build/*
 /buildSrc/dist/*
+/buildSrc/thriftGen/build/*
+/buildSrc/thriftGen/dist/*
 /commons-args/dist/*
 /commons/dist/*
 /dist/*

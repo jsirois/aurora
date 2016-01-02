@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;

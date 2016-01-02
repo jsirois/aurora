@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +25,6 @@ import com.facebook.swift.parser.model.Service;
 import com.facebook.swift.parser.model.StringEnum;
 import com.facebook.swift.parser.model.Struct;
 import com.facebook.swift.parser.model.ThriftException;
-import com.facebook.swift.parser.model.TypeAnnotation;
 import com.facebook.swift.parser.model.Typedef;
 import com.facebook.swift.parser.model.Union;
 import com.facebook.swift.parser.visitor.DocumentVisitor;
@@ -49,8 +48,6 @@ class ThriftGenVisitor implements DocumentVisitor {
       SymbolTable symbolTable,
       String packageName) {
 
-    ThriftEntityInterfaceFactory thriftEntityInterfaceFactory =
-        new ThriftEntityInterfaceFactory(logger, outdir);
     visitors =
         ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
             .put(Const.class,
@@ -65,15 +62,12 @@ class ThriftGenVisitor implements DocumentVisitor {
                     "see: https://issues.apache.org/jira/browse/THRIFT-2003"))
             .put(Struct.class,
                 new StructVisitor(
-                    thriftEntityInterfaceFactory,
                     logger,
                     outdir,
                     symbolTable,
                     packageName))
             // Currently not used by Aurora, but trivial to support.
             .put(ThriftException.class, Visitor.failing())
-            .put(TypeAnnotation.class,
-                new TypeAnnotationVisitor(logger, outdir, symbolTable, packageName))
             // TODO(John Sirois): Implement as the need arises.
             // Currently not needed by Aurora; requires deferring all generation to `finish` and
             // collecting a full symbol table + adding a resolve method to resolve through
@@ -81,7 +75,6 @@ class ThriftGenVisitor implements DocumentVisitor {
             .put(Typedef.class, Visitor.failing())
             .put(Union.class,
                 new UnionVisitor(
-                    thriftEntityInterfaceFactory,
                     logger,
                     outdir,
                     symbolTable,

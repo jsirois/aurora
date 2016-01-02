@@ -13,7 +13,7 @@
  */
 package org.apache.aurora.build
 
-import org.apache.aurora.build.thrift.task.ThriftGenTask
+import org.apache.aurora.thrift.build.gradle.ThriftGenTask
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -31,6 +31,7 @@ class ThriftPlugin implements Plugin<Project> {
       configurations.create('thriftCompile')
       afterEvaluate {
         dependencies {
+          thriftCompile project.project(':buildSrc:thriftGen')
           thriftCompile "org.apache.thrift:libthrift:${thrift.version}"
           // TODO(John Sirois): Scope the new gen as seperate from the old thrift c gen.
           // TODO(John Sirois): Use the ${thrift.version} pattern to get the versions below from the

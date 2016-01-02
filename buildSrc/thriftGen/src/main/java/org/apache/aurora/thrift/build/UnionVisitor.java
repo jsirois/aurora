@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,27 +35,21 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
+import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
 import org.slf4j.Logger;
 
 class UnionVisitor extends BaseVisitor<Union> {
-  private final ThriftEntityInterfaceFactory thriftEntityInterfaceFactory;
-
   UnionVisitor(
-      ThriftEntityInterfaceFactory thriftEntityInterfaceFactory,
       Logger logger,
       File outdir,
       SymbolTable symbolTable,
       String packageName) {
 
     super(logger, outdir, symbolTable, packageName);
-    this.thriftEntityInterfaceFactory = thriftEntityInterfaceFactory;
   }
 
   @Override
   public void visit(Union union) throws IOException {
-    ThriftEntityInterfaceFactory.EntityInterface entityInterface =
-        thriftEntityInterfaceFactory.getEntityInterface();
-
     ClassName localFieldsTypeName = getClassName(union.getName(), "Fields");
     TypeSpec.Builder typeBuilder =
         TypeSpec.classBuilder(union.getName())
@@ -65,7 +59,7 @@ class UnionVisitor extends BaseVisitor<Union> {
                     .build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(
-                ParameterizedTypeName.get(entityInterface.unionTypeName, localFieldsTypeName));
+                ParameterizedTypeName.get(ClassName.get(ThriftUnion.class), localFieldsTypeName));
 
     FieldSpec valueField =
         FieldSpec.builder(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL).build();
@@ -149,8 +143,7 @@ class UnionVisitor extends BaseVisitor<Union> {
             .build();
     typeBuilder.addMethod(getSetIdMethod);
 
-    Optional<ClassName> fieldsEnumClassName =
-        maybeAddFieldsEnum(typeBuilder, union, entityInterface.fieldsTypeName);
+    Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, union);
     if (fieldsEnumClassName.isPresent()) {
       ClassName fieldsEnumClass = fieldsEnumClassName.get();
       ParameterSpec fieldParam =

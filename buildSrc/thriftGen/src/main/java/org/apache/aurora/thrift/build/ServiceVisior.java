@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift.build;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +42,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
+import org.apache.aurora.thrift.ThriftService;
 import org.slf4j.Logger;
 
 @NotThreadSafe
@@ -51,8 +52,6 @@ class ServiceVisior extends BaseVisitor<Service> {
           ClassName.get(ImmutableMap.class),
           ClassName.get(String.class),
           ArrayTypeName.of(Class.class));
-
-  private TypeName thriftServiceInterface;
 
   ServiceVisior(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir, symbolTable, packageName);
@@ -239,37 +238,11 @@ class ServiceVisior extends BaseVisitor<Service> {
                 .addMember("value", "$S", service.getName())
                 .build())
         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-        .addSuperinterface(getThriftServiceInterface())
+        .addSuperinterface(ThriftService.class)
         .addMethod(MethodSpec.methodBuilder("close")
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .build());
-  }
-
-
-  private TypeName getThriftServiceInterface() throws IOException {
-    if (thriftServiceInterface == null) {
-      thriftServiceInterface = createThriftServiceInterface();
-    }
-    return thriftServiceInterface;
-  }
-
-  private TypeName createThriftServiceInterface() throws IOException {
-    TypeSpec.Builder thriftService =
-        TypeSpec.interfaceBuilder("ThriftService")
-            .addModifiers(Modifier.PUBLIC)
-            .addSuperinterface(AutoCloseable.class)
-            .addMethod(
-                MethodSpec.methodBuilder("getThriftMethods")
-                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                    .returns(
-                        ParameterizedTypeName.get(
-                            ImmutableMap.class,
-                            String.class,
-                            Method.class))
-                    .build());
-    writeType(AURORA_THRIFT_PACKAGE_NAME, thriftService);
-    return ClassName.get(AURORA_THRIFT_PACKAGE_NAME, "ThriftService");
   }
 
   private MethodSpec renderMethod(ThriftMethod method, TypeName returnType) {
@@ -294,7 +267,7 @@ class ServiceVisior extends BaseVisitor<Service> {
               .addAnnotation(renderThriftFieldAnnotation(field));
       if (!field.getAnnotations().isEmpty()) {
         paramBuilder.addAnnotation(
-            TypeAnnotationVisitor.createAnnotation(field.getAnnotations()));
+            BaseVisitor.createAnnotation(field.getAnnotations()));
       }
       if (field.getRequiredness() != ThriftField.Requiredness.REQUIRED) {
         paramBuilder.addAnnotation(javax.annotation.Nullable.class);

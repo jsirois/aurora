@@ -11,16 +11,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.build.thrift;
+package org.apache.aurora.thrift;
 
-/**
- * Indicates an unexpected semantic parsing error.
- *
- * If thrown, the thrift IDL was itself was valid, but it expressed relationships not supported
- * by the thrift spec.
- */
-class ParseException extends RuntimeException {
-  ParseException(String message) {
-    super(message);
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+import org.immutables.value.Value;
+
+@Value.Immutable
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Annotation {
+  Parameter[] value();
+
+  @Value.Immutable
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface Parameter {
+    String name();
+
+    String value();
   }
 }

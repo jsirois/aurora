@@ -16,7 +16,6 @@ package org.apache.aurora.thrift.build;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.lang.reflect.WildcardType;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +58,7 @@ import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.WildcardTypeName;
 
-import org.apache.aurora.thrift.Annotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
 import org.slf4j.Logger;
 
@@ -81,12 +80,12 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   }
 
   protected static AnnotationSpec createAnnotation(List<TypeAnnotation> typeAnnotations) {
-    AnnotationSpec.Builder annotationBuilder = AnnotationSpec.builder(Annotation.class);
+    AnnotationSpec.Builder annotationBuilder = AnnotationSpec.builder(ThriftAnnotation.class);
     for (TypeAnnotation typeAnnotation : typeAnnotations) {
       annotationBuilder.addMember(
           "value",
           "$L",
-          AnnotationSpec.builder(Annotation.Parameter.class)
+          AnnotationSpec.builder(ThriftAnnotation.Parameter.class)
               .addMember("name", "$S", typeAnnotation.getName())
               .addMember("value", "$S", typeAnnotation.getValue())
               .build());

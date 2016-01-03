@@ -20,7 +20,7 @@ import org.immutables.value.Value;
 
 @Value.Immutable
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Annotation {
+public @interface ThriftAnnotation {
   Parameter[] value();
 
   @Value.Immutable

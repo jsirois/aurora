@@ -54,10 +54,10 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import org.apache.aurora.thrift.Annotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity;
 
-public class PeerProcessor extends AbstractProcessor {
+public class MutablePeerProcessor extends AbstractProcessor {
 
   private static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String name) {
     for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
@@ -84,14 +84,14 @@ public class PeerProcessor extends AbstractProcessor {
 
   @Override
   public Set<String> getSupportedAnnotationTypes() {
-    return ImmutableSet.of(Annotation.class.getName());
+    return ImmutableSet.of(ThriftAnnotation.class.getName());
   }
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
     ImmutableMap<TypeMirror, TypeElement> symbolTable =
         Maps.uniqueIndex(
-            roundEnv.getElementsAnnotatedWith(Annotation.class).stream()
+            roundEnv.getElementsAnnotatedWith(ThriftAnnotation.class).stream()
                 .filter(e -> isAssignableFrom(ThriftEntity.class, e.asType()))
                 .filter(TypeElement.class::isInstance)
                 .map(TypeElement.class::cast)
@@ -248,7 +248,7 @@ public class PeerProcessor extends AbstractProcessor {
           className = ClassName.get(packageName, mutablePeerValue.substring(i + 1));
         }
       }
-      return new AutoValue_PeerProcessor_PeerInfo(render, className);
+      return new AutoValue_MutablePeerProcessor_PeerInfo(render, className);
     }
 
     abstract boolean render();
@@ -259,7 +259,7 @@ public class PeerProcessor extends AbstractProcessor {
     if (typeElement == null) {
       return Optional.empty();
     }
-    Optional<AnnotationMirror> annotation = getAnnotation(Annotation.class, typeElement);
+    Optional<AnnotationMirror> annotation = getAnnotation(ThriftAnnotation.class, typeElement);
     if (!annotation.isPresent()) {
       return Optional.empty();
     }

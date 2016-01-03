@@ -60,9 +60,9 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGe
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.thrift.Annotation;
-import org.apache.aurora.thrift.ImmutableAnnotation;
 import org.apache.aurora.thrift.ImmutableParameter;
+import org.apache.aurora.thrift.ImmutableThriftAnnotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
@@ -162,8 +162,8 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
               }))
           .build();
 
-  private static final Annotation AUTHORIZING_PARAM =
-      ImmutableAnnotation.builder()
+  private static final ThriftAnnotation AUTHORIZING_PARAM =
+      ImmutableThriftAnnotation.builder()
           .value(ImmutableParameter.builder().name("authorizing").value("true").build())
           .build();
 
@@ -217,7 +217,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       List<Parameter> parameters = Invokable.from(candidateMethod).getParameters();
       List<Integer> parameterIndicies = Lists.newArrayList();
       for (int i = 0; i < parameters.size(); i++) {
-        if (AUTHORIZING_PARAM.equals(parameters.get(i).getAnnotation(Annotation.class))) {
+        if (AUTHORIZING_PARAM.equals(parameters.get(i).getAnnotation(ThriftAnnotation.class))) {
           parameterIndicies.add(i);
         }
       }

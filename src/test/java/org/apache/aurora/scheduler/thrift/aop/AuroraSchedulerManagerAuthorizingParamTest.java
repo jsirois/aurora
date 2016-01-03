@@ -25,17 +25,17 @@ import com.google.common.reflect.Parameter;
 
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.AuroraSchedulerManager;
-import org.apache.aurora.thrift.Annotation;
-import org.apache.aurora.thrift.ImmutableAnnotation;
 import org.apache.aurora.thrift.ImmutableParameter;
+import org.apache.aurora.thrift.ImmutableThriftAnnotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 public class AuroraSchedulerManagerAuthorizingParamTest {
   // TODO(John Sirois): DRY this up with ShiroAuthorizingParamInterceptor
-  private static final Annotation AUTHORIZING_PARAM =
-      ImmutableAnnotation.builder()
+  private static final ThriftAnnotation AUTHORIZING_PARAM =
+      ImmutableThriftAnnotation.builder()
           .value(ImmutableParameter.builder().name("authorizing").value("true").build())
           .build();
 
@@ -60,7 +60,7 @@ public class AuroraSchedulerManagerAuthorizingParamTest {
 
         Collection<Parameter> annotatedParameters = Collections2.filter(
             annotatedInvokable.getParameters(),
-            param -> AUTHORIZING_PARAM.equals(param.getAnnotation(Annotation.class)));
+            param -> AUTHORIZING_PARAM.equals(param.getAnnotation(ThriftAnnotation.class)));
 
         assertEquals(
             "Method " + invokable + " should have 1 " + AUTHORIZING_PARAM

@@ -41,7 +41,9 @@ import javax.tools.Diagnostic;
 import com.facebook.swift.codec.ThriftField;
 import com.google.auto.value.AutoValue;
 import com.google.common.base.CaseFormat;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -54,9 +56,6 @@ import com.squareup.javapoet.TypeSpec;
 
 import org.apache.aurora.thrift.Annotation;
 import org.apache.aurora.thrift.ThriftEntity;
-
-import autovalue.shaded.com.google.common.common.collect.ImmutableMap;
-import autovalue.shaded.com.google.common.common.collect.Maps;
 
 public class PeerProcessor extends AbstractProcessor {
 

@@ -16,6 +16,7 @@ package org.apache.aurora.thrift.build;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.WildcardTypeName;
 
 import org.apache.aurora.thrift.Annotation;
 import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
@@ -396,6 +398,10 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
     }
 
     ClassName fieldsClassName = getClassName(struct.getName(), "Fields");
+    ParameterizedTypeName classType =
+        ParameterizedTypeName.get(
+            ClassName.get(Class.class),
+            WildcardTypeName.subtypeOf(Object.class));
     TypeSpec.Builder thriftFieldsEnumBuilder =
         TypeSpec.enumBuilder("Fields")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -403,13 +409,13 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
             .addField(short.class, "thriftId", Modifier.PRIVATE, Modifier.FINAL)
             .addField(String.class, "fieldName", Modifier.PRIVATE, Modifier.FINAL)
             .addField(Type.class, "fieldType", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(Class.class, "fieldClass", Modifier.PRIVATE, Modifier.FINAL)
+            .addField(classType, "fieldClass", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(
                 MethodSpec.constructorBuilder()
                     .addParameter(short.class, "thriftId")
                     .addParameter(String.class, "fieldName")
                     .addParameter(Type.class, "fieldType")
-                    .addParameter(Class.class, "fieldClass")
+                    .addParameter(classType, "fieldClass")
                     .addStatement("this.thriftId = thriftId")
                     .addStatement("this.fieldName = fieldName")
                     .addStatement("this.fieldType = fieldType")
@@ -440,7 +446,8 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
                 MethodSpec.methodBuilder("getFieldClass")
                     .addAnnotation(Override.class)
                     .addModifiers(Modifier.PUBLIC)
-                    .returns(Class.class)
+                    .returns(
+                        classType)
                     .addStatement("return fieldClass")
                     .build());
 

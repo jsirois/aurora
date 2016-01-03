@@ -39,7 +39,7 @@ public interface ThriftEntity<T extends ThriftEntity.ThriftFields> {
   interface ThriftFields extends TFieldIdEnum {
     Type getFieldType();
 
-    Class getFieldClass();
+    Class<?> getFieldClass();
 
     abstract class NoFields implements ThriftFields {
       private NoFields() {

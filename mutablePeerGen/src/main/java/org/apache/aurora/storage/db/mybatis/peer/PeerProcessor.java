@@ -143,17 +143,14 @@ public class PeerProcessor extends AbstractProcessor {
                 collectionType = ClassName.get(List.class);
               } else if (isMap) {
                 collectionType = ClassName.get(Map.class);
-              } else if (isSet) {
-                collectionType = ClassName.get(Set.class);
               } else {
-                throw new IllegalStateException();
+                collectionType = ClassName.get(Set.class);
               }
 
               ParameterizedTypeName parameterizedReturnTypeName = (ParameterizedTypeName) fieldType;
               DeclaredType declaredReturnType =
                   returnType.accept(new SimpleTypeVisitor8<DeclaredType, Void>() {
-                    @Override
-                    public DeclaredType visitDeclared(DeclaredType declaredType, Void v) {
+                    @Override public DeclaredType visitDeclared(DeclaredType declaredType, Void v) {
                       return declaredType;
                     }
                   }, null);
@@ -161,7 +158,8 @@ public class PeerProcessor extends AbstractProcessor {
               ParameterizedTypeName mutableCollectionType =
                   ParameterizedTypeName.get(
                       collectionType,
-                      parameterizedReturnTypeName.typeArguments.toArray(new TypeName[0]));
+                      parameterizedReturnTypeName.typeArguments.toArray(
+                          new TypeName[parameterizedReturnTypeName.typeArguments.size()]));
               fieldSpec =
                   FieldSpec.builder(mutableCollectionType, fieldName)
                       .addModifiers(Modifier.PRIVATE)

@@ -89,12 +89,12 @@ public class PeerProcessor extends AbstractProcessor {
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-    ImmutableMap<TypeMirror, ? extends TypeElement> symbolTable =
+    ImmutableMap<TypeMirror, TypeElement> symbolTable =
         Maps.uniqueIndex(
             roundEnv.getElementsAnnotatedWith(Annotation.class).stream()
-                .filter(e -> e instanceof TypeElement)
                 .filter(e -> isAssignableFrom(ThriftEntity.class, e.asType()))
-                .map(e -> ((TypeElement) e))
+                .filter(TypeElement.class::isInstance)
+                .map(TypeElement.class::cast)
                 .iterator(),
             Element::asType);
 

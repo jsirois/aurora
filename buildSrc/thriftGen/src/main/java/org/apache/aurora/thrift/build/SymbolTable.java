@@ -17,7 +17,6 @@ import java.io.File;
 import java.util.List;
 
 import com.facebook.swift.parser.model.Definition;
-import com.facebook.swift.parser.model.IdentifierType;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
@@ -68,10 +67,6 @@ class SymbolTable {
     this.importPrefixByFile = importPrefixByFile;
     this.packageNameByImportPrefix = packageNameByImportPrefix;
     this.symbolsByPackageName = symbolsByPackageName;
-  }
-
-  Symbol lookup(String packageName, IdentifierType identifier) {
-    return lookup(packageName, identifier.getName());
   }
 
   Symbol lookup(String packageName, String identifierName) {

@@ -24,6 +24,8 @@
 /commons/dist/*
 /dist/*
 /gradle-app.setting
+/mutablePeerGen/build/*
+/mutablePeerGen/dist/*
 /out/*
 /requirements.txt
 /third_party/*

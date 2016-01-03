@@ -590,18 +590,7 @@ class StructVisitor extends BaseVisitor<Struct> {
             .build());
     typeBuilder.addType(wrapperBuilder.build());
 
-    TypeSpec typeSpec = writeType(typeBuilder);
-
-    Optional<PeerInfo> maybePeerInfo = PeerInfo.from(getPackageName(), struct);
-    if (maybePeerInfo.isPresent()) {
-      PeerInfo peerInfo = maybePeerInfo.get();
-      if (peerInfo.render) {
-        MutablePeer mutablePeer =
-            new MutablePeer(getLogger(), getOutdir(), getSymbolTable(), getPackageName());
-        TypeSpec peerType = mutablePeer.render(struct, typeSpec, peerInfo);
-        writeType(peerInfo.packageName, peerType.toBuilder());
-      }
-    }
+    writeType(typeBuilder);
   }
 
   private Iterable<MethodSpec> createCollectionBuilderOverloads(

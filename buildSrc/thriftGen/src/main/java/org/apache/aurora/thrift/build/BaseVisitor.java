@@ -101,19 +101,11 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
     this.packageName = requireNonNull(packageName);
   }
 
-  protected final SymbolTable getSymbolTable() {
-    return symbolTable;
-  }
-
   protected final String getPackageName() {
     return packageName;
   }
 
   protected final SymbolTable.Symbol lookup(String identifier) {
-    return symbolTable.lookup(getPackageName(), identifier);
-  }
-
-  protected final SymbolTable.Symbol lookup(IdentifierType identifier) {
     return symbolTable.lookup(getPackageName(), identifier);
   }
 

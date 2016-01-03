@@ -61,6 +61,10 @@ class UnionVisitor extends BaseVisitor<Union> {
             .addSuperinterface(
                 ParameterizedTypeName.get(ClassName.get(ThriftUnion.class), localFieldsTypeName));
 
+    if (!union.getAnnotations().isEmpty()) {
+      typeBuilder.addAnnotation(BaseVisitor.createAnnotation(union.getAnnotations()));
+    }
+
     FieldSpec valueField =
         FieldSpec.builder(Object.class, "value", Modifier.PRIVATE, Modifier.FINAL).build();
     typeBuilder.addField(valueField);

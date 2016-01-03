@@ -160,6 +160,22 @@ For more details, please see https://issues.apache.org/jira/browse/AURORA-1169
   }
 }
 
+project(':mutablePeerGen') {
+  dependencies {
+    afterEvaluate {
+      compile project(':buildSrc:thriftGen')
+    }
+    compile "com.google.guava:guava:${guavaRev}"
+    compile "com.google.code.findbugs:jsr305:${jsrRev}"
+  }
+
+  apply plugin: 'license'
+  license {
+    header rootProject.file('config/checkstyle/apache.header')
+    strictCheck true
+  }
+}
+
 /* This gradle project contains the annotation procesor from
  * com.twitter.common.args and related dependencies. It needs to be outside of
  * the commons project because gradle needs to compile the annotation processor
@@ -232,6 +248,10 @@ project(':api') {
         }
       }
     }
+  }
+
+  dependencies {
+    thriftCompile project(':mutablePeerGen')
   }
 
   thrift {
@@ -354,6 +374,7 @@ dependencies {
 
   compile project(':api')
   compile project(':commons')
+  compile project(':commons-args')
 
   compile 'aopalliance:aopalliance:1.0'
   compile 'com.google.code.findbugs:jsr305:2.0.1'

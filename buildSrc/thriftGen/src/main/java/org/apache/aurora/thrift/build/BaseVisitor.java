@@ -446,8 +446,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
                 MethodSpec.methodBuilder("getFieldClass")
                     .addAnnotation(Override.class)
                     .addModifiers(Modifier.PUBLIC)
-                    .returns(
-                        classType)
+                    .returns(classType)
                     .addStatement("return fieldClass")
                     .build());
 

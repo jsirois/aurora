@@ -485,9 +485,4 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Sync {
 
   @VisibleForTesting
   static final String NO_CRON = "Cron jobs are not supported.";
-
-  @Override
-  public void close() {
-    // TODO(John Sirois): XXX Anything to do here?  This is for the Nifty client
-  }
 }

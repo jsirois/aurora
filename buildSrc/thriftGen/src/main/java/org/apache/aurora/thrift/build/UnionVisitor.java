@@ -24,7 +24,6 @@ import javax.lang.model.element.Modifier;
 import com.facebook.swift.codec.ThriftUnionId;
 import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.Union;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
@@ -149,59 +148,56 @@ class UnionVisitor extends BaseVisitor<Union> {
             .build();
     typeBuilder.addMethod(getSetIdMethod);
 
-    Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, union);
-    if (fieldsEnumClassName.isPresent()) {
-      ClassName fieldsEnumClass = fieldsEnumClassName.get();
-      ParameterSpec fieldParam =
-          ParameterSpec.builder(fieldsEnumClass, "field")
-              .build();
+    ClassName fieldsEnumClass = addFields(typeBuilder, union);
+    ParameterSpec fieldParam =
+        ParameterSpec.builder(fieldsEnumClass, "field")
+            .build();
 
-      MethodSpec getSetFieldMethod =
-          MethodSpec.methodBuilder("getSetField")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .returns(fieldsEnumClass)
-              .addStatement("return $T.findByThriftId($N())", fieldsEnumClass, getSetIdMethod)
-              .build();
-      typeBuilder.addMethod(getSetFieldMethod);
+    MethodSpec getSetFieldMethod =
+        MethodSpec.methodBuilder("getSetField")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .returns(fieldsEnumClass)
+            .addStatement("return $T.findByThriftId($N())", fieldsEnumClass, getSetIdMethod)
+            .build();
+    typeBuilder.addMethod(getSetFieldMethod);
 
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("getFieldValue")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .returns(Object.class)
-              .addStatement("return value")
-              .build());
+    typeBuilder.addMethod(
+        MethodSpec.methodBuilder("getFieldValue")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .returns(Object.class)
+            .addStatement("return value")
+            .build());
 
-      MethodSpec isSetMethod =
-          MethodSpec.methodBuilder("isSet")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(fieldParam)
-              .returns(boolean.class)
-              .addStatement("return $N() == $N", getSetFieldMethod, fieldParam)
-              .build();
-      typeBuilder.addMethod(isSetMethod);
+    MethodSpec isSetMethod =
+        MethodSpec.methodBuilder("isSet")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(fieldParam)
+            .returns(boolean.class)
+            .addStatement("return $N() == $N", getSetFieldMethod, fieldParam)
+            .build();
+    typeBuilder.addMethod(isSetMethod);
 
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("getFieldValue")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(fieldParam)
-              .returns(Object.class)
-              .addException(IllegalArgumentException.class)
-              .beginControlFlow("if (!$N($N))", isSetMethod, fieldParam)
-              .addStatement(
-                  "throw new $T($T.format($S, $N, $N()))",
-                  IllegalArgumentException.class,
-                  String.class,
-                  "%s is not the set field, %s is.",
-                  fieldParam,
-                  getSetFieldMethod)
-              .endControlFlow()
-              .addStatement("return value")
-              .build());
-    }
+    typeBuilder.addMethod(
+        MethodSpec.methodBuilder("getFieldValue")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(fieldParam)
+            .returns(Object.class)
+            .addException(IllegalArgumentException.class)
+            .beginControlFlow("if (!$N($N))", isSetMethod, fieldParam)
+            .addStatement(
+                "throw new $T($T.format($S, $N, $N()))",
+                IllegalArgumentException.class,
+                String.class,
+                "%s is not the set field, %s is.",
+                fieldParam,
+                getSetFieldMethod)
+            .endControlFlow()
+            .addStatement("return value")
+            .build());
 
     typeBuilder.addMethod(
         MethodSpec.methodBuilder("equals")

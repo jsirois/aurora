@@ -37,11 +37,29 @@ public interface ThriftFields extends TFieldIdEnum {
   Class<?> getFieldClass();
 
   /**
-   * A thrift fields type for structs or unions with no fields.
+   * A thrift fields enum for structs or unions with no fields.
    */
-  abstract class NoFields implements ThriftFields {
-    private NoFields() {
-      // NoFields can never be extended so no fields can ever be added.
+  enum NoFields implements ThriftFields {
+    /* No field enum values. */;
+
+    @Override
+    public Type getFieldType() {
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public Class<?> getFieldClass() {
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public short getThriftFieldId() {
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public String getFieldName() {
+      throw new IllegalStateException();
     }
   }
 }

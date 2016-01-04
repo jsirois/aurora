@@ -48,7 +48,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import org.apache.aurora.thrift.ThriftFields;
 import org.apache.aurora.thrift.ThriftStruct;
 import org.slf4j.Logger;
 
@@ -99,17 +98,10 @@ class StructVisitor extends BaseVisitor<Struct> {
       typeBuilder.addAnnotation(BaseVisitor.createAnnotation(struct.getAnnotations()));
     }
 
-    // TODO(John Sirois): XXX Tame this beast!
-    Optional<ClassName> fieldsEnumClassName = maybeAddFieldsEnum(typeBuilder, struct);
-
-    ClassName localFieldsTypeName =
-        fieldsEnumClassName.or(ClassName.get(ThriftFields.NoFields.class));
-
-    ParameterSpec fieldParam = ParameterSpec.builder(localFieldsTypeName, "field").build();
-
+    ClassName fieldsClassName = addFields(typeBuilder, struct);
+    ParameterSpec fieldParam = ParameterSpec.builder(fieldsClassName, "field").build();
     typeBuilder.addSuperinterface(
-        ParameterizedTypeName.get(ClassName.get(ThriftStruct.class), localFieldsTypeName));
-
+        ParameterizedTypeName.get(ClassName.get(ThriftStruct.class), fieldsClassName));
 
     TypeSpec.Builder builderBuilder =
         TypeSpec.interfaceBuilder("_Builder")
@@ -128,125 +120,67 @@ class StructVisitor extends BaseVisitor<Struct> {
             .addSuperinterface(
                 ParameterizedTypeName.get(
                     ClassName.get(ThriftStruct.Builder.class),
-                    localFieldsTypeName,
+                    fieldsClassName,
                     getClassName(struct.getName())))
             .addField(builderBuilderName, "builder", Modifier.PRIVATE, Modifier.FINAL);
 
-    Optional<MethodSpec.Builder> isSetMethod = Optional.absent();
-    Optional<CodeBlock.Builder> isSetCode = Optional.absent();
-
-    Optional<MethodSpec.Builder> getFieldValueMethod = Optional.absent();
-    Optional<CodeBlock.Builder> getFieldValueCode = Optional.absent();
-
-    Optional<MethodSpec.Builder> builderSetMethod = Optional.absent();
-    Optional<CodeBlock.Builder> builderSetCode = Optional.absent();
-
-    MethodSpec fieldsMethod;
-    if (fieldsEnumClassName.isPresent()) {
-      fieldsMethod =
+    MethodSpec fieldsMethod =
           MethodSpec.methodBuilder("fields")
               .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
               .returns(
                   ParameterizedTypeName.get(
                       ClassName.get(ImmutableSet.class),
-                      localFieldsTypeName))
+                      fieldsClassName))
               .addStatement(
                   "return $T.copyOf($T.allOf($T.class))",
                   ImmutableSet.class,
                   EnumSet.class,
-                  localFieldsTypeName)
+                  fieldsClassName)
               .build();
 
-      isSetMethod =
-          Optional.of(
-              MethodSpec.methodBuilder("isSet")
-                  .addAnnotation(Override.class)
-                  .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                  .addParameter(fieldParam)
-                  .returns(boolean.class));
-      isSetCode =
-          Optional.of(
-              CodeBlock.builder()
-                  .beginControlFlow("switch ($N)", fieldParam));
+    MethodSpec.Builder isSetMethod =
+        MethodSpec.methodBuilder("isSet")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(fieldParam)
+            .returns(boolean.class);
+    CodeBlock.Builder isSetCode =
+        CodeBlock.builder()
+            .beginControlFlow("switch ($N)", fieldParam);
 
-      getFieldValueMethod =
-          Optional.of(
-              MethodSpec.methodBuilder("getFieldValue")
-                  .addAnnotation(Override.class)
-                  .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                  .addParameter(fieldParam)
-                  .addException(IllegalArgumentException.class)
-                  .returns(Object.class));
-      getFieldValueCode =
-          Optional.of(
-              CodeBlock.builder()
-                  .beginControlFlow("if (!this.isSet($N))", fieldParam)
-                  .addStatement(
-                      "throw new $T($T.format($S, $N))",
-                      IllegalArgumentException.class,
-                      String.class,
-                      "%s is not set.",
-                      fieldParam)
-                  .endControlFlow()
-                  .beginControlFlow("switch ($N)", fieldParam));
+    MethodSpec.Builder getFieldValueMethod =
+        MethodSpec.methodBuilder("getFieldValue")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(fieldParam)
+            .addException(IllegalArgumentException.class)
+            .returns(Object.class);
+    CodeBlock.Builder getFieldValueCode =
+        CodeBlock.builder()
+            .beginControlFlow("if (!this.isSet($N))", fieldParam)
+            .addStatement(
+                "throw new $T($T.format($S, $N))",
+                IllegalArgumentException.class,
+                String.class,
+                "%s is not set.",
+                fieldParam)
+            .endControlFlow()
+            .beginControlFlow("switch ($N)", fieldParam);
 
-      builderSetMethod =
-          Optional.of(
-              MethodSpec.methodBuilder("set")
-                  .addAnnotation(Override.class)
-                  .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                  .addParameter(localFieldsTypeName, "field")
-                  .addParameter(
-                      ParameterSpec.builder(Object.class, "value")
-                          .addAnnotation(Nullable.class)
-                          .build())
-                  .returns(wrapperBuilderName));
-      builderSetCode =
-          Optional.of(
-              CodeBlock.builder()
-                  .beginControlFlow("switch ($N)", fieldParam));
-    } else {
-      fieldsMethod =
-          MethodSpec.methodBuilder("fields")
-              .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-              .returns(
-                  ParameterizedTypeName.get(
-                      ClassName.get(ImmutableSet.class),
-                      localFieldsTypeName))
-              .addStatement("return $T.of()", ImmutableSet.class)
-              .build();
+    MethodSpec.Builder builderSetMethod =
+        MethodSpec.methodBuilder("set")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(fieldsClassName, "field")
+            .addParameter(
+                ParameterSpec.builder(Object.class, "value")
+                    .addAnnotation(Nullable.class)
+                    .build())
+            .returns(wrapperBuilderName);
+    CodeBlock.Builder builderSetCode =
+        CodeBlock.builder()
+            .beginControlFlow("switch ($N)", fieldParam);
 
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("isSet")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(fieldParam)
-              .returns(boolean.class)
-              .addStatement("throw new $T()", IllegalAccessError.class)
-              .build());
-
-      typeBuilder.addMethod(
-          MethodSpec.methodBuilder("getFieldValue")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(fieldParam)
-              .returns(Object.class)
-              .addStatement("throw new $T()", IllegalAccessError.class)
-              .build());
-
-      wrapperBuilder.addMethod(
-          MethodSpec.methodBuilder("set")
-              .addAnnotation(Override.class)
-              .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-              .addParameter(localFieldsTypeName, "field")
-              .addParameter(
-                  ParameterSpec.builder(Object.class, "value")
-                      .addAnnotation(Nullable.class)
-                      .build())
-              .returns(wrapperBuilderName)
-              .addStatement("throw new $T()", IllegalAccessError.class)
-              .build());
-    }
     typeBuilder.addMethod(fieldsMethod);
     typeBuilder.addMethod(
         MethodSpec.methodBuilder("getFields")
@@ -357,12 +291,12 @@ class StructVisitor extends BaseVisitor<Struct> {
                 .build();
         typeBuilder.addMethod(isSetFieldMethod);
 
-        isSetCode.get().addStatement("case $L: return $N()", fieldsValueName, isSetFieldMethod);
+        isSetCode.addStatement("case $L: return $N()", fieldsValueName, isSetFieldMethod);
       } else {
-        isSetCode.get().addStatement("case $L: return true", fieldsValueName);
+        isSetCode.addStatement("case $L: return true", fieldsValueName);
       }
-      getFieldValueCode.get().addStatement("case $L: return $N()", fieldsValueName, autoValueAccessor);
-      builderSetCode.get()
+      getFieldValueCode.addStatement("case $L: return $N()", fieldsValueName, autoValueAccessor);
+      builderSetCode
           .add("case $L:\n", fieldsValueName)
           .indent()
           .addStatement(
@@ -510,37 +444,33 @@ class StructVisitor extends BaseVisitor<Struct> {
       }
     }
 
-    if (isSetMethod.isPresent()) {
-      typeBuilder.addMethod(
-          isSetMethod.get()
-              .addCode(
-                  isSetCode.get()
-                      .addStatement(
-                          "default: throw new $T($T.format($S, $N))",
-                          IllegalArgumentException.class,
-                          String.class,
-                          "%s is not a known field",
-                          fieldParam)
-                      .endControlFlow()
-                      .build())
-              .build());
-    }
+    typeBuilder.addMethod(
+        isSetMethod
+            .addCode(
+                isSetCode
+                    .addStatement(
+                        "default: throw new $T($T.format($S, $N))",
+                        IllegalArgumentException.class,
+                        String.class,
+                        "%s is not a known field",
+                        fieldParam)
+                    .endControlFlow()
+                    .build())
+            .build());
 
-    if (getFieldValueMethod.isPresent()) {
-      typeBuilder.addMethod(
-          getFieldValueMethod.get()
-              .addCode(
-                  getFieldValueCode.get()
-                      .addStatement(
-                          "default: throw new $T($T.format($S, $N))",
-                          IllegalArgumentException.class,
-                          String.class,
-                          "%s is not a known field",
-                          fieldParam)
-                      .endControlFlow()
-                      .build())
-              .build());
-    }
+    typeBuilder.addMethod(
+        getFieldValueMethod
+            .addCode(
+                getFieldValueCode
+                    .addStatement(
+                        "default: throw new $T($T.format($S, $N))",
+                        IllegalArgumentException.class,
+                        String.class,
+                        "%s is not a known field",
+                        fieldParam)
+                    .endControlFlow()
+                    .build())
+            .build());
 
     constructorCode.add("\n.build();\n$]");
     typeBuilder.addMethod(
@@ -568,22 +498,21 @@ class StructVisitor extends BaseVisitor<Struct> {
                     .build())
             .build());
 
-    if (builderSetCode.isPresent()) {
-      wrapperBuilder.addMethod(
-          builderSetMethod.get()
-              .addCode(
-                  builderSetCode.get()
-                      .addStatement(
-                          "default: throw new $T($T.format($S, $N))",
-                          IllegalArgumentException.class,
-                          String.class,
-                          "%s is not a known field",
-                          fieldParam)
-                      .endControlFlow()
-                      .addStatement("return this")
-                      .build())
-              .build());
+    builderSetCode
+        .addStatement(
+            "default: throw new $T($T.format($S, $N))",
+            IllegalArgumentException.class,
+            String.class,
+            "%s is not a known field",
+            fieldParam)
+        .endControlFlow();
+    if (!struct.getFields().isEmpty()) {
+      builderSetCode.addStatement("return this");
     }
+    wrapperBuilder.addMethod(
+        builderSetMethod
+            .addCode(builderSetCode.build())
+            .build());
 
     wrapperBuilder.addMethod(
         MethodSpec.methodBuilder("build")

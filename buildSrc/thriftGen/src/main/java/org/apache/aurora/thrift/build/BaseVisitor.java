@@ -387,13 +387,10 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
         .build();
   }
 
-  protected final Optional<ClassName> maybeAddFieldsEnum(
-      TypeSpec.Builder typeBuilder,
-      AbstractStruct struct) {
-
+  protected final ClassName addFields(TypeSpec.Builder typeBuilder, AbstractStruct struct) {
     // Enum types must have at least one enum constant, so skip adding the type for empty structs.
     if (struct.getFields().isEmpty()) {
-      return Optional.absent();
+      return ClassName.get(ThriftFields.NoFields.class);
     }
 
     ClassName fieldsClassName = getClassName(struct.getName(), "Fields");
@@ -508,7 +505,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
 
     typeBuilder.addType(thriftFieldsEnumBuilder.build());
 
-    return Optional.of(fieldsClassName);
+    return fieldsClassName;
   }
 
   protected final TypeSpec writeType(TypeSpec.Builder typeBuilder) throws IOException {

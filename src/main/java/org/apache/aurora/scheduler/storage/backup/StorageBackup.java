@@ -170,17 +170,12 @@ public interface StorageBackup {
 
         TTransport transport = new TIOStreamTransport(tempFileStream);
         TProtocol protocol = new TBinaryProtocol(transport);
-        ThriftBinaryCodec.codecForType(Snapshot.class).write(snapshot, protocol);
+        ThriftBinaryCodec.write(Snapshot.class, snapshot, protocol);
         Files.move(tempFile, new File(config.dir, backupName));
         successes.incrementAndGet();
       } catch (IOException e) {
         failures.incrementAndGet();
         LOG.log(Level.SEVERE, "Failed to prepare backup " + backupName + ": " + e, e);
-      // TODO(John Sirois): XXX Encapsulate  ThriftBinaryCodec.codecForType(...).write and raise
-      // a narrower exception
-      } catch (Exception e) { // Unfortunately swift ThriftCodec.read throws Exception.
-        LOG.log(Level.SEVERE, "Failed to encode backup " + backupName + ": " + e, e);
-        failures.incrementAndGet();
       } finally {
         if (tempFile.exists()) {
           LOG.info("Deleting incomplete backup file " + tempFile);

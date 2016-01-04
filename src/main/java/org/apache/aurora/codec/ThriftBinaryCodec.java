@@ -16,8 +16,10 @@ package org.apache.aurora.codec;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
@@ -31,6 +33,7 @@ import com.facebook.swift.codec.ThriftCodecManager;
 import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.facebook.swift.service.ThriftEventHandler;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.UnsignedBytes;
 
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
@@ -48,6 +51,7 @@ import org.apache.thrift.transport.TTransport;
 
 import autovalue.shaded.com.google.common.common.base.Predicate;
 import autovalue.shaded.com.google.common.common.base.Predicates;
+import autovalue.shaded.com.google.common.common.base.Throwables;
 import autovalue.shaded.com.google.common.common.collect.FluentIterable;
 import autovalue.shaded.com.google.common.common.collect.ImmutableList;
 import autovalue.shaded.com.google.common.common.collect.ImmutableSet;
@@ -124,7 +128,10 @@ public final class ThriftBinaryCodec {
    * @return A codec that can translate objects of the given type to and from the thrift binary
    *         protocol format.
    */
-  public static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<? extends T> clazz) {
+  @VisibleForTesting
+  static <T extends ThriftEntity<?>> ThriftCodec<T> codecForType(Class<? extends T> clazz) {
+    requireNonNull(clazz);
+
     Class<?> thriftEntity = clazz;
     while (thriftEntity != null
         && !FluentIterable.of(thriftEntity.getInterfaces()).anyMatch(UNION_OR_STRUCT)) {
@@ -138,6 +145,34 @@ public final class ThriftBinaryCodec {
     @SuppressWarnings("unchecked")
     Class<T> entityType = (Class<T>) thriftEntity;
     return CODEC_MANAGER.getCodec(entityType);
+  }
+
+  /**
+   * Serializes a thrift entity via the given protocol.
+   *
+   * @param clazz The thrift entity class.
+   * @param value The thrift entity value.
+   * @param protocol The protocol to serialize the thrift entity via.
+   * @param <T> The thrift entity type.
+   * @throws IllegalArgumentException If the given class is not a known thrift entity type.
+   * @throws IOException If the given value cannot be written via the protocol.
+   */
+  public static <T extends ThriftEntity<?>> void write(
+      Class<? extends T> clazz,
+      T value,
+      TProtocol protocol)
+      throws IllegalArgumentException, IOException {
+
+    requireNonNull(value);
+    requireNonNull(protocol);
+
+    ThriftCodec<T> codec = codecForType(clazz);
+    try {
+      codec.write(value, protocol);
+    } catch (Exception e) {
+      Throwables.propagateIfPossible(e, IOException.class);
+      throw new IOException(e);
+    }
   }
 
   private static <T extends ThriftEntity<?>> ThriftCodec<T> codecForObject(T thriftEntity) {

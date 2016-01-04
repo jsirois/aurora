@@ -18,6 +18,7 @@ import java.io.IOException;
 import com.facebook.swift.parser.visitor.Visitable;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import com.squareup.javapoet.ClassName;
 
 interface Visitor<T extends Visitable> {
   static Visitor<?> failing() {
@@ -45,7 +46,7 @@ interface Visitor<T extends Visitable> {
     // noop
   }
 
-  default void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
+  default void finish(ImmutableMap<ClassName, AbstractStructRenderer> structRenderers)
       throws IOException {
     // noop
   }

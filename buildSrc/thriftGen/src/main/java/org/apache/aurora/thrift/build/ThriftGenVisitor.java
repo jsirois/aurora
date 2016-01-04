@@ -30,16 +30,18 @@ import com.facebook.swift.parser.model.Union;
 import com.facebook.swift.parser.visitor.DocumentVisitor;
 import com.facebook.swift.parser.visitor.Visitable;
 import com.google.common.collect.ImmutableMap;
+import com.squareup.javapoet.ClassName;
 
 import org.slf4j.Logger;
 
 @NotThreadSafe
 class ThriftGenVisitor implements DocumentVisitor {
-  private final ImmutableMap.Builder<String, AbstractStructRenderer> structRendererByName =
+  private final ImmutableMap.Builder<ClassName, AbstractStructRenderer> structRendererByName =
       ImmutableMap.builder();
 
   private final ImmutableMap<Class<? extends Visitable>, Visitor<? extends Visitable>> visitors;
 
+  private final String packageName;
   private boolean finished;
 
   ThriftGenVisitor(
@@ -48,6 +50,7 @@ class ThriftGenVisitor implements DocumentVisitor {
       SymbolTable symbolTable,
       String packageName) {
 
+    this.packageName = packageName;
     visitors =
         ImmutableMap.<Class<? extends Visitable>, Visitor<? extends Visitable>>builder()
             .put(Const.class,
@@ -94,7 +97,7 @@ class ThriftGenVisitor implements DocumentVisitor {
   public void visit(Visitable visitable) throws IOException {
     if (visitable instanceof AbstractStruct) {
       AbstractStruct struct = (AbstractStruct) visitable;
-      structRendererByName.put(struct.getName(), AbstractStructRenderer.from(struct));
+      structRendererByName.put(ClassName.get(packageName, struct.getName()), AbstractStructRenderer.from(struct));
     }
     Visitor visitor = visitors.get(visitable.getClass());
     if (visitor != null) {
@@ -105,7 +108,7 @@ class ThriftGenVisitor implements DocumentVisitor {
   @Override
   public void finish() throws IOException {
     if (!finished) {
-      ImmutableMap<String, AbstractStructRenderer> structRenderers = structRendererByName.build();
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers = structRendererByName.build();
       for (Visitor<?> visitor : visitors.values()) {
         visitor.finish(structRenderers);
       }

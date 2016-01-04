@@ -102,6 +102,10 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
     this.packageName = requireNonNull(packageName);
   }
 
+  protected final SymbolTable getSymbolTable() {
+    return symbolTable;
+  }
+
   protected final String getPackageName() {
     return packageName;
   }
@@ -182,7 +186,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   }
 
   protected final CodeBlock renderValue(
-      ImmutableMap<String, AbstractStructRenderer> structRenderers,
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers,
       ThriftType type,
       ConstValue value) {
 
@@ -262,7 +266,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   }
 
   private void renderListValue(
-      ImmutableMap<String, AbstractStructRenderer> structRenderers,
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers,
       ThriftType type,
       ConstList value,
       CodeBlock.Builder codeBuilder) {
@@ -295,7 +299,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   }
 
   private void renderMapValue(
-      ImmutableMap<String, AbstractStructRenderer> structRenderers,
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers,
       MapType mapType,
       CodeBlock.Builder codeBuilder,
       ConstMap map) {
@@ -317,13 +321,13 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   }
 
   private void renderStructValue(
-      ImmutableMap<String, AbstractStructRenderer> structRenderers,
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers,
       IdentifierType type,
       CodeBlock.Builder codeBuilder,
       ConstMap map) {
 
-    // TODO(John Sirois): XXX structRenderers need to handle type resolution across includes.
-    AbstractStructRenderer structRenderer = structRenderers.get(type.getName());
+    SymbolTable.Symbol symbol = getSymbolTable().lookup(getPackageName(), type);
+    AbstractStructRenderer structRenderer = structRenderers.get(symbol.getClassName());
     if (structRenderer == null) {
       throw new ParseException(
           String.format(

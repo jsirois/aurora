@@ -70,7 +70,7 @@ class StructVisitor extends BaseVisitor<Struct> {
   }
 
   @Override
-  public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
+  public void finish(ImmutableMap<ClassName, AbstractStructRenderer> structRenderers)
       throws IOException {
 
     for (Struct struct : structs.build()) {
@@ -79,7 +79,7 @@ class StructVisitor extends BaseVisitor<Struct> {
   }
 
   private void writeStruct(
-      ImmutableMap<String, AbstractStructRenderer> structRenderers,
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers,
       Struct struct)
       throws IOException {
 

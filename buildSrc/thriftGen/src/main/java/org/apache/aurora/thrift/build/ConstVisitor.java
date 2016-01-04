@@ -23,6 +23,7 @@ import com.facebook.swift.parser.model.Const;
 import com.facebook.swift.parser.model.ThriftType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
@@ -43,7 +44,7 @@ class ConstVisitor extends BaseVisitor<Const> {
   }
 
   @Override
-  public void finish(ImmutableMap<String, AbstractStructRenderer> structRenderers)
+  public void finish(ImmutableMap<ClassName, AbstractStructRenderer> structRenderers)
       throws IOException {
 
     ImmutableList<Const> constants = consts.build();

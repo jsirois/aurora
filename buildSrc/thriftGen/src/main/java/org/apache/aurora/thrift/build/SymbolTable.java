@@ -17,6 +17,8 @@ import java.io.File;
 import java.util.List;
 
 import com.facebook.swift.parser.model.Definition;
+import com.facebook.swift.parser.model.IdentifierType;
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
@@ -26,25 +28,17 @@ import com.google.common.io.Files;
 import com.squareup.javapoet.ClassName;
 
 class SymbolTable {
-  static class Symbol {
-    private final String packageName;
-    private final Definition symbol;
-
-    Symbol(String packageName, Definition symbol) {
-      this.packageName = packageName;
-      this.symbol = symbol;
+  @AutoValue
+  abstract static class Symbol {
+    static Symbol create(String packageName, Definition symbol) {
+      return new AutoValue_SymbolTable_Symbol(packageName, symbol);
     }
 
-    String getPackageName() {
-      return packageName;
-    }
-
-    Definition getSymbol() {
-      return symbol;
-    }
+    abstract String packageName();
+    abstract Definition symbol();
 
     ClassName getClassName() {
-      return ClassName.get(packageName, symbol.getName());
+      return ClassName.get(packageName(), symbol().getName());
     }
   }
 
@@ -67,6 +61,10 @@ class SymbolTable {
     this.importPrefixByFile = importPrefixByFile;
     this.packageNameByImportPrefix = packageNameByImportPrefix;
     this.symbolsByPackageName = symbolsByPackageName;
+  }
+
+  Symbol lookup(String packageName, IdentifierType identifier) {
+    return lookup(packageName, identifier.getName());
   }
 
   Symbol lookup(String packageName, String identifierName) {
@@ -117,7 +115,7 @@ class SymbolTable {
             .put(
                 packageName,
                 Maps.uniqueIndex(
-                    Iterables.transform(definitions, d -> new Symbol(packageName, d)),
+                    Iterables.transform(definitions, d -> Symbol.create(packageName, d)),
                     s -> s.getClassName().simpleName()))
             .build();
 

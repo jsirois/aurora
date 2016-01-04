@@ -47,8 +47,8 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
 import org.slf4j.Logger;
 
 @NotThreadSafe
@@ -173,6 +173,7 @@ class StructVisitor extends BaseVisitor<Struct> {
                   .addAnnotation(Override.class)
                   .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                   .addParameter(fieldParam)
+                  .addException(IllegalArgumentException.class)
                   .returns(Object.class));
       getFieldValueCode =
           Optional.of(
@@ -552,6 +553,7 @@ class StructVisitor extends BaseVisitor<Struct> {
         MethodSpec.methodBuilder("build")
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .returns(ClassName.get(getPackageName(), struct.getName()))
+            .addException(IllegalStateException.class)
             .build());
     typeBuilder.addType(builderBuilder.build());
 
@@ -584,8 +586,9 @@ class StructVisitor extends BaseVisitor<Struct> {
     wrapperBuilder.addMethod(
         MethodSpec.methodBuilder("build")
             .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
-            .returns(ClassName.get(getPackageName(), struct.getName()))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .returns(ClassName.get(getPackageName(), struct.getName()))
+            .addException(IllegalStateException.class)
             .addStatement("return this.builder.build()")
             .build());
     typeBuilder.addType(wrapperBuilder.build());

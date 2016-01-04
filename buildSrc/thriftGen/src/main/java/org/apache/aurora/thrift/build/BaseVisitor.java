@@ -59,7 +59,7 @@ import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.WildcardTypeName;
 
 import org.apache.aurora.thrift.ThriftAnnotation;
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
+import org.apache.aurora.thrift.ThriftFields;
 import org.slf4j.Logger;
 
 import static java.util.Objects.requireNonNull;

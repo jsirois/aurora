@@ -36,7 +36,7 @@ public class AuroraSchedulerManagerAuthorizingParamTest {
   // TODO(John Sirois): DRY this up with ShiroAuthorizingParamInterceptor
   private static final ThriftAnnotation AUTHORIZING_PARAM =
       ImmutableThriftAnnotation.builder()
-          .value(ImmutableParameter.builder().name("authorizing").value("true").build())
+          .value(ImmutableParameter.of("authorizing", "true"))
           .build();
 
   @Test

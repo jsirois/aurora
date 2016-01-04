@@ -35,7 +35,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
+import org.apache.aurora.thrift.ThriftUnion;
 import org.slf4j.Logger;
 
 class UnionVisitor extends BaseVisitor<Union> {
@@ -187,6 +187,7 @@ class UnionVisitor extends BaseVisitor<Union> {
               .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
               .addParameter(fieldParam)
               .returns(Object.class)
+              .addException(IllegalArgumentException.class)
               .beginControlFlow("if (!$N($N))", isSetMethod, fieldParam)
               .addStatement(
                   "throw new $T($T.format($S, $N, $N()))",

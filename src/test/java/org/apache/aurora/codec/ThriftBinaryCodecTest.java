@@ -24,7 +24,7 @@ import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.thrift.ThriftEntity;
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields.NoFields;
+import org.apache.aurora.thrift.ThriftFields.NoFields;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;

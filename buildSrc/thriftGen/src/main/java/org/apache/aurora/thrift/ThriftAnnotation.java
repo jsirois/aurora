@@ -18,16 +18,45 @@ import java.lang.annotation.RetentionPolicy;
 
 import org.immutables.value.Value;
 
+/**
+ * Encodes a set of thrift type annotations.
+ *
+ * Although not widely known, the thrift grammar supports type annotations on thrift types.
+ * See the grammar for more details (search for TypeAnnotation):
+ *   https://git-wip-us.apache.org/repos/asf?p=thrift.git;a=blob;f=compiler/cpp/src/thrifty.yy
+ */
 @Value.Immutable
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ThriftAnnotation {
+
+  /**
+   * The annotation name-value pairs.
+   *
+   * @return A list of one or more annotations name-value pairs.
+   */
   Parameter[] value();
 
-  @Value.Immutable
+  /**
+   * Encodes an individual thrift annotation name-value pair.
+   */
+  @Value.Immutable(builder = false)
   @Retention(RetentionPolicy.RUNTIME)
   @interface Parameter {
+
+    /**
+     * The name of the annotation parameter.
+     *
+     * @return The name.
+     */
+    @Value.Parameter(order = 1)
     String name();
 
+    /**
+     * The value of the annotation parameter.
+     *
+     * @return The value.
+     */
+    @Value.Parameter(order = 2)
     String value();
   }
 }

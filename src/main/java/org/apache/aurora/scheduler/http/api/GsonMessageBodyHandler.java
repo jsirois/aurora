@@ -48,9 +48,9 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 import org.apache.aurora.thrift.ThriftEntity;
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
-import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftUnion;
 import org.apache.thrift.TUnion;
 
 /**

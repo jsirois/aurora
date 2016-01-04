@@ -35,7 +35,7 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Work;
 import org.apache.aurora.scheduler.storage.Storage.Work.Quiet;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftStruct;
 
 import static java.util.Objects.requireNonNull;
 

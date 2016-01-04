@@ -21,7 +21,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
 
 /**
  * Utility functions for thrift.
@@ -35,7 +36,7 @@ final class Util {
    * @param t The thrift object to print.
    * @return The pretty-printed version of the thrift object.
    */
-  static <T extends ThriftStruct.ThriftFields> String prettyPrint(ThriftStruct<T> t) {
+  static <T extends ThriftFields> String prettyPrint(ThriftStruct<T> t) {
     return t == null ? "null" : printStruct(t, 0);
   }
 
@@ -52,7 +53,7 @@ final class Util {
     } else if (ThriftStruct.class.isAssignableFrom(o.getClass())) {
       // Since we know ThriftStruct seals in it own ThriftFields subtype, this is always safe.
       @SuppressWarnings("unchecked")
-      ThriftStruct<ThriftStruct.ThriftFields> t = (ThriftStruct<ThriftStruct.ThriftFields>) o;
+      ThriftStruct<ThriftFields> t = (ThriftStruct<ThriftFields>) o;
 
       return "\n" + printStruct(t, depth + 1);
     } else if (Map.class.isAssignableFrom(o.getClass())) {
@@ -75,7 +76,7 @@ final class Util {
    * @param depth The print nesting level.
    * @return The pretty-printed version of the TBase.
    */
-  private static <T extends ThriftStruct.ThriftFields> String printStruct(
+  private static <T extends ThriftFields> String printStruct(
       ThriftStruct<T> struct,
       int depth) {
 

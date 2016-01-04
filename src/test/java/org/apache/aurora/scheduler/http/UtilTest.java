@@ -18,8 +18,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
 import org.junit.Test;
 
 import static org.easymock.EasyMock.expect;

@@ -21,9 +21,9 @@ import com.google.common.base.Defaults;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.internal.Primitives;
 
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
-import org.apache.aurora.thrift.ThriftEntity.ThriftStruct;
-import org.apache.aurora.thrift.ThriftEntity.ThriftUnion;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftUnion;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;

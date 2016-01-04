@@ -13,15 +13,26 @@
  */
 package org.apache.aurora.thrift;
 
-import java.lang.reflect.Type;
-
 import com.google.common.collect.ImmutableSet;
 
-import org.apache.thrift.TFieldIdEnum;
+/**
+ * An immutable thrift struct or union.
+ *
+ * @param <F> The type of the thrift fields contained by this thrift entity.
+ */
+public interface ThriftEntity<F extends ThriftFields> {
 
-public interface ThriftEntity<T extends ThriftEntity.ThriftFields> {
-  static <F extends ThriftFields, S extends ThriftEntity<F>> ImmutableSet<F> fields(Class<S> type) {
+  /**
+   * Returns the thrift fields contained by the given thrift entity.
+   *
+   * @param type The type of the thrift entity to return fields for.
+   * @param <F> The type of the thrift fields contained by the thrift entity of type {@code E}.
+   * @param <E> The type of the thrift entity to return fields for.
+   * @return The set of fields the given thrift entity contains.
+   */
+  static <F extends ThriftFields, E extends ThriftEntity<F>> ImmutableSet<F> fields(Class<E> type) {
     try {
+      // We know (and control) that all generated entities have a static method of this signature.
       @SuppressWarnings("unchecked")
       ImmutableSet<F> fields = (ImmutableSet<F>) type.getMethod("fields").invoke(null);
       return fields;
@@ -30,60 +41,27 @@ public interface ThriftEntity<T extends ThriftEntity.ThriftFields> {
     }
   }
 
-  boolean isSet(T field);
+  /**
+   * Checks if a given {@code field} has been set on this thrift entity.
+   *
+   * @param field The field to check.
+   * @return {@code true} if the given field has been set on this thrift entity.
+   */
+  boolean isSet(F field);
 
-  Object getFieldValue(T field);
+  /**
+   * Returns the value of the given {@code field} if it has been set.
+   *
+   * @param field The field whose value to retrieve.
+   * @return The field's set value.
+   * @throws IllegalStateException if the given field is not set.
+   */
+  Object getFieldValue(F field) throws IllegalArgumentException;
 
-  ImmutableSet<T> getFields();
-
-  interface ThriftFields extends TFieldIdEnum {
-    Type getFieldType();
-
-    Class<?> getFieldClass();
-
-    abstract class NoFields implements ThriftFields {
-      private NoFields() {
-        // NoFields can never be extended so no fields can
-        // ever be added.
-      }
-    }
-  }
-
-  interface ThriftStruct<T extends ThriftFields> extends ThriftEntity<T> {
-    static <F extends ThriftFields, S extends ThriftStruct<F>> Builder<F, S> builder(
-        Class<S> type) {
-
-      try {
-        @SuppressWarnings("unchecked")
-        Builder<F, S> builder = (Builder<F, S>) type.getMethod("builder").invoke(null);
-        return builder;
-      } catch (ReflectiveOperationException e) {
-        throw new IllegalStateException(e);
-      }
-    }
-
-    interface Builder<F extends ThriftFields, S extends ThriftStruct<F>> {
-      Builder<F, S> set(F field, Object value);
-
-      S build();
-    }
-  }
-
-  interface ThriftUnion<T extends ThriftFields> extends ThriftEntity<T> {
-    static <F extends ThriftFields, U extends ThriftUnion<F>> U create(
-        Class<U> type,
-        F field,
-        Object value) {
-
-      try {
-        return type.getConstructor(field.getFieldClass()).newInstance(value);
-      } catch (ReflectiveOperationException e) {
-        throw new IllegalStateException(e);
-      }
-    }
-
-    T getSetField();
-
-    Object getFieldValue();
-  }
+  /**
+   * Returns this thrift entity's fields.
+   *
+   * @return The set of fields this thrift entity contains.
+   */
+  ImmutableSet<F> getFields();
 }

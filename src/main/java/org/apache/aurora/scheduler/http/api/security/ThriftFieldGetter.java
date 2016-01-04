@@ -19,7 +19,7 @@ import com.google.common.base.Optional;
 
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGetter;
 import org.apache.aurora.thrift.ThriftEntity;
-import org.apache.aurora.thrift.ThriftEntity.ThriftFields;
+import org.apache.aurora.thrift.ThriftFields;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

@@ -17,6 +17,16 @@ import java.lang.reflect.Method;
 
 import com.google.common.collect.ImmutableMap;
 
+/**
+ * A thrift service endpoint that can provide metadata for its methods.
+ */
 public interface ThriftService extends AutoCloseable {
+
+  /**
+   * Return a mapping of unique method names to method objects that can be used to reflectively
+   * invoke the corresponding method.
+   *
+   * @return The method metadata for this service.
+   */
   ImmutableMap<String, Method> getThriftMethods();
 }

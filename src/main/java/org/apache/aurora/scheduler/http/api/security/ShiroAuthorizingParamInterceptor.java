@@ -164,7 +164,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
   private static final ThriftAnnotation AUTHORIZING_PARAM =
       ImmutableThriftAnnotation.builder()
-          .value(ImmutableParameter.builder().name("authorizing").value("true").build())
+          .value(ImmutableParameter.of("authorizing", "true"))
           .build();
 
   @VisibleForTesting

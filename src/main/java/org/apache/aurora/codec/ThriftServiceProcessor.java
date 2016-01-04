@@ -21,6 +21,8 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.annotation.Nullable;
+
 import com.facebook.nifty.core.RequestContext;
 import com.facebook.nifty.processor.NiftyProcessor;
 import com.facebook.swift.codec.ThriftCodecManager;
@@ -126,7 +128,7 @@ public class ThriftServiceProcessor implements NiftyProcessor {
   private static final Supplier<Constructor<ContextChain>> CONTEXT_CHAIN_CONSTRUCTOR =
       Suppliers.memoize(() -> {
         try {
-          // TODO(John Sirois): XXX Upstream a fix that either elevates ServiceDescriptor as 1st
+          // TODO(John Sirois): Upstream a fix that either elevates ServiceDescriptor as 1st
           // class in com.facebook.swift.service.ThriftServiceProcessor or else, less appealing,
           // expose the ContextChain constructor or interface.
           Constructor<ContextChain> constructor =
@@ -231,7 +233,7 @@ public class ThriftServiceProcessor implements NiftyProcessor {
       Futures.addCallback(
           processResult,
           new FutureCallback<Boolean>() {
-            @Override public void onSuccess(Boolean result) {
+            @Override public void onSuccess(@Nullable Boolean result) {
               context.done();
               resultFuture.set(result);
             }
@@ -248,7 +250,7 @@ public class ThriftServiceProcessor implements NiftyProcessor {
     }
   }
 
-  private static TApplicationException writeApplicationException(
+  private static void writeApplicationException(
       TProtocol outputProtocol,
       String methodName,
       int sequenceId,
@@ -270,7 +272,5 @@ public class ThriftServiceProcessor implements NiftyProcessor {
     applicationException.write(outputProtocol);
     outputProtocol.writeMessageEnd();
     outputProtocol.getTransport().flush();
-
-    return applicationException;
   }
 }

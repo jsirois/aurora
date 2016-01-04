@@ -641,10 +641,9 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
   }
 
   @Test
-  public void testNullVsEmptyRelations() throws Exception {
+  public void testEmptyRelations() throws Exception {
     // Test for regression of AURORA-1476.
 
-    // TODO(John Sirois): XXX Can no longer have nul metadata - good or bad?
     TaskConfig nullMetadata =
         TaskTestUtil.makeConfig(TaskTestUtil.JOB).toBuilder().setMetadata().build();
 

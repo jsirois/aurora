@@ -187,7 +187,20 @@ public class MutablePeerProcessor extends AbstractProcessor {
                               Collectors.class)
                           .build();
                 }
-              } // TODO(John Sirois): Handle maps with keys or values or both as structs.
+              } else {
+                TypeMirror keyType = declaredReturnType.getTypeArguments().get(0);
+                Optional<PeerInfo> keyPeerInfo = getPeerInfo(symbolTable.get(keyType));
+
+                TypeMirror valueType = declaredReturnType.getTypeArguments().get(1);
+                Optional<PeerInfo> valuePeerInfo = getPeerInfo(symbolTable.get(valueType));
+
+                if (keyPeerInfo.isPresent() || valuePeerInfo.isPresent()) {
+                  // TODO(John Sirois): Add support as-needed.
+                  throw new IllegalArgumentException("Mutable peers are not yet supported for " +
+                      "structs containing Map fields where either the key or value is itself a " +
+                      "mutable peer.");
+                }
+              }
             } else if (peerInfo.isPresent()) {
               code =
                   CodeBlock.builder()

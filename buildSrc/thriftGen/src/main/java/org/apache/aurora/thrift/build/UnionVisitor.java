@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Objects;
 
+import javax.annotation.concurrent.Immutable;
 import javax.lang.model.element.Modifier;
 
 import com.facebook.swift.codec.ThriftUnionId;
@@ -57,6 +58,7 @@ class UnionVisitor extends BaseVisitor<Union> {
                 AnnotationSpec.builder(com.facebook.swift.codec.ThriftUnion.class)
                     .addMember("value", "$S", union.getName())
                     .build())
+            .addAnnotation(Immutable.class)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(
                 ParameterizedTypeName.get(ClassName.get(ThriftUnion.class), localFieldsTypeName));

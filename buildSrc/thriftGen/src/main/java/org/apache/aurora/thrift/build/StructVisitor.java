@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
 
@@ -91,6 +92,7 @@ class StructVisitor extends BaseVisitor<Struct> {
                     .addMember("builder", "$L.Builder.class", struct.getName())
                     .build())
             .addAnnotation(com.google.auto.value.AutoValue.class)
+            .addAnnotation(Immutable.class)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
     if (!struct.getAnnotations().isEmpty()) {

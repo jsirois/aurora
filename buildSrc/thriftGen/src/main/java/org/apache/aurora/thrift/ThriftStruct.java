@@ -13,11 +13,14 @@
  */
 package org.apache.aurora.thrift;
 
+import javax.annotation.concurrent.Immutable;
+
 /**
  * An immutable thrift struct.
  *
  * @param <T> The type of the thrift fields contained by this struct.
  */
+@Immutable
 public interface ThriftStruct<T extends ThriftFields> extends ThriftEntity<T> {
 
   /**

@@ -13,6 +13,8 @@
  */
 package org.apache.aurora.thrift;
 
+import javax.annotation.concurrent.Immutable;
+
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -20,6 +22,7 @@ import com.google.common.collect.ImmutableSet;
  *
  * @param <F> The type of the thrift fields contained by this thrift entity.
  */
+@Immutable
 public interface ThriftEntity<F extends ThriftFields> {
 
   /**

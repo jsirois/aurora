@@ -57,6 +57,25 @@ import com.squareup.javapoet.TypeSpec;
 import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity;
 
+/**
+ * Generates mutable peers for use by MyBatis from immutable thrift structs.
+ * <p>
+ * MyBatis expects mapped entities to be singular; ie: each mapped entity class must have both
+ * accessors and mutators housed on the entity class.  This precludes the use of immutable objects
+ * with builders as database mapping targets nd it precludes mapping of immutable objects in general
+ * since constructor mapping is limited (it cannot handle collections).  Aurora has worked around
+ * this and other mapping difficulties with hand-made peer classes ("views").  These classes use the
+ * pattern of "exposing" mutators via private fields (MyBatis is built to be able to reflect private
+ * members) and providing a single "toThrift" public method that produces the peer thrift object
+ * using the private fields populated by MyBatis.
+ * <p>
+ * This annotation processor automates this hand coding and generates mutable peers for any thrift
+ * struct annotated with a "mutablePeer" value.  If the value is "true" a mutable peer is generated.
+ * Otherwise, the value is treated as a fully qualified classname pointing to a hand-coded mutable
+ * peer and this type is expected to have a "toThrift" method that works like the generated mutable
+ * peers.  The end result is that mutable object graphs can be converted to immutable thrift graphs
+ * by calling "toThrift" on the root peer.
+ */
 public class MutablePeerProcessor extends AbstractProcessor {
 
   private static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String name) {

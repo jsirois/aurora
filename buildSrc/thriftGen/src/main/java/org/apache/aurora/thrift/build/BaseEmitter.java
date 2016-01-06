@@ -24,6 +24,7 @@ import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.ThriftType;
 import com.google.common.base.CaseFormat;
 import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
@@ -136,7 +137,7 @@ class BaseEmitter {
             .skipJavaLangImports(true)
             .build();
     javaFile.writeTo(getOutdir());
-    getLogger().info("Wrote {} to {}", type.name, getOutdir());
+    getLogger().info("Wrote {} to {}", ClassName.get(packageName, type.name), getOutdir());
     return type;
   }
 }

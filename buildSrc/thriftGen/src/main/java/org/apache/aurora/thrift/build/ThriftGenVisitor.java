@@ -97,7 +97,9 @@ class ThriftGenVisitor implements DocumentVisitor {
   public void visit(Visitable visitable) throws IOException {
     if (visitable instanceof AbstractStruct) {
       AbstractStruct struct = (AbstractStruct) visitable;
-      structRendererByName.put(ClassName.get(packageName, struct.getName()), AbstractStructRenderer.from(struct));
+      structRendererByName.put(
+          ClassName.get(packageName, struct.getName()),
+          AbstractStructRenderer.from(struct));
     }
     Visitor visitor = visitors.get(visitable.getClass());
     if (visitor != null) {
@@ -108,7 +110,9 @@ class ThriftGenVisitor implements DocumentVisitor {
   @Override
   public void finish() throws IOException {
     if (!finished) {
-      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers = structRendererByName.build();
+      ImmutableMap<ClassName, AbstractStructRenderer> structRenderers =
+          structRendererByName.build();
+
       for (Visitor<?> visitor : visitors.values()) {
         visitor.finish(structRenderers);
       }

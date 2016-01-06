@@ -29,6 +29,25 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.squareup.javapoet.CodeBlock;
 
+/**
+ * Renders thrift struct and union literals as java expressions.
+ * <p>
+ * For example, given the following thrift:
+ * <pre>
+ *   struct Person {
+ *     1: required string name
+ *     2: optional i32 age
+ *   }
+ *
+ *   struct VictimInfo {
+ *     1: Person victim = {"name": "Jane Doe"}
+ *   }
+ * </pre>
+ * The default value for {@code VictimInfo.victim} would be rendered with code like this:
+ * <pre>
+ *   Person.builder().setName("Jane Doe").build()
+ * </pre>
+ */
 abstract class AbstractStructRenderer {
   private static class StructRenderer extends AbstractStructRenderer {
     private StructRenderer(AbstractStruct struct) {

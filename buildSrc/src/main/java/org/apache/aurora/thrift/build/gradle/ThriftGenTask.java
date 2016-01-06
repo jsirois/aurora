@@ -15,6 +15,7 @@ package org.apache.aurora.thrift.build.gradle;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.function.UnaryOperator;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.FluentIterable;
@@ -46,15 +47,14 @@ public class ThriftGenTask extends DefaultTask {
     // TODO(John Sirois): The parser does not carry over doc comments and we want these for the
     // rest api, investigate a patch to add support before copying/moving comments to annotations.
 
-    // TODO(John Sirois): The parser does not carry over annotations in all possible locations -
-    // we may want this - partially depends on TODO above.
-
     File outdir = getOutputs().getFiles().getSingleFile();
+    UnaryOperator<String> packageSuffixFactory = p -> packageSuffix.transform(s -> p + s).or(p);
+    ThriftGen thriftGen = new ThriftGen(outdir, getLogger(), packageSuffixFactory);
+
     ImmutableSet<File> thriftFiles =
         FluentIterable.from(getInputs().getFiles().getFiles())
             .transform(File::getAbsoluteFile)
             .toSet();
-    ThriftGen thriftGen = new ThriftGen(outdir, packageSuffix, getLogger());
     thriftGen.generate(thriftFiles);
   }
 }

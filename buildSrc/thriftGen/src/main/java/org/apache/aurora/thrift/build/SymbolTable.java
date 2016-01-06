@@ -27,16 +27,34 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.squareup.javapoet.ClassName;
 
+/**
+ * A table containing all known symbols logically keyed by their identifier.
+ */
 class SymbolTable {
+
+  /**
+   * Represents a known thrift type.
+   */
   @AutoValue
   abstract static class Symbol {
     static Symbol create(String packageName, Definition symbol) {
       return new AutoValue_SymbolTable_Symbol(packageName, symbol);
     }
 
+    /**
+     * @return The java package name of this symbol.
+     */
     abstract String packageName();
+
+    /**
+     * @return The underlying thrift symbol (always a type; ie an enum, exception, service, struct
+     *         or union).
+     */
     abstract Definition symbol();
 
+    /**
+     * @return The fully qualified class name of this symbol.
+     */
     ClassName getClassName() {
       return ClassName.get(packageName(), symbol().getName());
     }
@@ -63,11 +81,39 @@ class SymbolTable {
     this.symbolsByPackageName = symbolsByPackageName;
   }
 
-  Symbol lookup(String packageName, IdentifierType identifier) {
+  /**
+   * Equivalent to calling {@link #lookup(String, String)} with {@code identifier}'s name.
+   *
+   * @param packageName The package name of the requestor.
+   * @param identifier The type identifier.
+   * @return The identified symbol.
+   * @throws ParseException if the symbol could not be found.
+   */
+  Symbol lookup(String packageName, IdentifierType identifier) throws ParseException {
     return lookup(packageName, identifier.getName());
   }
 
-  Symbol lookup(String packageName, String identifierName) {
+  /**
+   * Looks up the given identifier.
+   * <p>
+   * The {@code identifierName}s come in 2 forms:
+   * <ol>
+   *   <li>LocalType</li>
+   *   <li>included.Type</li>
+   * </ol>
+   * <p>
+   * The first form is used to refer to a thrift type declared in the same thrift file.  For these
+   * local types the given {@code packageName} is used to lookup the symbol.
+   * <p>
+   * The second form is used to refer to types included from other thrift files.  For these included
+   * types the local {@code packageName} is ignored.
+   *
+   * @param packageName The package name of the requestor.
+   * @param identifierName The type identifier.
+   * @return The identified symbol.
+   * @throws ParseException if the symbol could not be found.
+   */
+  Symbol lookup(String packageName, String identifierName) throws ParseException {
     List<String> parts = Splitter.on('.').limit(2).splitToList(identifierName);
     if (parts.size() == 2) {
       String importPrefix = parts.get(0);
@@ -82,6 +128,16 @@ class SymbolTable {
     return symbolsByPackageName.get(packageName).get(identifierName);
   }
 
+  /**
+   * Creates a new symbol table containing this symbol table's definitions as well as all the the
+   * definitions from the given file.
+   *
+   * @param file A thrift file containing definitions to add to the new symbol table.
+   * @param packageName The package name for types defined in the given {@code file}.
+   * @param definitions The thrift definitions contained in the given {@code file}.
+   * @return A new symbol table containing the union of this symbol table's definitions with the
+   *         new definitions from {@code file}.
+   */
   SymbolTable updated(File file, String packageName, Iterable<Definition> definitions) {
     if (importPrefixByFile.containsKey(file)) {
       return this;
@@ -120,13 +176,5 @@ class SymbolTable {
             .build();
 
     return new SymbolTable(prefixByFile, packageByPrefix, symbolsByPackage);
-  }
-
-  @Override
-  public String toString() {
-    return "SymbolTable{" +
-        "packageNameByImportPrefix=" + packageNameByImportPrefix +
-        ", symbolsByPackageName=" + symbolsByPackageName +
-        '}';
   }
 }

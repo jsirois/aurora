@@ -56,7 +56,8 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
 import org.apache.thrift.TException;
@@ -294,12 +295,13 @@ public class HttpSecurityIT extends JettyServerModuleTest {
   }
 
   private HttpResponse callH2Console(Credentials credentials) throws Exception {
-    DefaultHttpClient defaultHttpClient = new DefaultHttpClient();
-
     CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(AuthScope.ANY, credentials);
-    defaultHttpClient.setCredentialsProvider(credentialsProvider);
-    return defaultHttpClient.execute(new HttpPost(formatUrl(H2_PATH + "/")));
+    try (CloseableHttpClient defaultHttpClient =
+        HttpClientBuilder.create().setDefaultCredentialsProvider(credentialsProvider).build()) {
+
+      return defaultHttpClient.execute(new HttpPost(formatUrl(H2_PATH + "/")));
+    }
   }
 
   @Test

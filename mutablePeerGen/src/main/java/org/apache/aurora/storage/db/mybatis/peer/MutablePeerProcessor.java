@@ -229,9 +229,11 @@ public class MutablePeerProcessor extends AbstractProcessor {
 
                 if (keyPeerInfo.isPresent() || valuePeerInfo.isPresent()) {
                   // TODO(John Sirois): Add similar support to list and set above only as-needed.
-                  throw new IllegalArgumentException("Mutable peers are not yet supported for " +
-                      "structs containing Map fields where either the key or value is itself a " +
-                      "mutable peer.");
+                  processingEnv.getMessager().printMessage(
+                      Diagnostic.Kind.ERROR,
+                      "Mutable peers are not yet supported for structs containing Map fields " +
+                          "where either the key or value is itself a mutable peer.",
+                      member);
                 }
               }
             } else if (peerInfo.isPresent()) {

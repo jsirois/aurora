@@ -1,0 +1,68 @@
+package org.apache.aurora.test;
+
+import java.lang.reflect.Type;
+import java.util.Map;
+
+import com.facebook.swift.codec.ThriftField;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.reflect.TypeToken;
+
+import org.apache.aurora.thrift.ThriftAnnotation;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
+
+@ThriftAnnotation(@ThriftAnnotation.Parameter(name = "mutablePeer", value = "true"))
+public final class PrimitiveMapField implements ThriftStruct<PrimitiveMapField.Fields> {
+  enum Fields implements ThriftFields {
+    ONE() {
+      @Override
+      public short getThriftFieldId() {
+        return 1;
+      }
+
+      @Override
+      public String getFieldName() {
+        return null;
+      }
+
+      @Override
+      public Type getFieldType() {
+        return null;
+      }
+
+      @Override
+      public Class<?> getFieldClass() {
+        return null;
+      }
+    }
+  }
+
+  public interface FakeBuilder extends Builder<Fields, PrimitiveMapField> {
+    FakeBuilder setOne(Map<String, Integer> one);
+  }
+
+  public static FakeBuilder builder() {
+    return null;
+  }
+
+  @ThriftField(value = 1, name = "one")
+  public final ImmutableMap<String, Integer> getOne() {
+    return null;
+  }
+
+  @Override
+  public boolean isSet(Fields field) {
+    return false;
+  }
+
+  @Override
+  public Object getFieldValue(Fields field) throws IllegalArgumentException {
+    return null;
+  }
+
+  @Override
+  public ImmutableSet<Fields> getFields() {
+    return null;
+  }
+}

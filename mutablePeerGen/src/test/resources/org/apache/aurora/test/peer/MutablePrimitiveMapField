@@ -1,0 +1,17 @@
+package org.apache.aurora.test.peer;
+
+import java.util.Map;
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.PrimitiveMapField;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutablePrimitiveMapField {
+  private Map<String, Integer> one;
+
+  private MutablePrimitiveMapField() {}
+
+  public final PrimitiveMapField toThrift() {
+    return PrimitiveMapField.builder().setOne(one).build();
+  }
+}

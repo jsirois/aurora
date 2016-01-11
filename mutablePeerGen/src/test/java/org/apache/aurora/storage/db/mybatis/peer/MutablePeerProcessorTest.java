@@ -81,33 +81,52 @@ public class MutablePeerProcessorTest {
                 .toArray(JavaFileObject[]::new));
   }
 
+  private void assertCompileError(String primary, String... rest) {
+    assert_().about(javaSources())
+        .that(Lists.asList(primary, rest).stream()
+            .map(MutablePeerProcessorTest::javaFileForClassName)
+            .collect(Collectors.toList()))
+        .processedWith(new MutablePeerProcessor())
+        .failsToCompile();
+  }
+
   @Test
-  public void testPrimitiveField() throws IOException {
+  public void testPrimitiveField() {
     assertGenerated("PrimitiveField");
   }
 
   @Test
-  public void testPrimitiveListField() throws IOException {
+  public void testPrimitiveListField() {
     assertGenerated("PrimitiveListField");
   }
 
   @Test
-  public void testPrimitiveSetField() throws IOException {
+  public void testPrimitiveSetField() {
     assertGenerated("PrimitiveSetField");
   }
 
   @Test
-  public void testThriftField() throws IOException {
+  public void testPrimitiveMapField() {
+    assertGenerated("PrimitiveMapField");
+  }
+
+  @Test
+  public void testThriftField() {
     assertGenerated("ThriftField", "PrimitiveField");
   }
 
   @Test
-  public void testThriftListField() throws IOException {
+  public void testThriftListField() {
     assertGenerated("ThriftListField", "PrimitiveField");
   }
 
   @Test
-  public void testThriftSetField() throws IOException {
+  public void testThriftSetField() {
     assertGenerated("ThriftSetField", "PrimitiveField");
+  }
+
+  @Test
+  public void testThriftMapField() {
+    assertCompileError("ThriftMapField", "PrimitiveField");
   }
 }

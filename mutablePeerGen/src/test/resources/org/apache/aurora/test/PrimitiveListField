@@ -1,8 +1,10 @@
 package org.apache.aurora.test;
 
 import java.lang.reflect.Type;
+import java.util.List;
 
 import com.facebook.swift.codec.ThriftField;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.thrift.ThriftAnnotation;
@@ -10,7 +12,7 @@ import org.apache.aurora.thrift.ThriftFields;
 import org.apache.aurora.thrift.ThriftStruct;
 
 @ThriftAnnotation(@ThriftAnnotation.Parameter(name = "mutablePeer", value = "true"))
-public final class Primitive implements ThriftStruct<Primitive.Fields> {
+public final class PrimitiveListField implements ThriftStruct<PrimitiveListField.Fields> {
   enum Fields implements ThriftFields {
     ONE() {
       @Override
@@ -20,23 +22,23 @@ public final class Primitive implements ThriftStruct<Primitive.Fields> {
 
       @Override
       public String getFieldName() {
-        return "one";
+        return null;
       }
 
       @Override
       public Type getFieldType() {
-        return getFieldClass();
+        return null;
       }
 
       @Override
       public Class<?> getFieldClass() {
-        return String.class;
+        return null;
       }
     }
   }
 
-  public interface FakeBuilder extends Builder<Fields, Primitive> {
-    FakeBuilder setOne(String one);
+  public interface FakeBuilder extends Builder<Fields, PrimitiveListField> {
+    FakeBuilder setOne(Iterable<String> one);
   }
 
   public static FakeBuilder builder() {
@@ -44,8 +46,8 @@ public final class Primitive implements ThriftStruct<Primitive.Fields> {
   }
 
   @ThriftField(value = 1, name = "one")
-  public final String getOne() {
-    return "1";
+  public final ImmutableList<String> getOne() {
+    return null;
   }
 
   @Override

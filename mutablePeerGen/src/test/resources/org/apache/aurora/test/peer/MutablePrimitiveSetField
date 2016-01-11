@@ -1,0 +1,17 @@
+package org.apache.aurora.test.peer;
+
+import java.util.Set;
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.PrimitiveSetField;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutablePrimitiveSetField {
+  private Set<String> one;
+
+  private MutablePrimitiveSetField() {}
+
+  public final PrimitiveSetField toThrift() {
+    return PrimitiveSetField.builder().setOne(one).build();
+  }
+}

@@ -16,19 +16,21 @@ package org.apache.aurora.storage.db.mybatis.peer;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import javax.tools.JavaFileObject;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.google.testing.compile.JavaFileObjects;
 
 import org.junit.Test;
 
 import static com.google.common.truth.Truth.assert_;
-import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
+import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
 
 public class MutablePeerProcessorTest {
 
@@ -40,28 +42,72 @@ public class MutablePeerProcessorTest {
         ImmutableList.builder().add(PACKAGE).addAll(Arrays.asList(simpleNames)).build());
   }
 
-  private static JavaFileObject javaFile(String fullyQualifiedClassName) throws IOException {
+  private static String loadCode(URL resource) {
+    try {
+      return Resources.toString(resource, Charsets.UTF_8);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static JavaFileObject javaFile(String fullyQualifiedClassName) {
     // NB: We load java sources from files w/o java extension to prevent a host of issues that can
     // crop up when resource files are `.java` files.
     URL resource = Resources.getResource(fullyQualifiedClassName.replace('.', '/'));
-    String code = Resources.toString(resource, Charsets.UTF_8);
+    String code = loadCode(resource);
     return JavaFileObjects.forSourceString(fullyQualifiedClassName, code);
   }
 
-  private static void assertGenerated(String className) throws IOException {
-    String input = fqcn(className);
-    String mutableInput = fqcn("peer", "Mutable" + className);
+  private static JavaFileObject javaFileForClassName(String simpleClassName) {
+    return javaFile(fqcn(simpleClassName));
+  }
 
-    assert_().about(javaSource())
-        .that(javaFile(input))
+  private static JavaFileObject javaFileForPeer(String simpleClassName) {
+    return javaFile(fqcn("peer", "Mutable" + simpleClassName));
+  }
+
+  private void assertGenerated(String primary, String... rest) {
+    assert_().about(javaSources())
+        .that(Lists.asList(primary, rest).stream()
+            .map(MutablePeerProcessorTest::javaFileForClassName)
+            .collect(Collectors.toList()))
         .processedWith(new MutablePeerProcessor())
         .compilesWithoutError()
         .and()
-        .generatesSources(javaFile(mutableInput));
+        .generatesSources(
+            javaFileForPeer(primary),
+            Arrays.asList(rest).stream()
+                .map(MutablePeerProcessorTest::javaFileForPeer)
+                .toArray(JavaFileObject[]::new));
   }
 
   @Test
   public void testPrimitiveField() throws IOException {
-    assertGenerated("Primitive");
+    assertGenerated("PrimitiveField");
+  }
+
+  @Test
+  public void testPrimitiveListField() throws IOException {
+    assertGenerated("PrimitiveListField");
+  }
+
+  @Test
+  public void testPrimitiveSetField() throws IOException {
+    assertGenerated("PrimitiveSetField");
+  }
+
+  @Test
+  public void testThriftField() throws IOException {
+    assertGenerated("ThriftField", "PrimitiveField");
+  }
+
+  @Test
+  public void testThriftListField() throws IOException {
+    assertGenerated("ThriftListField", "PrimitiveField");
+  }
+
+  @Test
+  public void testThriftSetField() throws IOException {
+    assertGenerated("ThriftSetField", "PrimitiveField");
   }
 }

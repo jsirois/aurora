@@ -1,0 +1,16 @@
+package org.apache.aurora.test.peer;
+
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.PrimitiveField;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutablePrimitiveField {
+  private String one;
+
+  private MutablePrimitiveField() {}
+
+  public final PrimitiveField toThrift() {
+    return PrimitiveField.builder().setOne(one).build();
+  }
+}

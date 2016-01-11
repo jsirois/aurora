@@ -1,0 +1,17 @@
+package org.apache.aurora.test.peer;
+
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.PreExistingPeerThriftField;
+import org.apache.aurora.test.peer.artisinal.Peer
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutablePreExistingPeerThriftField {
+  private Peer one;
+
+  private MutablePreExistingPeerThriftField() {}
+
+  public final PreExistingPeerThriftField toThrift() {
+    return PreExistingPeerThriftField.builder().setOne(one == null ? null : one.toThrift()).build();
+  }
+}

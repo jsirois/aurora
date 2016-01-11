@@ -129,4 +129,17 @@ public class MutablePeerProcessorTest {
   public void testThriftMapField() {
     assertCompileError("ThriftMapField", "PrimitiveField");
   }
+
+  @Test
+  public void testPreExistingPeerThriftField() {
+    assert_().about(javaSources())
+        .that(Arrays.asList("PreExistingPeerThriftField", "PreExistingPeer", "peer.artisinal.Peer")
+            .stream()
+            .map(MutablePeerProcessorTest::javaFileForClassName)
+            .collect(Collectors.toList()))
+        .processedWith(new MutablePeerProcessor())
+        .compilesWithoutError()
+        .and()
+        .generatesSources(javaFileForPeer("PreExistingPeerThriftField"));
+  }
 }

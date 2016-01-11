@@ -81,15 +81,6 @@ public class MutablePeerProcessorTest {
                 .toArray(JavaFileObject[]::new));
   }
 
-  private void assertCompileError(String primary, String... rest) {
-    assert_().about(javaSources())
-        .that(Lists.asList(primary, rest).stream()
-            .map(MutablePeerProcessorTest::javaFileForClassName)
-            .collect(Collectors.toList()))
-        .processedWith(new MutablePeerProcessor())
-        .failsToCompile();
-  }
-
   @Test
   public void testPrimitiveField() {
     assertGenerated("PrimitiveField");
@@ -127,7 +118,17 @@ public class MutablePeerProcessorTest {
 
   @Test
   public void testThriftMapField() {
-    assertCompileError("ThriftMapField", "PrimitiveField");
+    JavaFileObject thriftMapField = javaFileForClassName("ThriftMapField");
+    JavaFileObject primitiveField = javaFileForClassName("PrimitiveField");
+    assert_().about(javaSources())
+        .that(Arrays.asList(thriftMapField, primitiveField))
+        .processedWith(new MutablePeerProcessor())
+        .failsToCompile()
+        .withErrorContaining(MutablePeerProcessor.MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG)
+        .in(thriftMapField)
+        .onLine(48)
+        .and()
+        .withErrorCount(1);
   }
 
   @Test

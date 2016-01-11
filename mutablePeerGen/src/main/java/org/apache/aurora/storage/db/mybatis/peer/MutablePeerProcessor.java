@@ -40,6 +40,7 @@ import javax.tools.Diagnostic;
 
 import com.facebook.swift.codec.ThriftField;
 import com.google.auto.value.AutoValue;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -91,6 +92,11 @@ public class MutablePeerProcessor extends AbstractProcessor {
       " WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
       " See the License for the specific language governing permissions and\n" +
       " limitations under the License.";
+
+  @VisibleForTesting
+  static final String MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG =
+      "Mutable peers are not yet supported for structs containing Map fields where either the " +
+      "key or value is itself a mutable peer.";
 
   private static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String name) {
     for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
@@ -231,8 +237,7 @@ public class MutablePeerProcessor extends AbstractProcessor {
                   // TODO(John Sirois): Add similar support to list and set above only as-needed.
                   processingEnv.getMessager().printMessage(
                       Diagnostic.Kind.ERROR,
-                      "Mutable peers are not yet supported for structs containing Map fields " +
-                          "where either the key or value is itself a mutable peer.",
+                      MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG,
                       member);
                 }
               }

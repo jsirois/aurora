@@ -119,9 +119,8 @@ public class MutablePeerProcessorTest {
   @Test
   public void testThriftMapField() {
     JavaFileObject thriftMapField = javaFileForClassName("ThriftMapField");
-    JavaFileObject primitiveField = javaFileForClassName("PrimitiveField");
     assert_().about(javaSources())
-        .that(Arrays.asList(thriftMapField, primitiveField))
+        .that(Arrays.asList(thriftMapField, javaFileForClassName("PrimitiveField")))
         .processedWith(new MutablePeerProcessor())
         .failsToCompile()
         .withErrorContaining(MutablePeerProcessor.MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG)

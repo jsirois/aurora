@@ -227,6 +227,19 @@ public class ThriftGenTest {
         ImmutableSet.copyOf(clazz.getFields()));
   }
 
+  private Class<? extends ThriftStruct> compileStructClass(String className)
+      throws IOException, ClassNotFoundException {
+
+    Class<?> clazz = compileClass(className);
+
+    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
+    // We tested this was assignable to ThriftStruct above and needs to be raw so the user can
+    // extract fields.
+    @SuppressWarnings({"raw", "unchecked"})
+    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
+    return structClass;
+  }
+
   @Test
   public void testStructNoFields() throws Exception {
     generateThrift(
@@ -234,13 +247,7 @@ public class ThriftGenTest {
         "",
         "struct NoFields {}");
     assertOutdirFiles(outdirPath("test", "NoFields.java"));
-
-    Class<?> clazz = compileClass("test.NoFields");
-
-    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
-    // We tested this was assignable to ThriftStruct above and needs to be raw to extract fields.
-    @SuppressWarnings({"raw", "unchecked"})
-    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
+    Class<? extends ThriftStruct> structClass = compileStructClass("test.NoFields");
 
     ImmutableSet<ThriftFields> fields = ThriftEntity.fields(structClass);
     assertEquals(ImmutableSet.of(), fields);
@@ -311,11 +318,7 @@ public class ThriftGenTest {
         "  5: optional string description = \"None\"",
         "}");
     assertOutdirFiles(outdirPath("test", "Struct.java"));
-
-    Class<?> clazz = compileClass("test.Struct");
-
-    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
-    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
+    Class<? extends ThriftStruct> structClass = compileStructClass("test.Struct");
 
     assertMissingFields(structClass, ImmutableMap.of());
 

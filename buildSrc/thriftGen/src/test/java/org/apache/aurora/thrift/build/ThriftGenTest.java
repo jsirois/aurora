@@ -105,13 +105,17 @@ public class ThriftGenTest {
     return current;
   }
 
-  private void write(Path file, String... lines) throws IOException {
+  private static String textBlock(String... lines) {
+    return Joiner.on(System.lineSeparator()).join(lines);
+  }
+
+  private static void write(Path file, String... lines) throws IOException {
     if (file.getParent() != null) {
       Files.createDirectories(file.getParent());
     }
     Files.write(
         file,
-        Joiner.on(System.lineSeparator()).join(lines).getBytes(Charsets.UTF_8),
+        textBlock(lines).getBytes(Charsets.UTF_8),
         StandardOpenOption.CREATE_NEW,
         StandardOpenOption.WRITE);
   }
@@ -164,7 +168,7 @@ public class ThriftGenTest {
     return loadClass(className);
   }
 
-  private Class<? extends Enum> assertEnumClass(Class<?> clazz) {
+  private static Class<? extends Enum> assertEnumClass(Class<?> clazz) {
     assertTrue(Enum.class.isAssignableFrom(clazz));
     // We tested this was assignable to Enum above and needs to be raw to extract an enum value.
     @SuppressWarnings({"raw", "unchecked"})
@@ -172,7 +176,7 @@ public class ThriftGenTest {
     return enumClass;
   }
 
-  private Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
+  private static Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
     Enum enumInstance = Enum.valueOf(enumClass, name);
     assertTrue(enumInstance instanceof TEnum);
     assertEquals(value, ((TEnum) enumInstance).getValue());
@@ -196,7 +200,7 @@ public class ThriftGenTest {
     assertEquals(ImmutableSet.of(ok, error), EnumSet.allOf(enumClass));
   }
 
-  private void assertConstantValue(Field field, Class<?> type, Object value)
+  private static void assertConstantValue(Field field, Class<?> type, Object value)
       throws IllegalAccessException {
 
     assertEquals(type, field.getType());
@@ -269,7 +273,7 @@ public class ThriftGenTest {
     assertTrue(structClass.isInstance(structInstance));
   }
 
-  private ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> buildStruct(
+  private static ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> buildStruct(
       Class<? extends ThriftStruct> structClass,
       Map<ThriftFields, Object> fields) {
 
@@ -282,14 +286,14 @@ public class ThriftGenTest {
     return builder;
   }
 
-  private ThriftStruct createStruct(
+  private static ThriftStruct createStruct(
       Class<? extends ThriftStruct> structClass,
       Map<ThriftFields, Object> fields) {
 
     return buildStruct(structClass, fields).build();
   }
 
-  private void assertMissingFields(
+  private static void assertMissingFields(
       Class<? extends ThriftStruct> structClass,
       Map<ThriftFields, Object> fields) {
 
@@ -303,14 +307,14 @@ public class ThriftGenTest {
     }
   }
 
-  private void assertField(ThriftFields field, short id, Class<?> clazz, Type type) {
+  private static void assertField(ThriftFields field, short id, Class<?> clazz, Type type) {
     assertEquals(clazz, field.getFieldClass());
     assertEquals(type, field.getFieldType());
     assertEquals(id, field.getThriftFieldId());
   }
 
   @SuppressWarnings({"raw", "unchecked"}) // Needed to to extract fields.
-  private void assertRaisesUnset(ThriftStruct struct, ThriftFields field) {
+  private static void assertRaisesUnset(ThriftStruct struct, ThriftFields field) {
     try {
       struct.getFieldValue(field);
       fail();
@@ -383,7 +387,9 @@ public class ThriftGenTest {
     assertEquals("None", struct.getFieldValue(descriptionField));
   }
 
-  private ImmutableMap<String, ThriftFields> indexFields(Class<? extends ThriftStruct> structClass) {
+  private static ImmutableMap<String, ThriftFields> indexFields(
+      Class<? extends ThriftStruct> structClass) {
+
     return Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
   }
 

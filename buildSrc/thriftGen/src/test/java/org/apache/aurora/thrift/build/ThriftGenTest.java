@@ -100,6 +100,9 @@ public class ThriftGenTest {
   }
 
   private void write(Path file, String... lines) throws IOException {
+    if (file.getParent() != null) {
+      Files.createDirectories(file.getParent());
+    }
     Files.write(
         file,
         Joiner.on(System.lineSeparator()).join(lines).getBytes(Charsets.UTF_8),
@@ -130,6 +133,10 @@ public class ThriftGenTest {
     assertOutdirFiles();
   }
 
+  private Class<?> loadClass(String className) throws ClassNotFoundException {
+    return Class.forName(className, true /* initialize */, classLoader);
+  }
+
   private Class<?> compileClass(String className) throws IOException, ClassNotFoundException {
     JavaFileObject javaFile =
         fileManager.getJavaFileForInput(
@@ -148,8 +155,7 @@ public class ThriftGenTest {
             ImmutableList.of(javaFile));
     boolean success = task.call();
     assertTrue(success);
-
-    return Class.forName(className, true /* initialize */, classLoader);
+    return loadClass(className);
   }
 
   private Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
@@ -322,8 +328,7 @@ public class ThriftGenTest {
 
     assertMissingFields(structClass, ImmutableMap.of());
 
-    ImmutableMap<String, ThriftFields> fieldsByName =
-        Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
+    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
     assertEquals(ImmutableSet.of("name", "address", "description"), fieldsByName.keySet());
 
     ThriftFields nameField = fieldsByName.get("name");
@@ -369,5 +374,52 @@ public class ThriftGenTest {
     assertRaisesUnset(struct, addressField);
     assertTrue(struct.isSet(descriptionField));
     assertEquals("None", struct.getFieldValue(descriptionField));
+  }
+
+  private ImmutableMap<String, ThriftFields> indexFields(Class<? extends ThriftStruct> structClass) {
+    return Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
+  }
+
+  @Test
+  @SuppressWarnings({"raw", "unchecked"}) // Needed to to extract fields.
+  public void testIncludes() throws Exception {
+    Path includedFile = fileSystem.getPath("subdir", "included.thrift");
+    write(
+        includedFile,
+        "namespace java test.subpackage",
+        "",
+        "const string NAME = \"George\"",
+        "",
+        "enum States {",
+        "  ON = 1",
+        "  OFF = 2",
+        "}");
+
+    Path thriftFile = fileSystem.getPath("test.thrift");
+    write(
+        thriftFile,
+        "namespace java test",
+        "",
+        "include \"subdir/included.thrift\"",
+        "",
+        "struct Struct {",
+        "  1: string name = included.NAME",
+        "  2: included.States state = included.States.ON",
+        "}");
+
+    generateThrift(thriftFile);
+    assertOutdirFiles(
+        outdirPath("test", "Struct.java"),
+        outdirPath("test", "subpackage", "Constants.java"),
+        outdirPath("test", "subpackage", "States.java"));
+
+    Class<? extends ThriftStruct> structClass = compileStructClass("test.Struct");
+    ThriftStruct struct = ThriftStruct.builder(structClass).build();
+
+    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
+    assertEquals("George", struct.getFieldValue(fieldsByName.get("name")));
+    Class<?> clazz = loadClass("test.subpackage.States");
+    Enum on = assertEnum((Class<? extends Enum>) clazz, "ON", 1);
+    assertEquals(on, struct.getFieldValue(fieldsByName.get("state")));
   }
 }

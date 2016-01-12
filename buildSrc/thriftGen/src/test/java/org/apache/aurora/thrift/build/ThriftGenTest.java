@@ -15,6 +15,8 @@ package org.apache.aurora.thrift.build;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +31,9 @@ import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.jimfs.Jimfs;
 import com.sun.tools.javac.nio.JavacPathFileManager;
@@ -39,8 +43,6 @@ import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
-
-import autovalue.shaded.com.google.common.common.base.Joiner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -169,5 +171,48 @@ public class ThriftGenTest {
     Enum ok = assertEnum(enumClass, "OK", 0);
     Enum error = assertEnum(enumClass, "ERROR", 2);
     assertEquals(ImmutableSet.of(ok, error), EnumSet.allOf(enumClass));
+  }
+
+  private void assertConstantValue(Field field, Class<?> type, Object value)
+      throws IllegalAccessException {
+
+    assertEquals(type, field.getType());
+    assertTrue(Modifier.isStatic(field.getModifiers()));
+    assertEquals(value, field.get(null));
+  }
+
+  @Test
+  public void testConstant() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "const i32 MEANING_OF_LIFE = 42",
+        "const string REGEX = \"[Jj]ake\"",
+        "const set<string> TAGS = [\"A\", \"B\"]",
+        "const list<bool> BITS = [0, 1]",
+        "const map<string, bool> COLORS = {\"reddish\": 1, \"bluish\": 0}");
+    assertOutdirFiles(outdirPath("test", "Constants.java"));
+
+    Class<?> clazz = compileClass("test.Constants");
+
+    Field meaningOfLife = clazz.getField("MEANING_OF_LIFE");
+    assertConstantValue(meaningOfLife, int.class, 42);
+
+    Field regex = clazz.getField("REGEX");
+    assertConstantValue(regex, String.class, "[Jj]ake");
+
+    Field tags = clazz.getField("TAGS");
+    assertConstantValue(tags, ImmutableSet.class, ImmutableSet.of("A", "B"));
+
+    Field bits = clazz.getField("BITS");
+    assertConstantValue(bits, ImmutableList.class, ImmutableList.of(Boolean.TRUE, Boolean.FALSE));
+
+    Field colors = clazz.getField("COLORS");
+    assertConstantValue(
+        colors,
+        ImmutableMap.class, ImmutableMap.of("reddish", Boolean.FALSE, "bluish", Boolean.TRUE));
+
+    assertEquals(
+        ImmutableSet.of(meaningOfLife, regex, tags, bits, colors),
+        ImmutableSet.copyOf(clazz.getFields()));
   }
 }

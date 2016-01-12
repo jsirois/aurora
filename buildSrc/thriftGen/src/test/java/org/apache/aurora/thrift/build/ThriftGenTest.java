@@ -96,6 +96,16 @@ public class ThriftGenTest {
         StandardOpenOption.WRITE);
   }
 
+  private void generateThrift(Path...thriftFiles) throws IOException {
+    thriftGen.generate(ImmutableSet.copyOf(thriftFiles));
+  }
+
+  private void generateThrift(String... lines) throws IOException {
+    Path thriftFile = fileSystem.getPath("test.thrift");
+    write(thriftFile, lines);
+    generateThrift(thriftFile);
+  }
+
   private void assertOutdirFiles(Path... paths) throws IOException {
     assertEquals(
         ImmutableSet.copyOf(paths),
@@ -104,9 +114,7 @@ public class ThriftGenTest {
 
   @Test
   public void testNoJavaNamespace() throws Exception {
-    Path thriftFile = fileSystem.getPath("test.thrift");
-    write(thriftFile, "namespace py test");
-    thriftGen.generate(ImmutableSet.of(thriftFile));
+    generateThrift("namespace py test");
 
     assertOutdirFiles();
   }
@@ -142,18 +150,13 @@ public class ThriftGenTest {
 
   @Test
   public void testEnum() throws Exception {
-    Path thriftFile = fileSystem.getPath("test.thrift");
-    write(
-        thriftFile,
+    generateThrift(
         "namespace java test",
         "enum ResponseCode {",
         "  OK = 0,",
         "  ERROR = 2",
         "}");
-    thriftGen.generate(ImmutableSet.of(thriftFile));
-
-    Path enumCode = outdirPath("test", "ResponseCode.java");
-    assertOutdirFiles(enumCode);
+    assertOutdirFiles(outdirPath("test", "ResponseCode.java"));
 
     @SuppressWarnings("raw") // Needs to be raw for the cast below.
     Class clazz = compileClass("test.ResponseCode");

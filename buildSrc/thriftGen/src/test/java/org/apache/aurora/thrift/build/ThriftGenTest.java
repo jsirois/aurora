@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
@@ -44,9 +45,10 @@ public class ThriftGenTest {
   private FileSystem fileSystem;
   private Path outdir;
   private ThriftGen thriftGen;
+
   private Path classes;
   private ClassLoader classLoader;
-  private JavacPathFileManager fileManager;
+  private JavaFileManager fileManager;
 
   @Before
   public void setUp() throws IOException {
@@ -66,10 +68,20 @@ public class ThriftGenTest {
       }
     };
 
-    fileManager = new JavacPathFileManager(new Context(), false, Charsets.UTF_8);
+    JavacPathFileManager fileManager =
+        new JavacPathFileManager(new Context(), false, Charsets.UTF_8);
     fileManager.setDefaultFileSystem(fileSystem);
     fileManager.setLocation(StandardLocation.SOURCE_PATH, ImmutableList.of(outdir));
     fileManager.setLocation(StandardLocation.CLASS_OUTPUT, ImmutableList.of(classes));
+    this.fileManager = fileManager;
+  }
+
+  private Path outdirPath(String... pathComponents) {
+    Path current = outdir;
+    for (String pathComponent : pathComponents) {
+      current = current.resolve(pathComponent);
+    }
+    return current;
   }
 
   private void write(Path file, String contents) throws IOException {
@@ -80,13 +92,19 @@ public class ThriftGenTest {
         StandardOpenOption.WRITE);
   }
 
+  private void assertOutdirFiles(Path... paths) throws IOException {
+    assertEquals(
+        ImmutableSet.copyOf(paths),
+        ImmutableSet.copyOf(Files.walk(outdir).filter(Files::isRegularFile).iterator()));
+  }
+
   @Test
   public void testNoJavaNamespace() throws IOException {
     Path thriftFile = fileSystem.getPath("test.thrift");
     write(thriftFile, "namespace py test");
     thriftGen.generate(ImmutableSet.of(thriftFile));
 
-    assertEquals(ImmutableList.of(outdir), ImmutableList.copyOf(Files.walk(outdir).iterator()));
+    assertOutdirFiles();
   }
 
   private Class<?> compileClass(String className) throws IOException, ClassNotFoundException {
@@ -123,11 +141,8 @@ public class ThriftGenTest {
         "}");
     thriftGen.generate(ImmutableSet.of(thriftFile));
 
-    Path namespacePackage = outdir.resolve("test");
-    Path enumCode = namespacePackage.resolve("ResponseCode.java");
-    assertEquals(
-        ImmutableList.of(outdir, namespacePackage, enumCode),
-        ImmutableList.copyOf(Files.walk(outdir).iterator()));
+    Path enumCode = outdirPath("test", "ResponseCode.java");
+    assertOutdirFiles(enumCode);
 
     @SuppressWarnings("raw")
     Class clazz = compileClass("test.ResponseCode");

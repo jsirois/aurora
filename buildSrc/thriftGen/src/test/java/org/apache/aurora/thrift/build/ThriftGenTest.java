@@ -19,6 +19,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileManager;
@@ -37,6 +39,8 @@ import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import autovalue.shaded.com.google.common.common.base.Joiner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -84,10 +88,10 @@ public class ThriftGenTest {
     return current;
   }
 
-  private void write(Path file, String contents) throws IOException {
+  private void write(Path file, String... lines) throws IOException {
     Files.write(
         file,
-        contents.getBytes(Charsets.UTF_8),
+        Joiner.on(System.lineSeparator()).join(lines).getBytes(Charsets.UTF_8),
         StandardOpenOption.CREATE_NEW,
         StandardOpenOption.WRITE);
   }
@@ -95,11 +99,11 @@ public class ThriftGenTest {
   private void assertOutdirFiles(Path... paths) throws IOException {
     assertEquals(
         ImmutableSet.copyOf(paths),
-        ImmutableSet.copyOf(Files.walk(outdir).filter(Files::isRegularFile).iterator()));
+        Files.walk(outdir).filter(Files::isRegularFile).collect(Collectors.toSet()));
   }
 
   @Test
-  public void testNoJavaNamespace() throws IOException {
+  public void testNoJavaNamespace() throws Exception {
     Path thriftFile = fileSystem.getPath("test.thrift");
     write(thriftFile, "namespace py test");
     thriftGen.generate(ImmutableSet.of(thriftFile));
@@ -108,7 +112,7 @@ public class ThriftGenTest {
   }
 
   private Class<?> compileClass(String className) throws IOException, ClassNotFoundException {
-    JavaFileObject enumSource =
+    JavaFileObject javaFile =
         fileManager.getJavaFileForInput(
             StandardLocation.SOURCE_PATH,
             className,
@@ -122,41 +126,45 @@ public class ThriftGenTest {
             null /* DiagnosticListener: default */,
             ImmutableList.of() /* javac options */,
             null /* apt classes: no apt */,
-            ImmutableList.of(enumSource));
+            ImmutableList.of(javaFile));
     boolean success = task.call();
     assertTrue(success);
 
     return Class.forName(className, true /* initialize */, classLoader);
   }
 
+  private Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
+    Enum enumInstance = Enum.valueOf(enumClass, name);
+    assertTrue(enumInstance instanceof TEnum);
+    assertEquals(value, ((TEnum) enumInstance).getValue());
+    return enumInstance;
+  }
+
   @Test
-  public void testEnum() throws IOException, ClassNotFoundException {
+  public void testEnum() throws Exception {
     Path thriftFile = fileSystem.getPath("test.thrift");
     write(
         thriftFile,
-        "namespace java test\n" +
-        "enum ResponseCode {\n" +
-        "  OK = 0,\n" +
-        "  ERROR = 2\n" +
+        "namespace java test",
+        "enum ResponseCode {",
+        "  OK = 0,",
+        "  ERROR = 2",
         "}");
     thriftGen.generate(ImmutableSet.of(thriftFile));
 
     Path enumCode = outdirPath("test", "ResponseCode.java");
     assertOutdirFiles(enumCode);
 
-    @SuppressWarnings("raw")
+    @SuppressWarnings("raw") // Needs to be raw for the cast below.
     Class clazz = compileClass("test.ResponseCode");
-    assertTrue(Enum.class.isAssignableFrom(clazz));
 
+    assertTrue(Enum.class.isAssignableFrom(clazz));
+    // We tested this was assignable to Enum above and Needs to be raw to extract an enum value.
     @SuppressWarnings({"raw", "unchecked"})
     Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
 
-    Enum ok = Enum.valueOf(enumClass, "OK");
-    assertTrue(ok instanceof TEnum);
-    assertEquals(0, ((TEnum) ok).getValue());
-
-    Enum error = Enum.valueOf(enumClass, "ERROR");
-    assertTrue(error instanceof TEnum);
-    assertEquals(2, ((TEnum) error).getValue());
+    Enum ok = assertEnum(enumClass, "OK", 0);
+    Enum error = assertEnum(enumClass, "ERROR", 2);
+    assertEquals(ImmutableSet.of(ok, error), EnumSet.allOf(enumClass));
   }
 }

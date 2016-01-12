@@ -162,6 +162,14 @@ public class ThriftGenTest {
     return loadClass(className);
   }
 
+  private Class<? extends Enum> assertEnumClass(Class<?> clazz) {
+    assertTrue(Enum.class.isAssignableFrom(clazz));
+    // We tested this was assignable to Enum above and needs to be raw to extract an enum value.
+    @SuppressWarnings({"raw", "unchecked"})
+    Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
+    return enumClass;
+  }
+
   private Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
     Enum enumInstance = Enum.valueOf(enumClass, name);
     assertTrue(enumInstance instanceof TEnum);
@@ -180,14 +188,7 @@ public class ThriftGenTest {
         "}");
     assertOutdirFiles(outdirPath("test", "ResponseCode.java"));
 
-    @SuppressWarnings("raw") // Needs to be raw for the cast below.
-    Class clazz = compileClass("test.ResponseCode");
-
-    assertTrue(Enum.class.isAssignableFrom(clazz));
-    // We tested this was assignable to Enum above and needs to be raw to extract an enum value.
-    @SuppressWarnings({"raw", "unchecked"})
-    Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
-
+    Class<? extends Enum> enumClass = assertEnumClass(compileClass("test.ResponseCode"));
     Enum ok = assertEnum(enumClass, "OK", 0);
     Enum error = assertEnum(enumClass, "ERROR", 2);
     assertEquals(ImmutableSet.of(ok, error), EnumSet.allOf(enumClass));
@@ -422,8 +423,8 @@ public class ThriftGenTest {
 
     ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
     assertEquals("George", struct.getFieldValue(fieldsByName.get("name")));
-    Class<?> clazz = loadClass("test.subpackage.States");
-    Enum on = assertEnum((Class<? extends Enum>) clazz, "ON", 1);
+    Class<? extends Enum> enumClass = assertEnumClass(loadClass("test.subpackage.States"));
+    Enum on = assertEnum(enumClass, "ON", 1);
     assertEquals(on, struct.getFieldValue(fieldsByName.get("state")));
   }
 

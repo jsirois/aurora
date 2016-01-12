@@ -17,11 +17,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.tools.JavaCompiler;
@@ -35,6 +38,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.common.jimfs.Jimfs;
 import com.sun.tools.javac.nio.JavacPathFileManager;
 import com.sun.tools.javac.util.Context;
@@ -48,7 +52,9 @@ import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ThriftGenTest {
   private FileSystem fileSystem;
@@ -241,5 +247,124 @@ public class ThriftGenTest {
 
     ThriftStruct<?> structInstance = ThriftStruct.builder(structClass).build();
     assertTrue(structClass.isInstance(structInstance));
+  }
+
+  private ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> buildStruct(
+      Class<? extends ThriftStruct> structClass,
+      Map<ThriftFields, Object> fields) {
+
+    ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> builder =
+        ThriftStruct.builder(structClass);
+
+    for (Map.Entry<ThriftFields, Object> entry : fields.entrySet()) {
+      builder.set(entry.getKey(), entry.getValue());
+    }
+    return builder;
+  }
+
+  private ThriftStruct createStruct(
+      Class<? extends ThriftStruct> structClass,
+      Map<ThriftFields, Object> fields) {
+
+    return buildStruct(structClass, fields).build();
+  }
+
+  private void assertMissingFields(
+      Class<? extends ThriftStruct> structClass,
+      Map<ThriftFields, Object> fields) {
+
+    ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> builder =
+        buildStruct(structClass, fields);
+    try {
+      builder.build();
+      fail();
+    } catch (IllegalStateException e) {
+      // expected
+    }
+  }
+
+  private void assertField(ThriftFields field, short id, Class<?> clazz, Type type) {
+    assertEquals(clazz, field.getFieldClass());
+    assertEquals(type, field.getFieldType());
+    assertEquals(id, field.getThriftFieldId());
+  }
+
+  @SuppressWarnings({"raw", "unchecked"}) // Needed to to extract fields.
+  private void assertRaisesUnset(ThriftStruct struct, ThriftFields field) {
+    try {
+      struct.getFieldValue(field);
+      fail();
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"raw", "unchecked"}) // Needed to to extract fields.
+  public void testStructStringField() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "struct Struct {",
+        "  1: required string name",
+        "  3: string address",
+        "  5: optional string description = \"None\"",
+        "}");
+    assertOutdirFiles(outdirPath("test", "Struct.java"));
+
+    Class<?> clazz = compileClass("test.Struct");
+
+    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
+    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
+
+    assertMissingFields(structClass, ImmutableMap.of());
+
+    ImmutableMap<String, ThriftFields> fieldsByName =
+        Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
+    assertEquals(ImmutableSet.of("name", "address", "description"), fieldsByName.keySet());
+
+    ThriftFields nameField = fieldsByName.get("name");
+    assertField(nameField, (short) 1, String.class, String.class);
+
+    ThriftFields addressField = fieldsByName.get("address");
+    assertField(addressField, (short) 3, String.class, String.class);
+
+    ThriftFields descriptionField = fieldsByName.get("description");
+    assertField(descriptionField, (short) 5, String.class, String.class);
+
+    assertMissingFields(structClass, ImmutableMap.of(addressField, "a"));
+    assertMissingFields(structClass, ImmutableMap.of(addressField, "a", descriptionField, "b"));
+
+    ThriftStruct struct = createStruct(structClass, ImmutableMap.of(nameField, "Fred"));
+
+    assertTrue(struct.isSet(nameField));
+    assertEquals("Fred", struct.getFieldValue(nameField));
+    assertFalse(struct.isSet(addressField));
+    assertTrue(struct.isSet(descriptionField));
+    assertEquals("None", struct.getFieldValue(descriptionField));
+
+    struct =
+        createStruct(
+            structClass,
+            ImmutableMap.of(nameField, "Joe", addressField, "Flatland", descriptionField, "fit"));
+
+    assertTrue(struct.isSet(nameField));
+    assertEquals("Joe", struct.getFieldValue(nameField));
+    assertTrue(struct.isSet(addressField));
+    assertEquals("Flatland", struct.getFieldValue(addressField));
+    assertTrue(struct.isSet(descriptionField));
+    assertEquals("fit", struct.getFieldValue(descriptionField));
+
+    HashMap<ThriftFields, Object> fields = new HashMap<>();
+    fields.put(nameField, "Bill");
+    fields.put(addressField, null);
+    struct = createStruct(structClass, fields);
+
+    assertTrue(struct.isSet(nameField));
+    assertEquals("Bill", struct.getFieldValue(nameField));
+    assertFalse(struct.isSet(addressField));
+    assertRaisesUnset(struct, addressField);
+    assertTrue(struct.isSet(descriptionField));
+    assertEquals("None", struct.getFieldValue(descriptionField));
   }
 }

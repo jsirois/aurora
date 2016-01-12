@@ -502,13 +502,19 @@ public class ThriftGenTest {
         "service Sub extends Base {",
         "  string getMessageOfTheDay(1: bool extendedVersion)",
         "}");
-    Class<?> clazz = compileClass("test.Sub");
-    assertTrue(clazz.isInterface());
+    Class<?> subClass = compileClass("test.Sub");
+    Class<?> baseClass = loadClass("test.Base");
+    assertTrue(subClass.isInterface());
 
     ImmutableSet<String> expectedMethodNames = ImmutableSet.of("isAlive", "getMessageOfTheDay");
 
-    Class<? extends ThriftService> asyncClass = loadThriftService(clazz, "test.Sub$Async");
-    ImmutableMap<String, Method> asyncMethods = ThriftService.getThriftMethods(asyncClass);
+    Class<? extends ThriftService> asyncBaseClass = loadThriftService(baseClass, "test.Base$Async");
+    Class<? extends ThriftService> asyncSubClass = loadThriftService(subClass, "test.Sub$Async");
+    assertEquals(
+        ImmutableSet.of(ThriftService.class, asyncBaseClass),
+        ImmutableSet.copyOf(asyncSubClass.getInterfaces()));
+
+    ImmutableMap<String, Method> asyncMethods = ThriftService.getThriftMethods(asyncSubClass);
     assertEquals(expectedMethodNames, asyncMethods.keySet());
     assertSignature(
         asyncMethods.get("isAlive"),
@@ -518,8 +524,12 @@ public class ThriftGenTest {
         new TypeToken<ListenableFuture<String>>() {}.getType(),
         boolean.class);
 
-    Class<? extends ThriftService> syncClass = loadThriftService(clazz, "test.Sub$Sync");
-    ImmutableMap<String, Method> syncMethods = ThriftService.getThriftMethods(syncClass);
+    Class<? extends ThriftService> syncBaseClass = loadThriftService(baseClass, "test.Base$Sync");
+    Class<? extends ThriftService> syncSubClass = loadThriftService(subClass, "test.Sub$Sync");
+    assertEquals(
+        ImmutableSet.of(ThriftService.class, syncBaseClass),
+        ImmutableSet.copyOf(syncSubClass.getInterfaces()));
+    ImmutableMap<String, Method> syncMethods = ThriftService.getThriftMethods(syncSubClass);
     assertEquals(expectedMethodNames, syncMethods.keySet());
     assertSignature(syncMethods.get("isAlive"), boolean.class);
     assertSignature(syncMethods.get("getMessageOfTheDay"), String.class, boolean.class);

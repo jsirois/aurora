@@ -123,11 +123,10 @@ public class MutablePeerProcessorTest {
         .that(Arrays.asList(thriftMapField, javaFileForClassName("PrimitiveField")))
         .processedWith(new MutablePeerProcessor())
         .failsToCompile()
+        .withErrorCount(1)
         .withErrorContaining(MutablePeerProcessor.MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG)
         .in(thriftMapField)
-        .onLine(48)
-        .and()
-        .withErrorCount(1);
+        .onLine(48);
   }
 
   @Test

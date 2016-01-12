@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import javax.annotation.Generated;
 
@@ -51,9 +51,9 @@ class BaseEmitter {
   protected static final String AURORA_THRIFT_PACKAGE_NAME = "org.apache.aurora.thrift";
 
   private final Logger logger;
-  private final File outdir;
+  private final Path outdir;
 
-  protected BaseEmitter(Logger logger, File outdir) {
+  protected BaseEmitter(Logger logger, Path outdir) {
     this.logger = logger;
     this.outdir = requireNonNull(outdir);
   }
@@ -62,7 +62,7 @@ class BaseEmitter {
     return logger;
   }
 
-  protected final File getOutdir() {
+  protected final Path getOutdir() {
     return outdir;
   }
 

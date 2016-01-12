@@ -13,8 +13,11 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.UnaryOperator;
@@ -27,10 +30,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.CharSource;
-import com.google.common.io.Files;
 
 import org.apache.aurora.thrift.ThriftAnnotation;
 import org.slf4j.Logger;
+
+import autovalue.shaded.com.google.common.common.collect.Iterables;
 
 import static java.util.Objects.requireNonNull;
 
@@ -64,18 +68,18 @@ import static java.util.Objects.requireNonNull;
  * </ul>
  */
 public final class ThriftGen {
-  private final File outdir;
+  private final Path outdir;
   private final UnaryOperator<String> packageSuffixFactory;
   private final Logger logger;
 
   /**
-   * Equivalent to {@link #ThriftGen(File, Logger, UnaryOperator)} passig the identity operator for
+   * Equivalent to {@link #ThriftGen(Path, Logger, UnaryOperator)} passig the identity operator for
    * the {@code packageSuffixFactory}.
    *
    * @param outdir A directory to emit generated code under.  Need not exist.
    * @param logger A logger to log code generation details to.
    */
-  public ThriftGen(File outdir, Logger logger) {
+  public ThriftGen(Path outdir, Logger logger) {
     this(outdir, logger, UnaryOperator.identity());
   }
 
@@ -88,7 +92,7 @@ public final class ThriftGen {
    *                             package name to be used for the code generated for that thrift
    *                             file.
    */
-  public ThriftGen(File outdir, Logger logger, UnaryOperator<String> packageSuffixFactory) {
+  public ThriftGen(Path outdir, Logger logger, UnaryOperator<String> packageSuffixFactory) {
     this.outdir = requireNonNull(outdir);
     this.logger = requireNonNull(logger);
     this.packageSuffixFactory = requireNonNull(packageSuffixFactory);
@@ -105,21 +109,25 @@ public final class ThriftGen {
    *         {@code thriftFiles}.
    * @throws IOException If there are any problems emitting java code.
    */
-  public ImmutableSet<File> generate(ImmutableSet<File> thriftFiles) throws IOException {
-    Set<File> processed = new HashSet<>();
+  public ImmutableSet<Path> generate(ImmutableSet<Path> thriftFiles) throws IOException {
+    Set<Path> processed = new HashSet<>();
     SymbolTable symbolTable = new SymbolTable();
-    processThriftFiles(processed, symbolTable, thriftFiles, /* required */ false);
+    processThriftFiles(
+        processed,
+        symbolTable,
+        Iterables.transform(thriftFiles, Path::toAbsolutePath),
+        /* required */ false);
     return ImmutableSet.copyOf(processed);
   }
 
   private SymbolTable processThriftFiles(
-      Set<File> processed,
+      Set<Path> processed,
       SymbolTable symbolTable,
-      ImmutableSet<File> thriftFiles,
+      Iterable<Path> thriftFiles,
       boolean required)
       throws IOException {
 
-    for (File thriftFile : thriftFiles) {
+    for (Path thriftFile : thriftFiles) {
       if (!processed.contains(thriftFile)) {
         processed.add(thriftFile);
         symbolTable = processThriftFile(processed, symbolTable, required, thriftFile);
@@ -128,28 +136,43 @@ public final class ThriftGen {
     return symbolTable;
   }
 
+  static class PathCharSource extends CharSource {
+    private final Path path;
+    private final Charset charset;
+
+    PathCharSource(Path path, Charset charset) {
+      this.path = path;
+      this.charset = charset;
+    }
+
+    @Override
+    public Reader openStream() throws IOException {
+      return Files.newBufferedReader(path, charset);
+    }
+  }
+
   private SymbolTable processThriftFile(
-      Set<File> processed,
+      Set<Path> processed,
       SymbolTable symbolTable,
       boolean required,
-      File thriftFile)
+      Path thriftFile)
       throws IOException {
 
-    CharSource thriftIdl = Files.asCharSource(thriftFile, Charsets.UTF_8);
+    CharSource thriftIdl = new PathCharSource(thriftFile, Charsets.UTF_8);
     Document document = ThriftIdlParser.parseThriftIdl(thriftIdl);
     String packageName = document.getHeader().getNamespace("java");
     if (packageName == null) {
       if (required) {
         throw new IllegalArgumentException(
-            String.format("%s must declare a 'java' namespace", thriftFile.getPath()));
+            String.format("%s must declare a 'java' namespace", thriftFile));
       } else {
         logger.warn("Skipping {} - no java namespace", thriftFile);
       }
     } else {
       symbolTable = symbolTable.updated(thriftFile, packageName, document.getDefinitions());
-      ImmutableSet<File> includes =
+      ImmutableSet<Path> includes =
           FluentIterable.from(document.getHeader().getIncludes())
-              .transform(inc -> new File(thriftFile.getParentFile(), inc).getAbsoluteFile())
+              .transform(inc -> thriftFile.getParent().resolve(inc).toAbsolutePath())
               .filter(f -> !processed.contains(f))
               .toSet();
       symbolTable = processThriftFiles(processed, symbolTable, includes, /* required */ true);

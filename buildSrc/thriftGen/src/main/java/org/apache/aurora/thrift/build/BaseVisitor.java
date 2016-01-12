@@ -13,10 +13,10 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,7 +96,7 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
   private final SymbolTable symbolTable;
   private final String packageName;
 
-  public BaseVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+  public BaseVisitor(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir);
     this.symbolTable = symbolTable;
     this.packageName = requireNonNull(packageName);

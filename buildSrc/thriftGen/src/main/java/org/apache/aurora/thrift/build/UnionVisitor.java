@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.Objects;
 
@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 class UnionVisitor extends BaseVisitor<Union> {
   UnionVisitor(
       Logger logger,
-      File outdir,
+      Path outdir,
       SymbolTable symbolTable,
       String packageName) {
 

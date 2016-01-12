@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.lang.model.element.Modifier;
@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 class ConstVisitor extends BaseVisitor<Const> {
   private final ImmutableList.Builder<Const> consts = ImmutableList.builder();
 
-  ConstVisitor(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+  ConstVisitor(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir, symbolTable, packageName);
   }
 

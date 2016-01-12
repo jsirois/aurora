@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
@@ -57,7 +57,7 @@ class StructVisitor extends BaseVisitor<Struct> {
 
   StructVisitor(
       Logger logger,
-      File outdir,
+      Path outdir,
       SymbolTable symbolTable,
       String packageName) {
 

@@ -13,9 +13,9 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -53,7 +53,7 @@ class ServiceVisior extends BaseVisitor<Service> {
           ClassName.get(String.class),
           ArrayTypeName.of(Class.class));
 
-  ServiceVisior(Logger logger, File outdir, SymbolTable symbolTable, String packageName) {
+  ServiceVisior(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir, symbolTable, packageName);
   }
 

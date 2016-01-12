@@ -13,8 +13,8 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -46,7 +46,7 @@ class ThriftGenVisitor implements DocumentVisitor {
 
   ThriftGenVisitor(
       Logger logger,
-      File outdir,
+      Path outdir,
       SymbolTable symbolTable,
       String packageName) {
 

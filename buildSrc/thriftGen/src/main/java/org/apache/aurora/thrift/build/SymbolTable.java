@@ -13,7 +13,7 @@
  */
 package org.apache.aurora.thrift.build;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 import com.facebook.swift.parser.model.Definition;
@@ -60,23 +60,23 @@ class SymbolTable {
     }
   }
 
-  private final ImmutableBiMap<File, String> importPrefixByFile;
+  private final ImmutableBiMap<Path, String> importPrefixByPath;
   private final ImmutableMap<String, String> packageNameByImportPrefix;
   private final ImmutableMap<String, ImmutableMap<String, Symbol>> symbolsByPackageName;
 
   SymbolTable() {
     this(
-        ImmutableBiMap.<File, String>of(),
+        ImmutableBiMap.<Path, String>of(),
         ImmutableMap.<String, String>of(),
         ImmutableMap.<String, ImmutableMap<String, Symbol>>of());
   }
 
   private SymbolTable(
-      ImmutableBiMap<File, String> importPrefixByFile,
+      ImmutableBiMap<Path, String> importPrefixByPath,
       ImmutableMap<String, String> packageNameByImportPrefix,
       ImmutableMap<String, ImmutableMap<String, Symbol>> symbolsByPackageName) {
 
-    this.importPrefixByFile = importPrefixByFile;
+    this.importPrefixByPath = importPrefixByPath;
     this.packageNameByImportPrefix = packageNameByImportPrefix;
     this.symbolsByPackageName = symbolsByPackageName;
   }
@@ -132,31 +132,31 @@ class SymbolTable {
    * Creates a new symbol table containing this symbol table's definitions as well as all the the
    * definitions from the given file.
    *
-   * @param file A thrift file containing definitions to add to the new symbol table.
+   * @param path Path to a thrift file containing definitions to add to the new symbol table.
    * @param packageName The package name for types defined in the given {@code file}.
    * @param definitions The thrift definitions contained in the given {@code file}.
    * @return A new symbol table containing the union of this symbol table's definitions with the
    *         new definitions from {@code file}.
    */
-  SymbolTable updated(File file, String packageName, Iterable<Definition> definitions) {
-    if (importPrefixByFile.containsKey(file)) {
+  SymbolTable updated(Path path, String packageName, Iterable<Definition> definitions) {
+    if (importPrefixByPath.containsKey(path)) {
       return this;
     }
 
-    String importPrefix = Files.getNameWithoutExtension(file.getName());
+    String importPrefix = Files.getNameWithoutExtension(path.toString());
     String existingPackageName = packageNameByImportPrefix.get(importPrefix);
     if (existingPackageName != null) {
       throw new ParseException(
           String.format(
               "Invalid include, already have an include with prefix of %s containing " +
                   "definitions for package %s in file %s.",
-              importPrefix, existingPackageName, importPrefixByFile.inverse().get(importPrefix)));
+              importPrefix, existingPackageName, importPrefixByPath.inverse().get(importPrefix)));
     }
 
-    ImmutableBiMap<File, String> prefixByFile =
-        ImmutableBiMap.<File, String>builder()
-            .putAll(importPrefixByFile)
-            .put(file, importPrefix)
+    ImmutableBiMap<Path, String> prefixByFile =
+        ImmutableBiMap.<Path, String>builder()
+            .putAll(importPrefixByPath)
+            .put(path, importPrefix)
             .build();
 
     ImmutableMap<String, String> packageByPrefix =

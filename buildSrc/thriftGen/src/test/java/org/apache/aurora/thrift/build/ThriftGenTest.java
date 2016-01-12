@@ -39,6 +39,9 @@ import com.google.common.jimfs.Jimfs;
 import com.sun.tools.javac.nio.JavacPathFileManager;
 import com.sun.tools.javac.util.Context;
 
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
 import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
@@ -154,6 +157,7 @@ public class ThriftGenTest {
   public void testEnum() throws Exception {
     generateThrift(
         "namespace java test",
+        "",
         "enum ResponseCode {",
         "  OK = 0,",
         "  ERROR = 2",
@@ -164,7 +168,7 @@ public class ThriftGenTest {
     Class clazz = compileClass("test.ResponseCode");
 
     assertTrue(Enum.class.isAssignableFrom(clazz));
-    // We tested this was assignable to Enum above and Needs to be raw to extract an enum value.
+    // We tested this was assignable to Enum above and needs to be raw to extract an enum value.
     @SuppressWarnings({"raw", "unchecked"})
     Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
 
@@ -185,6 +189,7 @@ public class ThriftGenTest {
   public void testConstant() throws Exception {
     generateThrift(
         "namespace java test",
+        "",
         "const i32 MEANING_OF_LIFE = 42",
         "const string REGEX = \"[Jj]ake\"",
         "const set<string> TAGS = [\"A\", \"B\"]",
@@ -214,5 +219,27 @@ public class ThriftGenTest {
     assertEquals(
         ImmutableSet.of(meaningOfLife, regex, tags, bits, colors),
         ImmutableSet.copyOf(clazz.getFields()));
+  }
+
+  @Test
+  public void testStructNoFields() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "struct NoFields {}");
+    assertOutdirFiles(outdirPath("test", "NoFields.java"));
+
+    Class<?> clazz = compileClass("test.NoFields");
+
+    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
+    // We tested this was assignable to ThriftStruct above and needs to be raw to extract fields.
+    @SuppressWarnings({"raw", "unchecked"})
+    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
+
+    ImmutableSet<ThriftFields> fields = ThriftEntity.fields(structClass);
+    assertEquals(ImmutableSet.of(), fields);
+
+    ThriftStruct<?> structInstance = ThriftStruct.builder(structClass).build();
+    assertTrue(structClass.isInstance(structInstance));
   }
 }

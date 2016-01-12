@@ -39,6 +39,8 @@ dependencies {
   compile subprojects.findAll { it.getTasksByName("jar", false) }
 }
 
+import javax.tools.ToolProvider
+
 subprojects {
   apply plugin: 'java'
 
@@ -61,6 +63,10 @@ subprojects {
     compile "org.apache.thrift:libthrift:0.9.1"
     compile "org.immutables:value:2.1.0"
     compile "org.slf4j:slf4j-jdk14:1.7.12"
+
+    // Tests need tools.jar and that contains the javac compile tool, so this should be a portable
+    // way to find that jar.
+    testCompile files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
 
     testCompile "com.google.jimfs:jimfs:1.0"
     testCompile "junit:junit:4.12"

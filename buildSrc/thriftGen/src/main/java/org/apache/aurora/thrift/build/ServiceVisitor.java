@@ -46,14 +46,14 @@ import org.apache.aurora.thrift.ThriftService;
 import org.slf4j.Logger;
 
 @NotThreadSafe
-class ServiceVisior extends BaseVisitor<Service> {
+class ServiceVisitor extends BaseVisitor<Service> {
   private static final ParameterizedTypeName METHODS_MAP_TYPE =
       ParameterizedTypeName.get(
           ClassName.get(ImmutableMap.class),
           ClassName.get(String.class),
           ArrayTypeName.of(Class.class));
 
-  ServiceVisior(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
+  ServiceVisitor(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir, symbolTable, packageName);
   }
 
@@ -196,8 +196,7 @@ class ServiceVisior extends BaseVisitor<Service> {
 
     serviceBuilder.addMethod(
         MethodSpec.methodBuilder("getThriftMethods")
-            .addAnnotation(Override.class)
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(thriftMethods.returnType)
             .addStatement("return $N()", thriftMethods)
             .build());

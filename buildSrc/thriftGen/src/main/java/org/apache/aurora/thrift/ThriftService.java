@@ -13,6 +13,7 @@
  */
 package org.apache.aurora.thrift;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import com.google.common.collect.ImmutableMap;
@@ -26,7 +27,18 @@ public interface ThriftService extends AutoCloseable {
    * Return a mapping of unique method names to method objects that can be used to reflectively
    * invoke the corresponding method.
    *
+   * @param serviceType The service type whose methods to return.
    * @return The method metadata for this service.
    */
-  ImmutableMap<String, Method> getThriftMethods();
+  static ImmutableMap<String, Method> getThriftMethods(Class<? extends ThriftService> serviceType) {
+    try {
+      // We know (and control) that all generated services have a static method of this signature.
+      @SuppressWarnings("unchecked")
+      ImmutableMap<String, Method> methods =
+          (ImmutableMap<String, Method>) serviceType.getMethod("getThriftMethods").invoke(null);
+      return methods;
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 }

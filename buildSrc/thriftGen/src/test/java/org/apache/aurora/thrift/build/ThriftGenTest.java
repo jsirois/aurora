@@ -16,6 +16,7 @@ package org.apache.aurora.thrift.build;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.nio.file.FileSystem;
@@ -40,6 +41,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.jimfs.Jimfs;
+import com.google.common.reflect.TypeToken;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.sun.tools.javac.nio.JavacPathFileManager;
 import com.sun.tools.javac.util.Context;
 
@@ -459,10 +462,66 @@ public class ThriftGenTest {
             ImmutableParameter.of("age", "1"),
             ImmutableParameter.of(
                 "doc",
-                "\n" +
-                "Multiline strings should work\n" +
-                "for annotation values making them ~natural for doc\n" +
-                "")}),
+                textBlock(
+                    "",
+                    "Multiline strings should work",
+                    "for annotation values making them ~natural for doc",
+                    ""))}),
         annotation);
+  }
+
+  private Class<? extends ThriftService> loadThriftService(
+      Class<?> expectedEnclosingClass,
+      String className)
+      throws ClassNotFoundException {
+
+    Class<?> clazz = loadClass(className);
+    assertSame(expectedEnclosingClass, clazz.getEnclosingClass());
+    assertTrue(ThriftService.class.isAssignableFrom(clazz));
+    @SuppressWarnings("unchecked") // We checked this was afe just above.
+    Class<? extends ThriftService> thriftServiceClass = (Class<? extends ThriftService>) clazz;
+    return thriftServiceClass;
+  }
+
+  private static void assertSignature(Method method, Type returnType, Type... parameterTypes) {
+    assertEquals(returnType, method.getGenericReturnType());
+    assertEquals(
+        ImmutableList.copyOf(parameterTypes),
+        ImmutableList.copyOf(method.getGenericParameterTypes()));
+  }
+
+  @Test
+  public void testService() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "service Base {",
+        "  bool isAlive()",
+        "}",
+        "",
+        "service Sub extends Base {",
+        "  string getMessageOfTheDay(1: bool extendedVersion)",
+        "}");
+    Class<?> clazz = compileClass("test.Sub");
+    assertTrue(clazz.isInterface());
+
+    ImmutableSet<String> expectedMethodNames = ImmutableSet.of("isAlive", "getMessageOfTheDay");
+
+    Class<? extends ThriftService> asyncClass = loadThriftService(clazz, "test.Sub$Async");
+    ImmutableMap<String, Method> asyncMethods = ThriftService.getThriftMethods(asyncClass);
+    assertEquals(expectedMethodNames, asyncMethods.keySet());
+    assertSignature(
+        asyncMethods.get("isAlive"),
+        new TypeToken<ListenableFuture<Boolean>>() {}.getType());
+    assertSignature(
+        asyncMethods.get("getMessageOfTheDay"),
+        new TypeToken<ListenableFuture<String>>() {}.getType(),
+        boolean.class);
+
+    Class<? extends ThriftService> syncClass = loadThriftService(clazz, "test.Sub$Sync");
+    ImmutableMap<String, Method> syncMethods = ThriftService.getThriftMethods(syncClass);
+    assertEquals(expectedMethodNames, syncMethods.keySet());
+    assertSignature(syncMethods.get("isAlive"), boolean.class);
+    assertSignature(syncMethods.get("getMessageOfTheDay"), String.class, boolean.class);
   }
 }

@@ -58,7 +58,7 @@ class ThriftGenVisitor implements DocumentVisitor {
             .put(IntegerEnum.class,
                 new IntegerEnumVisitor(logger, outdir, symbolTable, packageName))
             .put(Service.class,
-                new ServiceVisior(logger, outdir, symbolTable, packageName))
+                new ServiceVisitor(logger, outdir, symbolTable, packageName))
             // Not needed by Aurora and of questionable value to ever add support for.
             .put(StringEnum.class,
                 Visitor.failing("The Senum type is deprecated and removed in thrift 1.0.0, " +

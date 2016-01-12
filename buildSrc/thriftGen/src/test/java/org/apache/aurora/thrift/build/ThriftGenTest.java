@@ -43,6 +43,9 @@ import com.google.common.jimfs.Jimfs;
 import com.sun.tools.javac.nio.JavacPathFileManager;
 import com.sun.tools.javac.util.Context;
 
+import org.apache.aurora.thrift.ImmutableParameter;
+import org.apache.aurora.thrift.ImmutableThriftAnnotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.aurora.thrift.ThriftFields;
 import org.apache.aurora.thrift.ThriftStruct;
@@ -53,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -421,5 +425,35 @@ public class ThriftGenTest {
     Class<?> clazz = loadClass("test.subpackage.States");
     Enum on = assertEnum((Class<? extends Enum>) clazz, "ON", 1);
     assertEquals(on, struct.getFieldValue(fieldsByName.get("state")));
+  }
+
+  @Test
+  public void testStructAnnotations() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "struct AnnotatedStruct {",
+        "} (",
+        "  age = 1,", // Bare ints should go to strings.
+        "  doc = \"",
+        "Multiline strings should work",
+        "for annotation values making them ~natural for doc",
+        "\"",
+        ")");
+    assertOutdirFiles(outdirPath("test", "AnnotatedStruct.java"));
+    Class<? extends ThriftStruct> structClass = compileStructClass("test.AnnotatedStruct");
+    ThriftAnnotation annotation = structClass.getAnnotation(ThriftAnnotation.class);
+    assertNotNull(annotation);
+
+    assertEquals(
+        ImmutableThriftAnnotation.of(new ImmutableParameter[] {
+            ImmutableParameter.of("age", "1"),
+            ImmutableParameter.of(
+                "doc",
+                "\n" +
+                "Multiline strings should work\n" +
+                "for annotation values making them ~natural for doc\n" +
+                "")}),
+        annotation);
   }
 }

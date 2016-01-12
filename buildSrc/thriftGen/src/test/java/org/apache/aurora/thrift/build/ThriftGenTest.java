@@ -18,6 +18,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
@@ -57,6 +58,8 @@ import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import autovalue.shaded.com.google.common.common.collect.Iterables;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -446,8 +449,8 @@ public class ThriftGenTest {
         "",
         "struct AnnotatedStruct {",
         "} (",
-        "  age = 1,", // Bare ints should go to strings.
-        "  doc = \"",
+        "  age=1,", // Bare ints should go to strings.
+        "  doc=\"",
         "Multiline strings should work",
         "for annotation values making them ~natural for doc",
         "\"",
@@ -533,5 +536,27 @@ public class ThriftGenTest {
     assertEquals(expectedMethodNames, syncMethods.keySet());
     assertSignature(syncMethods.get("isAlive"), boolean.class);
     assertSignature(syncMethods.get("getMessageOfTheDay"), String.class, boolean.class);
+  }
+
+  @Test
+  public void testServiceAnnotations() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "service UserInfo {",
+        "  string getStatus(1: string userName (secured=\"true\"), 2: bool verbose)",
+        "}");
+    Class<? extends ThriftService> userInfoSyncServiceClass =
+        loadThriftService(compileClass("test.UserInfo"), "test.UserInfo$Sync");
+
+    Method setStatusMethod =
+        Iterables.getOnlyElement(ThriftService.getThriftMethods(userInfoSyncServiceClass).values());
+    Parameter[] parameters = setStatusMethod.getParameters();
+    assertEquals(2, parameters.length);
+    ThriftAnnotation annotation = parameters[0].getAnnotation(ThriftAnnotation.class);
+    assertEquals(
+        ImmutableThriftAnnotation.of(new ThriftAnnotation.Parameter[] {
+            ImmutableParameter.of("secured", "true")}),
+        annotation);
   }
 }

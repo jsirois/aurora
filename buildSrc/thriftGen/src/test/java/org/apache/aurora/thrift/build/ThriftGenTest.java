@@ -72,10 +72,10 @@ public class ThriftGenTest {
   @Before
   public void setUp() throws IOException {
     fileSystem = Jimfs.newFileSystem();
-    outdir = Files.createDirectory(fileSystem.getPath("/out"));
+    outdir = Files.createDirectory(fileSystem.getPath("out"));
     thriftGen = new ThriftGen(outdir, LoggerFactory.getLogger(getClass()));
 
-    classes = Files.createDirectory(fileSystem.getPath("/classes"));
+    classes = Files.createDirectory(fileSystem.getPath("classes"));
     classLoader = new ClassLoader() {
       @Override protected Class<?> findClass(String name) throws ClassNotFoundException {
         try {

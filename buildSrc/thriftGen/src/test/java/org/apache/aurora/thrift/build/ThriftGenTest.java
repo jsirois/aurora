@@ -48,6 +48,7 @@ import org.apache.aurora.thrift.ImmutableThriftAnnotation;
 import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftService;
 import org.apache.aurora.thrift.ThriftStruct;
 import org.apache.thrift.TEnum;
 import org.junit.Before;
@@ -57,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -154,7 +156,7 @@ public class ThriftGenTest {
             new PrintWriter(System.err),
             fileManager,
             null /* DiagnosticListener: default */,
-            ImmutableList.of() /* javac options */,
+            ImmutableList.of("-implicit:class", "-Werror") /* javac options */,
             null /* apt classes: no apt */,
             ImmutableList.of(javaFile));
     boolean success = task.call();

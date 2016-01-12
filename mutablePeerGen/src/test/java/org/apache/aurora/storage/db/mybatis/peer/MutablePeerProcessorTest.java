@@ -71,6 +71,7 @@ public class MutablePeerProcessorTest {
         .that(Lists.asList(primary, rest).stream()
             .map(MutablePeerProcessorTest::javaFileForClassName)
             .collect(Collectors.toList()))
+        .withCompilerOptions("-Werror")
         .processedWith(new MutablePeerProcessor())
         .compilesWithoutError()
         .and()
@@ -121,6 +122,7 @@ public class MutablePeerProcessorTest {
     JavaFileObject thriftMapField = javaFileForClassName("ThriftMapField");
     assert_().about(javaSources())
         .that(Arrays.asList(thriftMapField, javaFileForClassName("PrimitiveField")))
+        .withCompilerOptions("-Werror")
         .processedWith(new MutablePeerProcessor())
         .failsToCompile()
         .withErrorCount(1)
@@ -136,6 +138,7 @@ public class MutablePeerProcessorTest {
             .stream()
             .map(MutablePeerProcessorTest::javaFileForClassName)
             .collect(Collectors.toList()))
+        .withCompilerOptions("-Werror")
         .processedWith(new MutablePeerProcessor())
         .compilesWithoutError()
         .and()

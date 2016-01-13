@@ -37,9 +37,12 @@ import javax.tools.ToolProvider;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.jimfs.Jimfs;
 import com.google.common.reflect.TypeParameter;
@@ -60,10 +63,6 @@ import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
-
-import autovalue.shaded.com.google.common.common.collect.FluentIterable;
-import autovalue.shaded.com.google.common.common.collect.Iterables;
-import autovalue.shaded.com.google.common.common.collect.Lists;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

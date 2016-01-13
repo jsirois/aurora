@@ -33,6 +33,12 @@ import com.facebook.swift.codec.internal.compiler.CompilerThriftCodecFactory;
 import com.facebook.swift.codec.metadata.ThriftCatalog;
 import com.facebook.swift.service.ThriftEventHandler;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.google.common.base.Throwables;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.UnsignedBytes;
 
 import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
@@ -47,13 +53,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
-
-import autovalue.shaded.com.google.common.common.base.Predicate;
-import autovalue.shaded.com.google.common.common.base.Predicates;
-import autovalue.shaded.com.google.common.common.base.Throwables;
-import autovalue.shaded.com.google.common.common.collect.FluentIterable;
-import autovalue.shaded.com.google.common.common.collect.ImmutableList;
-import autovalue.shaded.com.google.common.common.collect.ImmutableSet;
 
 import static java.util.Objects.requireNonNull;
 
@@ -87,7 +86,7 @@ public final class ThriftBinaryCodec {
       new ThriftCodecManager(
           new CompilerThriftCodecFactory(/* debug */ false),
           new ThriftCatalog(),
-          ImmutableSet.of()); // A priori known codecs,
+          ImmutableSet.of()); // A priori known codecs.
 
   /**
    * Returns a thrift request processor that can route calls to the given thrift services.

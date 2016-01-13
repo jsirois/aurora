@@ -35,6 +35,7 @@ import com.facebook.swift.service.metadata.ThriftServiceMetadata;
 import com.google.auto.value.AutoValue;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -48,8 +49,6 @@ import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolUtil;
 import org.apache.thrift.protocol.TType;
-
-import autovalue.shaded.com.google.common.common.collect.ImmutableList;
 
 import static java.util.Objects.requireNonNull;
 

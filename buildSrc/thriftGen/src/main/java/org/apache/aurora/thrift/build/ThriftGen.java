@@ -29,12 +29,11 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.io.CharSource;
 
 import org.apache.aurora.thrift.ThriftAnnotation;
 import org.slf4j.Logger;
-
-import autovalue.shaded.com.google.common.common.collect.Iterables;
 
 import static java.util.Objects.requireNonNull;
 

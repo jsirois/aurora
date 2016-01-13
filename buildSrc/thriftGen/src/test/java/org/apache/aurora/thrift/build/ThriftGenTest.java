@@ -164,11 +164,11 @@ public class ThriftGenTest {
     JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
     JavaCompiler.CompilationTask task =
         javaCompiler.getTask(
-            new PrintWriter(System.err),
+            new PrintWriter(System.err), /* out: diagnostic stream for javac */
             fileManager,
-            null /* DiagnosticListener: default */,
+            null /* DiagnosticListener: default (prints to writer above) */,
             ImmutableList.of("-implicit:class", "-Werror") /* javac options */,
-            null /* apt classes: no apt */,
+            null /* apt classes: use META-INF discovery mechanism */,
             ImmutableList.of(javaFile));
     boolean success = task.call();
     assertTrue(success);
@@ -204,7 +204,7 @@ public class ThriftGenTest {
     Class<? extends Enum> enumClass = assertEnumClass(compileClass("test.ResponseCode"));
     Enum ok = assertEnum(enumClass, "OK", 0);
     Enum error = assertEnum(enumClass, "ERROR", 2);
-    assertEquals(ImmutableSet.of(ok, error), EnumSet.allOf(enumClass));
+    assertEquals(EnumSet.of(ok, error), EnumSet.allOf(enumClass));
   }
 
   private static void assertConstantValue(Field field, Class<?> type, Object value)

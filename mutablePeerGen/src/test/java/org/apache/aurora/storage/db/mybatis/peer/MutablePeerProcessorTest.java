@@ -25,6 +25,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
+import com.google.testing.compile.CompileTester;
 import com.google.testing.compile.JavaFileObjects;
 
 import org.junit.Test;
@@ -66,13 +67,19 @@ public class MutablePeerProcessorTest {
     return javaFile(fqcn("peer", "Mutable" + simpleClassName));
   }
 
-  private void assertGenerated(String primary, String... rest) {
-    assert_().about(javaSources())
-        .that(Lists.asList(primary, rest).stream()
+  private static CompileTester assertAboutSources(String primary, String... rest) {
+    return assert_().about(javaSources())
+        .that(Lists.asList(primary, rest)
+            .stream()
             .map(MutablePeerProcessorTest::javaFileForClassName)
             .collect(Collectors.toList()))
-        .withCompilerOptions("-Werror")
-        .processedWith(new MutablePeerProcessor())
+        // We suppress warnings about un-processed annotations but otherwise fail on any warnings.
+        .withCompilerOptions("-Xlint:all,-processing", "-Werror")
+        .processedWith(new MutablePeerProcessor());
+  }
+
+  private void assertGenerated(String primary, String... rest) {
+    assertAboutSources(primary, rest)
         .compilesWithoutError()
         .and()
         .generatesSources(
@@ -120,10 +127,7 @@ public class MutablePeerProcessorTest {
   @Test
   public void testThriftMapField() {
     JavaFileObject thriftMapField = javaFileForClassName("ThriftMapField");
-    assert_().about(javaSources())
-        .that(Arrays.asList(thriftMapField, javaFileForClassName("PrimitiveField")))
-        .withCompilerOptions("-Werror")
-        .processedWith(new MutablePeerProcessor())
+    assertAboutSources("ThriftMapField", "PrimitiveField")
         .failsToCompile()
         .withErrorCount(1)
         .withErrorContaining(MutablePeerProcessor.MUTABLE_PEER_MAPS_NOT_SUPPORTED_MSG)
@@ -133,13 +137,7 @@ public class MutablePeerProcessorTest {
 
   @Test
   public void testPreExistingPeerThriftField() {
-    assert_().about(javaSources())
-        .that(Arrays.asList("PreExistingPeerThriftField", "PreExistingPeer", "peer.artisinal.Peer")
-            .stream()
-            .map(MutablePeerProcessorTest::javaFileForClassName)
-            .collect(Collectors.toList()))
-        .withCompilerOptions("-Werror")
-        .processedWith(new MutablePeerProcessor())
+    assertAboutSources("PreExistingPeerThriftField", "PreExistingPeer", "peer.artisinal.Peer")
         .compilesWithoutError()
         .and()
         .generatesSources(javaFileForPeer("PreExistingPeerThriftField"));

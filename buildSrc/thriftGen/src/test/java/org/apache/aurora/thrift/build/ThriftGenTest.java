@@ -54,12 +54,15 @@ import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.aurora.thrift.ThriftFields;
 import org.apache.aurora.thrift.ThriftService;
 import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftUnion;
 import org.apache.thrift.TEnum;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
+import autovalue.shaded.com.google.common.common.collect.FluentIterable;
 import autovalue.shaded.com.google.common.common.collect.Iterables;
+import autovalue.shaded.com.google.common.common.collect.Lists;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -154,12 +157,23 @@ public class ThriftGenTest {
     return Class.forName(className, true /* initialize */, classLoader);
   }
 
-  private Class<?> compileClass(String className) throws IOException, ClassNotFoundException {
-    JavaFileObject javaFile =
-        fileManager.getJavaFileForInput(
-            StandardLocation.SOURCE_PATH,
-            className,
-            JavaFileObject.Kind.SOURCE);
+  private JavaFileObject getSourceCode(String className) {
+    try {
+      return fileManager.getJavaFileForInput(
+          StandardLocation.SOURCE_PATH,
+          className,
+          JavaFileObject.Kind.SOURCE);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private Class<?> compileClass(String className, String... additionalClasses)
+      throws IOException, ClassNotFoundException {
+
+    Iterable<JavaFileObject> javaFiles =
+        FluentIterable.from(Lists.asList(className, additionalClasses))
+            .transform(this::getSourceCode);
 
     JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
     JavaCompiler.CompilationTask task =
@@ -169,7 +183,7 @@ public class ThriftGenTest {
             null /* DiagnosticListener: default (prints to writer above) */,
             ImmutableList.of("-implicit:class", "-Werror") /* javac options */,
             null /* apt classes: use META-INF discovery mechanism */,
-            ImmutableList.of(javaFile));
+            javaFiles);
     boolean success = task.call();
     assertTrue(success);
     return loadClass(className);
@@ -251,10 +265,12 @@ public class ThriftGenTest {
         ImmutableSet.copyOf(clazz.getFields()));
   }
 
-  private Class<? extends ThriftStruct> compileStructClass(String className)
+  private Class<? extends ThriftStruct> compileStructClass(
+      String className,
+      String... additionalClasses)
       throws IOException, ClassNotFoundException {
 
-    Class<?> clazz = compileClass(className);
+    Class<?> clazz = compileClass(className, additionalClasses);
 
     assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
     // We tested this was assignable to ThriftStruct above and needs to be raw so the user can
@@ -395,7 +411,7 @@ public class ThriftGenTest {
   }
 
   private static ImmutableMap<String, ThriftFields> indexFields(
-      Class<? extends ThriftStruct> structClass) {
+      Class<? extends ThriftEntity> structClass) {
 
     return Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
   }
@@ -433,7 +449,8 @@ public class ThriftGenTest {
         outdirPath("test", "subpackage", "Constants.java"),
         outdirPath("test", "subpackage", "States.java"));
 
-    Class<? extends ThriftStruct> structClass = compileStructClass("test.Struct");
+    Class<? extends ThriftStruct> structClass =
+        compileStructClass("test.Struct", "test.subpackage.States");
     ThriftStruct struct = ThriftStruct.builder(structClass).build();
 
     ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
@@ -472,6 +489,59 @@ public class ThriftGenTest {
                     "for annotation values making them ~natural for doc",
                     ""))}),
         annotation);
+  }
+
+  private Class<? extends ThriftUnion> compileUnionClass(
+      String className,
+      String... additionalClasses)
+      throws IOException, ClassNotFoundException {
+
+    Class<?> clazz = compileClass(className, additionalClasses);
+    assertTrue(ThriftUnion.class.isAssignableFrom(clazz));
+    // We tested this was assignable to ThriftUnion above and needs to be raw so the user can
+    // extract fields.
+    @SuppressWarnings({"raw", "unchecked"})
+    Class<? extends ThriftUnion> unionClass = (Class<? extends ThriftUnion>) clazz;
+    return unionClass;
+  }
+
+  @Test
+  public void testUnion() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "struct Error {}",
+        "",
+        "union Response {",
+        "  2: Error error",
+        "  4: list<Error> errors",
+        "  6: bool noop",
+        "}");
+    assertOutdirFiles(outdirPath("test", "Error.java"), outdirPath("test", "Response.java"));
+    Class<? extends ThriftUnion> unionClass = compileUnionClass("test.Response", "test.Error");
+
+    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(unionClass);
+    assertEquals(ImmutableSet.of("error", "errors", "noop"), fieldsByName.keySet());
+
+    // We know test.Error is a struct from reading the thrift above.
+    @SuppressWarnings("unchecked")
+    Class<? extends ThriftStruct> clazz = (Class<? extends ThriftStruct>) loadClass("test.Error");
+    ThriftStruct errorStruct = ThriftStruct.builder(clazz).build();
+    ThriftFields errorField = fieldsByName.get("error");
+    ThriftUnion errorResponse = ThriftUnion.create(unionClass, errorField, errorStruct);
+    assertSame(errorField, errorResponse.getSetField());
+    assertSame(errorStruct, errorResponse.getFieldValue());
+
+    ThriftFields errorsField = fieldsByName.get("errors");
+    ThriftUnion errorsResponse =
+        ThriftUnion.create(unionClass, errorsField, ImmutableList.of(errorStruct));
+    assertSame(errorsField, errorsResponse.getSetField());
+    assertEquals(ImmutableList.of(errorStruct), errorsResponse.getFieldValue());
+
+    ThriftFields noopField = fieldsByName.get("noop");
+    ThriftUnion noopResponse = ThriftUnion.create(unionClass, noopField, true);
+    assertSame(noopField, noopResponse.getSetField());
+    assertEquals(true, noopResponse.getFieldValue());
   }
 
   private Class<? extends ThriftService> loadThriftService(

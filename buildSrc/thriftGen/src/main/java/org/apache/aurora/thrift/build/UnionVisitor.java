@@ -134,7 +134,10 @@ class UnionVisitor extends BaseVisitor<Union> {
                       .beginControlFlow("if (!$N())", isSetMethod)
                       .addStatement("throw new $T()", IllegalStateException.class)
                       .endControlFlow()
-                      .addStatement("return ($T) value", fieldTypeName)
+                      .add("// We checked this cast was valid just above.\n")
+                      .add("@$T($S)\n", SuppressWarnings.class, "unchecked")
+                      .addStatement("$T typed = ($T) value", fieldTypeName, fieldTypeName)
+                      .addStatement("return typed")
                       .build())
               .build());
     }

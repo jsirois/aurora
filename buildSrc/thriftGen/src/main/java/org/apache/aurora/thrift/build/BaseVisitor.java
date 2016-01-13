@@ -469,14 +469,27 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
       if (fieldType instanceof ParameterizedTypeName) {
         ParameterizedTypeName typeToken =
             ParameterizedTypeName.get(ClassName.get(TypeToken.class), fieldType);
-        thriftFieldsEnumBuilder.addEnumConstant(
-            enumValueName,
+        TypeSpec.Builder enumValueBuilder =
             TypeSpec.anonymousClassBuilder(
                 "(short) $L, $S, new $T() {}.getType(), $T.class",
                 fieldId,
                 field.getName(),
                 typeToken,
-                ((ParameterizedTypeName) fieldType).rawType).build());
+                ((ParameterizedTypeName) fieldType).rawType);
+
+        // The anonymous TypeToken classes used to capture the type of collection fields
+        // run afoul of:
+        //   warning: [serial] serializable class X has no definition of serialVersionUID.
+        // We suppress this warning since TypeToken implements writeReplace and in so doing
+        // does use an internal representation that does define a serialVersionUID.
+        AnnotationSpec suppressSerial =
+            AnnotationSpec.builder(SuppressWarnings.class)
+                .addMember("value", "$S", "serial")
+                .build();
+
+        thriftFieldsEnumBuilder.addEnumConstant(
+            enumValueName,
+            enumValueBuilder.addAnnotation(suppressSerial).build());
       } else {
         thriftFieldsEnumBuilder.addEnumConstant(
             enumValueName,

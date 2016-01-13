@@ -181,7 +181,8 @@ public class ThriftGenTest {
             new PrintWriter(System.err), /* out: diagnostic stream for javac */
             fileManager,
             null /* DiagnosticListener: default (prints to writer above) */,
-            ImmutableList.of("-implicit:class", "-Werror") /* javac options */,
+            // We suppress warnings about un-processed annotations but otherwise fail any warnings.
+            ImmutableList.of("-implicit:class", "-Xlint:all,-processing", "-Werror"),
             null /* apt classes: use META-INF discovery mechanism */,
             javaFiles);
     boolean success = task.call();

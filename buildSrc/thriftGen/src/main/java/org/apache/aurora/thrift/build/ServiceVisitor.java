@@ -41,17 +41,25 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.WildcardTypeName;
 
 import org.apache.aurora.thrift.ThriftService;
 import org.slf4j.Logger;
 
 @NotThreadSafe
 class ServiceVisitor extends BaseVisitor<Service> {
+  private static final ParameterizedTypeName CLASS_TYPE =
+      ParameterizedTypeName.get(
+          ClassName.get(Class.class),
+          WildcardTypeName.subtypeOf(Object.class));
+
+  private static final ArrayTypeName ARRAY_OF_CLASS_TYPE = ArrayTypeName.of(CLASS_TYPE);
+
   private static final ParameterizedTypeName METHODS_MAP_TYPE =
       ParameterizedTypeName.get(
           ClassName.get(ImmutableMap.class),
           ClassName.get(String.class),
-          ArrayTypeName.of(Class.class));
+          ARRAY_OF_CLASS_TYPE);
 
   ServiceVisitor(Logger logger, Path outdir, SymbolTable symbolTable, String packageName) {
     super(logger, outdir, symbolTable, packageName);
@@ -69,7 +77,7 @@ class ServiceVisitor extends BaseVisitor<Service> {
                 "$[$T.<$T, $T>builder()",
                 ImmutableMap.class,
                 String.class,
-                Class[].class);
+                ARRAY_OF_CLASS_TYPE);
 
     TypeSpec.Builder asyncServiceBuilder = createServiceBuilder(service, "Async");
     TypeSpec.Builder syncServiceBuilder = createServiceBuilder(service, "Sync");
@@ -146,7 +154,7 @@ class ServiceVisitor extends BaseVisitor<Service> {
                     .addException(NoSuchMethodException.class)
                     .addStatement(
                         "$T parameterTypes = $N.get(methodName)",
-                        Class[].class,
+                        ARRAY_OF_CLASS_TYPE,
                         methodsField)
                     .beginControlFlow("if (parameterTypes == null)")
                     .addStatement("throw new $T(methodName)", NoSuchMethodException.class)
@@ -204,12 +212,12 @@ class ServiceVisitor extends BaseVisitor<Service> {
 
   private CodeBlock renderParameterMapInitializer(ThriftMethod method) {
     if (method.getArguments().isEmpty()) {
-      return CodeBlock.builder().add("new $T[0]", Class.class).build();
+      return CodeBlock.builder().add("new $T[0]", CLASS_TYPE).build();
     }
 
     CodeBlock.Builder parameterMapInitializerCode =
         CodeBlock.builder()
-            .add("new $T[] {", Class.class)
+            .add("new $T[] {", CLASS_TYPE)
             .indent()
             .indent();
 

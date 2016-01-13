@@ -64,6 +64,7 @@ import autovalue.shaded.com.google.common.common.collect.Iterables;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -558,5 +559,6 @@ public class ThriftGenTest {
         ImmutableThriftAnnotation.of(new ThriftAnnotation.Parameter[] {
             ImmutableParameter.of("secured", "true")}),
         annotation);
+    assertNull(parameters[1].getAnnotation(ThriftAnnotation.class));
   }
 }

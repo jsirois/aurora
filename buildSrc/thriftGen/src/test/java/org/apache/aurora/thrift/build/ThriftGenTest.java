@@ -42,6 +42,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.jimfs.Jimfs;
+import com.google.common.reflect.TypeParameter;
 import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.sun.tools.javac.nio.JavacPathFileManager;
@@ -506,6 +507,12 @@ public class ThriftGenTest {
     return unionClass;
   }
 
+  private static <T> Type immutableListType(Class<T> containedType) {
+    return new TypeToken<ImmutableList<T>>() {}
+        .where(new TypeParameter<T>() {}, containedType)
+        .getType();
+  }
+
   @Test
   public void testUnion() throws Exception {
     generateThrift(
@@ -526,20 +533,27 @@ public class ThriftGenTest {
 
     // We know test.Error is a struct from reading the thrift above.
     @SuppressWarnings("unchecked")
-    Class<? extends ThriftStruct> clazz = (Class<? extends ThriftStruct>) loadClass("test.Error");
-    ThriftStruct errorStruct = ThriftStruct.builder(clazz).build();
+    Class<? extends ThriftStruct> errorStructClass =
+        (Class<? extends ThriftStruct>) loadClass("test.Error");
     ThriftFields errorField = fieldsByName.get("error");
+    assertField(errorField, (short) 2, errorStructClass, errorStructClass);
+
+    ThriftFields errorsField = fieldsByName.get("errors");
+    assertField(errorsField, (short) 4, ImmutableList.class, immutableListType(errorStructClass));
+
+    ThriftFields noopField = fieldsByName.get("noop");
+    assertField(noopField, (short) 6, boolean.class, boolean.class);
+
+    ThriftStruct errorStruct = ThriftStruct.builder(errorStructClass).build();
     ThriftUnion errorResponse = ThriftUnion.create(unionClass, errorField, errorStruct);
     assertSame(errorField, errorResponse.getSetField());
     assertSame(errorStruct, errorResponse.getFieldValue());
 
-    ThriftFields errorsField = fieldsByName.get("errors");
     ThriftUnion errorsResponse =
         ThriftUnion.create(unionClass, errorsField, ImmutableList.of(errorStruct));
     assertSame(errorsField, errorsResponse.getSetField());
     assertEquals(ImmutableList.of(errorStruct), errorsResponse.getFieldValue());
 
-    ThriftFields noopField = fieldsByName.get("noop");
     ThriftUnion noopResponse = ThriftUnion.create(unionClass, noopField, true);
     assertSame(noopField, noopResponse.getSetField());
     assertEquals(true, noopResponse.getFieldValue());

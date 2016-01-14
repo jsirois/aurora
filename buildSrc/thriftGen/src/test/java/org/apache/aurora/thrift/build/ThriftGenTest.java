@@ -733,15 +733,15 @@ public class ThriftGenTest {
 
     ThriftUnion expectedSuccess =
         ThriftUnion.create(resultClass, fieldsByName.get("success"), true);
-    assertEquals(expectedSuccess, constants.getField("SUCCESS").get(null));
+    assertConstantValue(constants.getField("SUCCESS"), resultClass, expectedSuccess);
 
     ThriftUnion expectedFailure =
         ThriftUnion.create(resultClass, fieldsByName.get("success"), false);
-    assertEquals(expectedFailure, constants.getField("FAILURE").get(null));
+    assertConstantValue(constants.getField("FAILURE"), resultClass, expectedFailure);
 
     ThriftUnion expectedNotIndexed =
         ThriftUnion.create(resultClass, fieldsByName.get("indices"), ImmutableList.of());
-    assertEquals(expectedNotIndexed, constants.getField("NOT_INDEXED").get(null));
+    assertConstantValue(constants.getField("NOT_INDEXED"), resultClass, expectedNotIndexed);
 
     ThriftUnion expectedThriftKeywords =
         ThriftUnion.create(
@@ -750,11 +750,14 @@ public class ThriftGenTest {
             ImmutableMap.of(
                 "thrift",
                 ImmutableList.of("const", "enum", "struct", "union", "service", "...")));
-    assertEquals(expectedThriftKeywords, constants.getField("THRIFT_KEYWORDS").get(null));
+    assertConstantValue(constants.getField("THRIFT_KEYWORDS"), resultClass, expectedThriftKeywords);
 
     ImmutableMap<String, ThriftUnion> expectedResultsByName =
         ImmutableMap.of("success", expectedSuccess, "failure", expectedFailure);
-    assertEquals(expectedResultsByName, constants.getField("RESULTS_BY_NAME").get(null));
+    assertConstantValue(
+        constants.getField("RESULTS_BY_NAME"),
+        ImmutableMap.class,
+        expectedResultsByName);
   }
 
   private Class<? extends ThriftService> assertServiceInterface(Class<?> clazz) {

@@ -68,12 +68,12 @@ import static java.util.Objects.requireNonNull;
  */
 public final class ThriftGen {
   private final Path outdir;
-  private final UnaryOperator<String> packageSuffixFactory;
+  private final UnaryOperator<String> packageNameFactory;
   private final Logger logger;
 
   /**
    * Equivalent to {@link #ThriftGen(Path, Logger, UnaryOperator)} passig the identity operator for
-   * the {@code packageSuffixFactory}.
+   * the {@code packageNameFactory}.
    *
    * @param outdir A directory to emit generated code under.  Need not exist.
    * @param logger A logger to log code generation details to.
@@ -87,14 +87,13 @@ public final class ThriftGen {
    *
    * @param outdir A directory to emit generated code under.  Need not exist.
    * @param logger A logger to log code generation details to.
-   * @param packageSuffixFactory Given the package name derived from a thrift file, return the final
-   *                             package name to be used for the code generated for that thrift
-   *                             file.
+   * @param packageNameFactory Given the package name derived from a thrift file, return the final
+   *                           package name to be used for the code generated for that thrift file.
    */
-  public ThriftGen(Path outdir, Logger logger, UnaryOperator<String> packageSuffixFactory) {
+  public ThriftGen(Path outdir, Logger logger, UnaryOperator<String> packageNameFactory) {
     this.outdir = requireNonNull(outdir);
     this.logger = requireNonNull(logger);
-    this.packageSuffixFactory = requireNonNull(packageSuffixFactory);
+    this.packageNameFactory = requireNonNull(packageNameFactory);
   }
 
   /**
@@ -181,7 +180,7 @@ public final class ThriftGen {
               logger,
               outdir,
               symbolTable,
-              packageSuffixFactory.apply(packageName));
+              packageNameFactory.apply(packageName));
       document.visit(visitor);
       visitor.finish();
       processed.add(thriftFile);

@@ -27,6 +27,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import javax.tools.JavaCompiler;
@@ -88,11 +89,15 @@ public class ThriftGenTest {
 
   private ThriftCodecManager codecManager;
 
+  private ThriftGen createThriftGen(UnaryOperator<String> packageNameFactory) {
+    return new ThriftGen(outdir, LoggerFactory.getLogger(getClass()), packageNameFactory);
+  }
+
   @Before
   public void setUp() throws IOException {
     fileSystem = Jimfs.newFileSystem();
     outdir = Files.createDirectory(fileSystem.getPath("out"));
-    thriftGen = new ThriftGen(outdir, LoggerFactory.getLogger(getClass()));
+    thriftGen = createThriftGen(UnaryOperator.identity());
 
     classes = Files.createDirectory(fileSystem.getPath("classes"));
     classLoader = new ClassLoader() {
@@ -140,13 +145,21 @@ public class ThriftGenTest {
   }
 
   private void generateThrift(Path...thriftFiles) throws IOException {
-    thriftGen.generate(ImmutableSet.copyOf(thriftFiles));
+    generateThrift(thriftGen, thriftFiles);
   }
 
   private void generateThrift(String... lines) throws IOException {
+    generateThrift(thriftGen, lines);
+  }
+
+  private void generateThrift(ThriftGen thriftGen, Path...thriftFiles) throws IOException {
+    thriftGen.generate(ImmutableSet.copyOf(thriftFiles));
+  }
+
+  private void generateThrift(ThriftGen thriftGen, String... lines) throws IOException {
     Path thriftFile = fileSystem.getPath("test.thrift");
     write(thriftFile, lines);
-    generateThrift(thriftFile);
+    generateThrift(thriftGen, thriftFile);
   }
 
   private void assertOutdirFiles(Path... paths) throws IOException {
@@ -794,6 +807,7 @@ public class ThriftGenTest {
         "service Sub extends Base {",
         "  string getMessageOfTheDay(1: bool extendedVersion)",
         "}");
+    assertOutdirFiles(outdirPath("test", "Sub.java"), outdirPath("test", "Base.java"));
     Class<?> subClass = compileClass("test.Sub");
     Class<?> baseClass = loadClass("test.Base");
     assertTrue(subClass.isInterface());
@@ -835,6 +849,7 @@ public class ThriftGenTest {
         "service UserInfo {",
         "  string getStatus(1: string userName (secured='true'), 2: bool verbose)",
         "}");
+    assertOutdirFiles(outdirPath("test", "UserInfo.java"));
     Class<? extends ThriftService> userInfoSyncServiceClass =
         loadThriftService(compileClass("test.UserInfo"), "test.UserInfo$Sync");
 
@@ -845,5 +860,18 @@ public class ThriftGenTest {
     ThriftAnnotation annotation = parameters[0].getAnnotation(ThriftAnnotation.class);
     assertEquals(createThriftAnnotation(ImmutableParameter.of("secured", "true")), annotation);
     assertNull(parameters[1].getAnnotation(ThriftAnnotation.class));
+  }
+
+  @Test
+  public void testPackageNameFactory() throws Exception {
+    ThriftGen thriftGen = createThriftGen(p -> p + ".suffix");
+    generateThrift(thriftGen,
+        "namespace java test",
+        "",
+        "const string ID = 'Aurora'");
+    assertOutdirFiles(outdirPath("test", "suffix", "Constants.java"));
+    Class<?> constants = compileClass("test.suffix.Constants");
+
+    assertEquals("Aurora", constants.getField("ID").get(null));
   }
 }

@@ -63,19 +63,19 @@ import org.apache.aurora.thrift.ThriftEntity;
  * <p>
  * MyBatis expects mapped entities to be singular; ie: each mapped entity class must have both
  * accessors and mutators housed on the entity class.  This precludes the use of immutable objects
- * with builders as database mapping targets nd it precludes mapping of immutable objects in general
- * since constructor mapping is limited (it cannot handle collections).  Aurora has worked around
- * this and other mapping difficulties with hand-made peer classes ("views").  These classes use the
- * pattern of "exposing" mutators via private fields (MyBatis is built to be able to reflect private
- * members) and providing a single "toThrift" public method that produces the peer thrift object
- * using the private fields populated by MyBatis.
+ * with builders as database mapping targets and it precludes mapping of immutable objects in
+ * general since MyBatis constructor mapping support is limited (it cannot handle collections).
+ * Aurora has worked around this and other mapping difficulties with hand-made peer classes
+ * ("views").  These classes use the pattern of "exposing" mutators via private fields (MyBatis is
+ * built to be able to reflect private members) and providing a single "toThrift" public method
+ * that produces the peer thrift object using the private fields populated by MyBatis.
  * <p>
- * This annotation processor automates this hand coding and generates mutable peers for any thrift
+ * This annotation processor automates peer hand coding and generates mutable peers for any thrift
  * struct annotated with a "mutablePeer" value.  If the value is "true" a mutable peer is generated.
  * Otherwise, the value is treated as a fully qualified classname pointing to a hand-coded mutable
  * peer and this type is expected to have a "toThrift" method that works like the generated mutable
- * peers.  The end result is that mutable object graphs can be converted to immutable thrift graphs
- * by calling "toThrift" on the root peer.
+ * peers.  The end result is that mutable object graphs created by MyBatis can be converted to
+ * immutable thrift graphs by calling "toThrift" on the root peer.
  */
 public class MutablePeerProcessor extends AbstractProcessor {
 
@@ -186,7 +186,7 @@ public class MutablePeerProcessor extends AbstractProcessor {
                 collectionType = ClassName.get(Set.class);
               }
 
-              ParameterizedTypeName parameterizedReturnTypeName = (ParameterizedTypeName) fieldType;
+              ParameterizedTypeName parametrizedReturnTypeName = (ParameterizedTypeName) fieldType;
               DeclaredType declaredReturnType =
                   returnType.accept(new SimpleTypeVisitor8<DeclaredType, Void>() {
                     @Override public DeclaredType visitDeclared(DeclaredType declaredType, Void v) {
@@ -197,8 +197,8 @@ public class MutablePeerProcessor extends AbstractProcessor {
               ParameterizedTypeName mutableCollectionType =
                   ParameterizedTypeName.get(
                       collectionType,
-                      parameterizedReturnTypeName.typeArguments.toArray(
-                          new TypeName[parameterizedReturnTypeName.typeArguments.size()]));
+                      parametrizedReturnTypeName.typeArguments.toArray(
+                          new TypeName[parametrizedReturnTypeName.typeArguments.size()]));
               fieldSpec =
                   FieldSpec.builder(mutableCollectionType, fieldName)
                       .addModifiers(Modifier.PRIVATE)

@@ -40,8 +40,8 @@ import static java.util.Objects.requireNonNull;
 /**
  * A thrift code generator for java.
  * <p>
- * This generator produces java thrift stubs that serialized and deserialize in a wire-compatible
- * way with apache thrift via the
+ * This generator produces java thrift stubs that serialize and deserialize in a wire-compatible way
+ * with apache thrift via the
  * <a href="https://github.com/facebook/swift/tree/master/swift-codec">swift-codec</a> library.
  * This code generator provides 2 primary advantages over the apache thrift code generator at this
  * time:
@@ -50,7 +50,7 @@ import static java.util.Objects.requireNonNull;
  *     <em>Immutable Structs and Unions</em>
  *     <p>
  *     The generated structs and unions are immutable.  To create a new struct a nested builder type
- *     must be instantiated, mutated, and then used to create the struct.  Any struct collections
+ *     must be instantiated, mutated, and then used to create the struct.  Any struct collection
  *     fields are represented with guava {@link ImmutableList}, {@link ImmutableSet} and
  *     {@link ImmutableMap} and the remaining types are all naturally immutable in java (primitives,
  *     their boxed equivalents and enums).  Likewise union types can only be created (via an

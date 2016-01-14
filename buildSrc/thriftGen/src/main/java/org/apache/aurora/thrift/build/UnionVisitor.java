@@ -22,6 +22,7 @@ import javax.annotation.concurrent.Immutable;
 import javax.lang.model.element.Modifier;
 
 import com.facebook.swift.codec.ThriftUnionId;
+import com.facebook.swift.parser.model.ContainerType;
 import com.facebook.swift.parser.model.ThriftField;
 import com.facebook.swift.parser.model.Union;
 import com.google.common.collect.ImmutableSet;
@@ -107,9 +108,24 @@ class UnionVisitor extends BaseVisitor<Union> {
               .addStatement("return new $T($L)", unionClassName, field.getName())
               .build());
 
-      // The constructor is called by swift codecs when deserializing unions and it expects the
+      // The constructor is called by swift codecs when de-serializing unions and it expects the
       // standard java List, Map & Set container types; mutable=true gets us those types.
       TypeName mutableFieldTypeName = typeName(field.getType(), /* mutable */ true);
+      CodeBlock.Builder valueAssignment = CodeBlock.builder();
+      if (field.getType() instanceof ContainerType) {
+        // We have an Immutable{List,Map,Set} that must be populated from a value of the parent
+        // java.util mutable interface type passed by the swift codec.
+        ParameterizedTypeName immutableType = (ParameterizedTypeName) fieldTypeName;
+        valueAssignment.addStatement(
+            "this.value = $T.copyOf($L)",
+            immutableType.rawType,
+            field.getName());
+      } else { // We have an immutable value.
+        valueAssignment.addStatement(
+            "this.value = $T.requireNonNull($L)",
+            Objects.class,
+            field.getName());
+      }
       typeBuilder.addMethod(
           MethodSpec.constructorBuilder()
               .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
@@ -118,7 +134,7 @@ class UnionVisitor extends BaseVisitor<Union> {
                   ParameterSpec.builder(mutableFieldTypeName, field.getName())
                       .addAnnotation(renderThriftFieldAnnotation(field))
                       .build())
-              .addStatement("this.value = $T.requireNonNull($L)", Objects.class, field.getName())
+              .addCode(valueAssignment.build())
               .addStatement("this.id = $L", id)
               .build());
 

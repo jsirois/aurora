@@ -511,7 +511,7 @@ public class ThriftGenTest {
         "'",
         ")");
     assertOutdirFiles(outdirPath("test", "AnnotatedStruct.java"));
-    Class<? extends ThriftStruct> structClass = compileStructClass("test.AnnotatedStruct");
+    Class<?> structClass = compileClass("test.AnnotatedStruct");
     ThriftAnnotation annotation = structClass.getAnnotation(ThriftAnnotation.class);
     assertNotNull(annotation);
 
@@ -667,6 +667,26 @@ public class ThriftGenTest {
     ThriftUnion noopResponse = ThriftUnion.create(unionClass, noopField, true);
     assertSame(noopField, noopResponse.getSetField());
     assertEquals(true, noopResponse.getFieldValue());
+  }
+
+  @Test
+  public void testUnionAnnotations() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "union AnnotatedUnion {",
+        "  1: string name",
+        "} (mutablePeer='test.peer.HandRolledPeer')");
+    assertOutdirFiles(outdirPath("test", "AnnotatedUnion.java"));
+    Class<?> unionClass = compileClass("test.AnnotatedUnion");
+    ThriftAnnotation annotation = unionClass.getAnnotation(ThriftAnnotation.class);
+    assertNotNull(annotation);
+
+    assertEquals(
+        ImmutableThriftAnnotation.of(new ImmutableParameter[] {
+            ImmutableParameter.of("mutablePeer", "test.peer.HandRolledPeer")
+        }),
+        annotation);
   }
 
   @Test

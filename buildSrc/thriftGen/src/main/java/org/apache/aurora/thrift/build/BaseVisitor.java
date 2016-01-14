@@ -34,6 +34,7 @@ import com.facebook.swift.parser.model.ConstMap;
 import com.facebook.swift.parser.model.ConstString;
 import com.facebook.swift.parser.model.ConstValue;
 import com.facebook.swift.parser.model.IdentifierType;
+import com.facebook.swift.parser.model.IntegerEnum;
 import com.facebook.swift.parser.model.ListType;
 import com.facebook.swift.parser.model.MapType;
 import com.facebook.swift.parser.model.SetType;
@@ -364,21 +365,24 @@ abstract class BaseVisitor<T extends Visitable> extends BaseEmitter implements V
 
     String identifier = value.value();
     if (type instanceof IdentifierType) {
-      ClassName className = getClassName((IdentifierType) type);
-      // Up to 3 components, the rightmost is the name:
-      // package local constant: MyEnum.OK
-      // via include.thrift: included.MyEnum.OK
-      String name = Iterables.getLast(Splitter.on('.').limit(3).splitToList(identifier));
-      codeBuilder.add("$T.$L", className, name);
-    } else {
-      // Or else its a constant value reference:
-      // Up to 2 components, the rightmost is the name:
-      // package local constant: CONSTANT_VALUE
-      // via include.thrift: included.CONSTANT_VALUE
-      ClassName className = ClassName.get(getPackageName(value), "Constants");
-      String name = Iterables.getLast(Splitter.on('.').limit(2).splitToList(identifier));
-      codeBuilder.add("$T.$L", className, name);
+      SymbolTable.Symbol symbol = symbolTable.lookup(getPackageName(), (IdentifierType) type);
+      if (symbol.symbol() instanceof IntegerEnum) {
+        // Up to 3 components, the rightmost is the name:
+        // package local constant: MyEnum.OK
+        // via include.thrift: included.MyEnum.OK
+        String name = Iterables.getLast(Splitter.on('.').limit(3).splitToList(identifier));
+        codeBuilder.add("$T.$L", symbol.getClassName(), name);
+        return;
+      }
     }
+
+    // Or else its a constant value reference:
+    // Up to 2 components, the rightmost is the name:
+    // package local constant: CONSTANT_VALUE
+    // via include.thrift: included.CONSTANT_VALUE
+    ClassName className = ClassName.get(getPackageName(value), "Constants");
+    String name = Iterables.getLast(Splitter.on('.').limit(2).splitToList(identifier));
+    codeBuilder.add("$T.$L", className, name);
   }
 
   protected final AnnotationSpec renderThriftFieldAnnotation(ThriftField field) {

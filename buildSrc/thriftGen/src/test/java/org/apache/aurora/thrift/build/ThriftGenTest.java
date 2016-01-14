@@ -669,6 +669,69 @@ public class ThriftGenTest {
     assertEquals(true, noopResponse.getFieldValue());
   }
 
+  @Test
+  public void testUnionLiteral() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "union Result {",
+        "  1: list<i16> indices",
+        "  2: bool success",
+        "  3: map<string, list<string>> keywords",
+        "}",
+        "",
+        "const Result SUCCESS = {'success': 0}",
+        "const Result FAILURE = {'success': 1}",
+        "const Result NOT_INDEXED = {'indices': []}",
+        "const Result THRIFT_KEYWORDS = {",
+        "  'keywords': {",
+        "    'thrift': [",
+        "      'const',",
+        "      'enum',",
+        "      'struct',",
+        "      'union',",
+        "      'service',",
+        "      '...']",
+        "    }",
+        "  }",
+        "const map<string, Result> RESULTS_BY_NAME = {",
+        "  'success': SUCCESS,",
+        "  'failure': FAILURE",
+        "}",
+        "");
+    assertOutdirFiles(outdirPath("test", "Result.java"), outdirPath("test", "Constants.java"));
+    Class<? extends ThriftUnion> resultClass = compileUnionClass("test.Result", "test.Constants");
+    Class<?> constants = loadClass("test.Constants");
+
+    ImmutableMap<String, ThriftFields> fieldsByName =
+        indexFields(resultClass, "indices", "success", "keywords");
+
+    ThriftUnion expectedSuccess =
+        ThriftUnion.create(resultClass, fieldsByName.get("success"), true);
+    assertEquals(expectedSuccess, constants.getField("SUCCESS").get(null));
+
+    ThriftUnion expectedFailure =
+        ThriftUnion.create(resultClass, fieldsByName.get("success"), false);
+    assertEquals(expectedFailure, constants.getField("FAILURE").get(null));
+
+    ThriftUnion expectedNotIndexed =
+        ThriftUnion.create(resultClass, fieldsByName.get("indices"), ImmutableList.of());
+    assertEquals(expectedNotIndexed, constants.getField("NOT_INDEXED").get(null));
+
+    ThriftUnion expectedThriftKeywords =
+        ThriftUnion.create(
+            resultClass,
+            fieldsByName.get("keywords"),
+            ImmutableMap.of(
+                "thrift",
+                ImmutableList.of("const", "enum", "struct", "union", "service", "...")));
+    assertEquals(expectedThriftKeywords, constants.getField("THRIFT_KEYWORDS").get(null));
+
+    ImmutableMap<String, ThriftUnion> expectedResultsByName =
+        ImmutableMap.of("success", expectedSuccess, "failure", expectedFailure);
+    assertEquals(expectedResultsByName, constants.getField("RESULTS_BY_NAME").get(null));
+  }
+
   private Class<? extends ThriftService> assertServiceInterface(Class<?> clazz) {
     assertTrue(clazz.isInterface());
     return assertAssignableFrom(ThriftService.class, clazz);

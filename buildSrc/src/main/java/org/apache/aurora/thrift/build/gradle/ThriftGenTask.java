@@ -34,6 +34,19 @@ public class ThriftGenTask extends DefaultTask {
 
   private Optional<String> packageSuffix = Optional.absent();
 
+  /**
+   * An optional package suffix to use for generated thrift code.
+   * <p>
+   * The suffix is appended as is to the thrift java namespace; so given a thrift file declaring:
+   * <pre>
+   *   namespace java org.apache.aurora.thrift
+   * </pre>
+   * A suffix of '.experiment' (note the leading period) would cause all generated thrift code for
+   * the file to be in the 'org.apache.aurora.thrift.experiment' package.
+   *
+   * @param packageSuffix The suffix to append to the default thrift java namespace package.
+   */
+  // TODO(John Sirois): Kill this option if ThriftGenTask takes over for Apache Thrift.
   @Input
   public void setPackageSuffix(String packageSuffix) {
     String normalizedSuffix = packageSuffix.trim();
@@ -45,9 +58,6 @@ public class ThriftGenTask extends DefaultTask {
 
   @TaskAction
   public void gen() throws IOException {
-    // TODO(John Sirois): The parser does not carry over doc comments and we want these for the
-    // rest api, investigate a patch to add support before copying/moving comments to annotations.
-
     Path outdir = getOutputs().getFiles().getSingleFile().toPath();
     UnaryOperator<String> packageSuffixFactory = p -> packageSuffix.transform(s -> p + s).or(p);
     ThriftGen thriftGen = new ThriftGen(outdir, getLogger(), packageSuffixFactory);

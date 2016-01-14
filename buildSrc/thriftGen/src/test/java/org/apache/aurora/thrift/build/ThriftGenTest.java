@@ -35,6 +35,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
+import com.facebook.swift.codec.ThriftCodecManager;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
@@ -60,6 +61,10 @@ import org.apache.aurora.thrift.ThriftService;
 import org.apache.aurora.thrift.ThriftStruct;
 import org.apache.aurora.thrift.ThriftUnion;
 import org.apache.thrift.TEnum;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransport;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
@@ -81,6 +86,8 @@ public class ThriftGenTest {
   private ClassLoader classLoader;
   private JavaFileManager fileManager;
 
+  private ThriftCodecManager codecManager;
+
   @Before
   public void setUp() throws IOException {
     fileSystem = Jimfs.newFileSystem();
@@ -94,7 +101,7 @@ public class ThriftGenTest {
           byte[] bytes = Files.readAllBytes(classes.resolve(name.replace('.', '/') + ".class"));
           return defineClass(name, bytes, 0, bytes.length);
         } catch (IOException e) {
-          throw new ClassNotFoundException(e.toString());
+          throw new ClassNotFoundException("Problem loading class " + name, e);
         }
       }
     };
@@ -105,6 +112,8 @@ public class ThriftGenTest {
     fileManager.setLocation(StandardLocation.SOURCE_PATH, ImmutableList.of(outdir));
     fileManager.setLocation(StandardLocation.CLASS_OUTPUT, ImmutableList.of(classes));
     this.fileManager = fileManager;
+
+    codecManager = new ThriftCodecManager(classLoader);
   }
 
   private Path outdirPath(String... pathComponents) {
@@ -281,6 +290,24 @@ public class ThriftGenTest {
     return structClass;
   }
 
+  private <T extends ThriftEntity<?>> void assertSerializationRoundTrip(
+      Class<? extends T> entityType,
+      T entity)
+      throws Exception {
+
+    // Needed to work around need for an exact type in the underlying CodecManager.getCodec.
+    @SuppressWarnings("unchecked")
+    Class<T> deWildcarded = (Class<T>) entityType;
+
+    TTransport trans = new TMemoryBuffer(1024 /* initial size, the buffer grows as needed */);
+    TProtocol protocol = new TBinaryProtocol(trans);
+
+    codecManager.write(deWildcarded, entity, protocol);
+    T reconstituted = codecManager.read(entityType, protocol);
+
+    assertEquals(entity, reconstituted);
+  }
+
   @Test
   public void testStructNoFields() throws Exception {
     generateThrift(
@@ -295,6 +322,7 @@ public class ThriftGenTest {
 
     ThriftStruct<?> structInstance = ThriftStruct.builder(structClass).build();
     assertTrue(structClass.isInstance(structInstance));
+    assertSerializationRoundTrip(structClass, structInstance);
   }
 
   private static ThriftStruct.Builder<ThriftFields, ? extends ThriftStruct> buildStruct(
@@ -310,11 +338,14 @@ public class ThriftGenTest {
     return builder;
   }
 
-  private static ThriftStruct createStruct(
+  private ThriftStruct createStruct(
       Class<? extends ThriftStruct> structClass,
-      Map<ThriftFields, Object> fields) {
+      Map<ThriftFields, Object> fields)
+      throws Exception {
 
-    return buildStruct(structClass, fields).build();
+    ThriftStruct struct = buildStruct(structClass, fields).build();
+    assertSerializationRoundTrip(structClass, struct);
+    return struct;
   }
 
   private static void assertMissingFields(

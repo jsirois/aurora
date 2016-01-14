@@ -14,12 +14,9 @@
 package org.apache.aurora.scheduler.thrift.aop;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
 
 import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.common.reflect.Invokable;
 import com.google.common.reflect.Parameter;
 
@@ -41,15 +38,15 @@ public class AuroraSchedulerManagerAuthorizingParamTest {
 
   @Test
   public void testAllAuroraSchedulerManagerSyncMethodsHaveAuthorizingParam() throws Exception {
-    ImmutableMap<String, Method> methodByName =
-        Maps.uniqueIndex(
-            Arrays.asList(AuroraSchedulerManager.Sync.class.getDeclaredMethods()),
-            Method::getName);
+    for (Method declaredMethod : AuroraSchedulerManager.Sync.class.getDeclaredMethods()) {
+      Invokable<?, ?> invokable = Invokable.from(declaredMethod);
+      // We only care about the abstract interface methods an not the reflection helper methods.
+      if (invokable.isAbstract()) {
+        // Confirm the abstract method is in-fact a thrift method.
+        Method thriftMethod = AuroraSchedulerManager.Sync.getThriftMethod(declaredMethod.getName());
+        assertEquals(declaredMethod, thriftMethod);
 
-    for (String methodName : AuroraAdmin.Sync.thriftMethods().keySet()) {
-      if (methodByName.containsKey(methodName)) {
-        Method declaredMethod = methodByName.get(methodName);
-        Invokable<?, ?> invokable = Invokable.from(declaredMethod);
+        // Confirm the method has 1 authorizing parameter identified.
         Collection<Parameter> parameters = invokable.getParameters();
         Invokable<?, ?> annotatedInvokable = Invokable.from(
             AuroraAdmin.Sync.class.getMethod(

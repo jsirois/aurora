@@ -119,7 +119,7 @@ public class ApiBeta {
     // First, verify that this is a valid method on the interface.
     Method method;
     try {
-      method = AuroraAdmin.Sync.thriftMethod(methodName);
+      method = AuroraAdmin.Sync.getThriftMethod(methodName);
     } catch (NoSuchMethodException e) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }

@@ -173,7 +173,7 @@ class ServiceVisitor extends BaseVisitor<Service> {
     serviceBuilder.addField(methodCacheField);
 
     serviceBuilder.addMethod(
-        MethodSpec.methodBuilder("thriftMethod")
+        MethodSpec.methodBuilder("getThriftMethod")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addParameter(String.class, "methodName")
             .returns(Method.class)
@@ -190,8 +190,8 @@ class ServiceVisitor extends BaseVisitor<Service> {
             .endControlFlow()
             .build());
 
-    MethodSpec thriftMethods =
-        MethodSpec.methodBuilder("thriftMethods")
+    serviceBuilder.addMethod(
+        MethodSpec.methodBuilder("getThriftMethods")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(ParameterizedTypeName.get(ImmutableMap.class, String.class, Method.class))
             .beginControlFlow("try")
@@ -199,14 +199,6 @@ class ServiceVisitor extends BaseVisitor<Service> {
             .nextControlFlow("catch ($T e)", ExecutionException.class)
             .addStatement("throw new $T(e.getCause())", IllegalStateException.class)
             .endControlFlow()
-            .build();
-    serviceBuilder.addMethod(thriftMethods);
-
-    serviceBuilder.addMethod(
-        MethodSpec.methodBuilder("getThriftMethods")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(thriftMethods.returnType)
-            .addStatement("return $N()", thriftMethods)
             .build());
   }
 

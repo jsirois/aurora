@@ -497,6 +497,10 @@ public class ThriftGenTest {
     assertEquals(on, struct.getFieldValue(fieldsByName.get("state")));
   }
 
+  private static ThriftAnnotation createThriftAnnotation(ThriftAnnotation.Parameter... parameters) {
+    return ImmutableThriftAnnotation.builder().value(parameters).build();
+  }
+
   @Test
   public void testStructAnnotations() throws Exception {
     generateThrift(
@@ -516,7 +520,7 @@ public class ThriftGenTest {
     assertNotNull(annotation);
 
     assertEquals(
-        ImmutableThriftAnnotation.of(new ImmutableParameter[] {
+        createThriftAnnotation(
             ImmutableParameter.of("age", "1"),
             ImmutableParameter.of(
                 "doc",
@@ -524,7 +528,7 @@ public class ThriftGenTest {
                     "",
                     "Multiline strings should work",
                     "for annotation values making them ~natural for doc",
-                    ""))}),
+                    ""))),
         annotation);
   }
 
@@ -683,9 +687,7 @@ public class ThriftGenTest {
     assertNotNull(annotation);
 
     assertEquals(
-        ImmutableThriftAnnotation.of(new ImmutableParameter[] {
-            ImmutableParameter.of("mutablePeer", "test.peer.HandRolledPeer")
-        }),
+        createThriftAnnotation(ImmutableParameter.of("mutablePeer", "test.peer.HandRolledPeer")),
         annotation);
   }
 
@@ -835,10 +837,7 @@ public class ThriftGenTest {
     Parameter[] parameters = setStatusMethod.getParameters();
     assertEquals(2, parameters.length);
     ThriftAnnotation annotation = parameters[0].getAnnotation(ThriftAnnotation.class);
-    assertEquals(
-        ImmutableThriftAnnotation.of(new ThriftAnnotation.Parameter[] {
-            ImmutableParameter.of("secured", "true")}),
-        annotation);
+    assertEquals(createThriftAnnotation(ImmutableParameter.of("secured", "true")), annotation);
     assertNull(parameters[1].getAnnotation(ThriftAnnotation.class));
   }
 }

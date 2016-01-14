@@ -13,7 +13,6 @@
  */
 package org.apache.aurora.thrift;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import com.google.common.collect.ImmutableMap;

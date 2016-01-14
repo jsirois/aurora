@@ -107,11 +107,17 @@ class UnionVisitor extends BaseVisitor<Union> {
               .addStatement("return new $T($L)", unionClassName, field.getName())
               .build());
 
+      // The constructor is called by swift codecs when deserializing unions and it expects the
+      // standard java List, Map & Set container types; mutable=true gets us those types.
+      TypeName mutableFieldTypeName = typeName(field.getType(), /* mutable */ true);
       typeBuilder.addMethod(
           MethodSpec.constructorBuilder()
               .addAnnotation(com.facebook.swift.codec.ThriftConstructor.class)
               .addModifiers(Modifier.PUBLIC)
-              .addParameter(fieldTypeName, field.getName())
+              .addParameter(
+                  ParameterSpec.builder(mutableFieldTypeName, field.getName())
+                      .addAnnotation(renderThriftFieldAnnotation(field))
+                      .build())
               .addStatement("this.value = $T.requireNonNull($L)", Objects.class, field.getName())
               .addStatement("this.id = $L", id)
               .build());

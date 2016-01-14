@@ -13,6 +13,10 @@
  */
 package org.apache.aurora.thrift;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import javax.annotation.concurrent.Immutable;
 
 /**
@@ -38,8 +42,19 @@ public interface ThriftUnion<F extends ThriftFields> extends ThriftEntity<F> {
       F field,
       Object value) {
 
+    // Constructors are generated with swift codecs in mind.  Those expect the java container types
+    // when calling constructors during union deserialization.
+    Class<?> fieldClass = field.getFieldClass();
+    if (List.class.isAssignableFrom(fieldClass)) {
+      fieldClass = List.class;
+    } else if (Map.class.isAssignableFrom(fieldClass)) {
+      fieldClass = Map.class;
+    } else if (Set.class.isAssignableFrom(fieldClass)) {
+      fieldClass = Set.class;
+    }
+
     try {
-      return type.getConstructor(field.getFieldClass()).newInstance(value);
+      return type.getConstructor(fieldClass).newInstance(value);
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(e);
     }

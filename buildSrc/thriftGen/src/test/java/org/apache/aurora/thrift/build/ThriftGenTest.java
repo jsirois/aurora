@@ -660,15 +660,18 @@ public class ThriftGenTest {
     assertSerializationRoundTrip(errorStructClass, errorStruct);
 
     ThriftUnion errorResponse = ThriftUnion.create(unionClass, errorField, errorStruct);
+    assertSerializationRoundTrip(unionClass, errorResponse);
     assertSame(errorField, errorResponse.getSetField());
     assertSame(errorStruct, errorResponse.getFieldValue());
 
     ThriftUnion errorsResponse =
         ThriftUnion.create(unionClass, errorsField, ImmutableList.of(errorStruct));
+    assertSerializationRoundTrip(unionClass, errorsResponse);
     assertSame(errorsField, errorsResponse.getSetField());
     assertEquals(ImmutableList.of(errorStruct), errorsResponse.getFieldValue());
 
     ThriftUnion noopResponse = ThriftUnion.create(unionClass, noopField, true);
+    assertSerializationRoundTrip(unionClass, noopResponse);
     assertSame(noopField, noopResponse.getSetField());
     assertEquals(true, noopResponse.getFieldValue());
   }

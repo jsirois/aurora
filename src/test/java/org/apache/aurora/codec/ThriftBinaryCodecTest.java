@@ -22,7 +22,10 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.aurora.codec.ThriftBinaryCodec.ByteBufferInputStream;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.storage.Op;
+import org.apache.aurora.gen.storage.RemoveJob;
 import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.aurora.thrift.ThriftFields.NoFields;
 import org.junit.Test;
@@ -49,10 +52,17 @@ public class ThriftBinaryCodecTest {
   }
 
   @Test
-  public void testRoundTripNonNull() throws CodingException {
+  public void testRoundTripStructNonNull() throws CodingException {
     Identity original = Identity.create("mesos", "jill");
     assertEquals(original,
         ThriftBinaryCodec.decodeNonNull(Identity.class, ThriftBinaryCodec.encodeNonNull(original)));
+  }
+
+  @Test
+  public void testRoundTripUnionNonNull() throws CodingException {
+    Op original = Op.removeJob(RemoveJob.create(JobKey.create("role", "env", "name")));
+    assertEquals(original,
+        ThriftBinaryCodec.decodeNonNull(Op.class, ThriftBinaryCodec.encodeNonNull(original)));
   }
 
   @Test(expected = NullPointerException.class)

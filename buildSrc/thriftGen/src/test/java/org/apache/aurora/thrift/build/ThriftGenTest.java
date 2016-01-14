@@ -199,12 +199,16 @@ public class ThriftGenTest {
     return loadClass(className);
   }
 
+  private static <T> Class<? extends T> assertAssignableFrom(Class<T> target, Class<?> clazz) {
+    assertTrue(target.isAssignableFrom(clazz));
+    // We tested this was assignable to above.
+    @SuppressWarnings("unchecked")
+    Class<T> targeted = (Class<T>) clazz;
+    return targeted;
+  }
+
   private static Class<? extends Enum> assertEnumClass(Class<?> clazz) {
-    assertTrue(Enum.class.isAssignableFrom(clazz));
-    // We tested this was assignable to Enum above and needs to be raw to extract an enum value.
-    @SuppressWarnings({"raw", "unchecked"})
-    Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
-    return enumClass;
+    return assertAssignableFrom(Enum.class, clazz);
   }
 
   private static Enum assertEnum(Class<? extends Enum> enumClass, String name, int value) {
@@ -275,19 +279,17 @@ public class ThriftGenTest {
         ImmutableSet.copyOf(clazz.getFields()));
   }
 
+  private static Class<? extends ThriftStruct> assertStructClass(Class<?> clazz) {
+    return assertAssignableFrom(ThriftStruct.class, clazz);
+  }
+
   private Class<? extends ThriftStruct> compileStructClass(
       String className,
       String... additionalClasses)
       throws IOException, ClassNotFoundException {
 
     Class<?> clazz = compileClass(className, additionalClasses);
-
-    assertTrue(ThriftStruct.class.isAssignableFrom(clazz));
-    // We tested this was assignable to ThriftStruct above and needs to be raw so the user can
-    // extract fields.
-    @SuppressWarnings({"raw", "unchecked"})
-    Class<? extends ThriftStruct> structClass = (Class<? extends ThriftStruct>) clazz;
-    return structClass;
+    return assertStructClass(clazz);
   }
 
   private <T extends ThriftEntity<?>> void assertSerializationRoundTrip(
@@ -581,7 +583,7 @@ public class ThriftGenTest {
     Class<? extends Enum> statesClass = assertEnumClass(loadClass("test.States"));
     Enum montana = assertEnum(statesClass, "MT", 5);
 
-    Class<? extends ThriftStruct> aClass = (Class<? extends ThriftStruct>) loadClass("test.A");
+    Class<? extends ThriftStruct> aClass = assertStructClass(loadClass("test.A"));
     ImmutableMap<String, ThriftFields> aFields = indexFields(aClass, "street", "state", "zip");
     Object address1 =
         ThriftStruct.builder(aClass)
@@ -591,7 +593,7 @@ public class ThriftGenTest {
             .build();
     Object address2 = ThriftStruct.builder(aClass).set(aFields.get("zip"), "02134").build();
 
-    Class<? extends ThriftStruct> bClass = (Class<? extends ThriftStruct>) loadClass("test.B");
+    Class<? extends ThriftStruct> bClass = assertStructClass(loadClass("test.B"));
     ImmutableMap<String, ThriftFields> bFields = indexFields(bClass, "name", "addresses");
     ThriftStruct expectedDefaultB =
         ThriftStruct.builder(bClass)
@@ -603,18 +605,17 @@ public class ThriftGenTest {
     assertEquals(expectedDefaultB, actualDefaultB);
   }
 
+  private static Class<? extends ThriftUnion> assertUnionClass(Class<?> clazz) {
+    return assertAssignableFrom(ThriftUnion.class, clazz);
+  }
+
   private Class<? extends ThriftUnion> compileUnionClass(
       String className,
       String... additionalClasses)
       throws IOException, ClassNotFoundException {
 
     Class<?> clazz = compileClass(className, additionalClasses);
-    assertTrue(ThriftUnion.class.isAssignableFrom(clazz));
-    // We tested this was assignable to ThriftUnion above and needs to be raw so the user can
-    // extract fields.
-    @SuppressWarnings({"raw", "unchecked"})
-    Class<? extends ThriftUnion> unionClass = (Class<? extends ThriftUnion>) clazz;
-    return unionClass;
+    return assertUnionClass(clazz);
   }
 
   private static <T> Type immutableListType(Class<T> containedType) {
@@ -641,10 +642,7 @@ public class ThriftGenTest {
     ImmutableMap<String, ThriftFields> fieldsByName =
         indexFields(unionClass, "error", "errors", "noop");
 
-    // We know test.Error is a struct from reading the thrift above.
-    @SuppressWarnings("unchecked")
-    Class<? extends ThriftStruct> errorStructClass =
-        (Class<? extends ThriftStruct>) loadClass("test.Error");
+    Class<? extends ThriftStruct> errorStructClass = assertStructClass(loadClass("test.Error"));
     ThriftFields errorField = fieldsByName.get("error");
     assertField(errorField, (short) 2, errorStructClass, errorStructClass);
 
@@ -671,6 +669,11 @@ public class ThriftGenTest {
     assertEquals(true, noopResponse.getFieldValue());
   }
 
+  private Class<? extends ThriftService> assertServiceInterface(Class<?> clazz) {
+    assertTrue(clazz.isInterface());
+    return assertAssignableFrom(ThriftService.class, clazz);
+  }
+
   private Class<? extends ThriftService> loadThriftService(
       Class<?> expectedEnclosingClass,
       String className)
@@ -678,10 +681,7 @@ public class ThriftGenTest {
 
     Class<?> clazz = loadClass(className);
     assertSame(expectedEnclosingClass, clazz.getEnclosingClass());
-    assertTrue(ThriftService.class.isAssignableFrom(clazz));
-    @SuppressWarnings("unchecked") // We checked this was afe just above.
-    Class<? extends ThriftService> thriftServiceClass = (Class<? extends ThriftService>) clazz;
-    return thriftServiceClass;
+    return assertServiceInterface(clazz);
   }
 
   private static void assertSignature(Method method, Type returnType, Type... parameterTypes) {

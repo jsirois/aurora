@@ -170,6 +170,12 @@ class StructVisitor extends BaseVisitor<Struct> {
     MethodSpec.Builder builderSetMethod =
         MethodSpec.methodBuilder("set")
             .addAnnotation(Override.class)
+            .addAnnotation(
+                // We cast for each field type, but the cast is guarded by a case statement in
+                // each branch.
+                AnnotationSpec.builder(SuppressWarnings.class)
+                    .addMember("value", "$S", "unchecked")
+                    .build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(fieldsClassName, "field")
             .addParameter(

@@ -245,10 +245,10 @@ public class ThriftGenTest {
         "namespace java test",
         "",
         "const i32 MEANING_OF_LIFE = 42",
-        "const string REGEX = \"[Jj]ake\"",
-        "const set<string> TAGS = [\"A\", \"B\"]",
+        "const string REGEX = '[Jj]ake'",
+        "const set<string> TAGS = ['A', 'B']",
         "const list<bool> BITS = [0, 1]",
-        "const map<string, bool> COLORS = {\"reddish\": 1, \"bluish\": 0}");
+        "const map<string, bool> COLORS = {'reddish': 1, 'bluish': 0}");
     assertOutdirFiles(outdirPath("test", "Constants.java"));
 
     Class<?> clazz = compileClass("test.Constants");
@@ -387,15 +387,15 @@ public class ThriftGenTest {
         "struct Struct {",
         "  1: required string name",
         "  3: string address",
-        "  5: optional string description = \"None\"",
+        "  5: optional string description = 'None'",
         "}");
     assertOutdirFiles(outdirPath("test", "Struct.java"));
     Class<? extends ThriftStruct> structClass = compileStructClass("test.Struct");
 
     assertMissingFields(structClass, ImmutableMap.of());
 
-    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
-    assertEquals(ImmutableSet.of("name", "address", "description"), fieldsByName.keySet());
+    ImmutableMap<String, ThriftFields> fieldsByName =
+        indexFields(structClass, "name", "address", "description");
 
     ThriftFields nameField = fieldsByName.get("name");
     assertField(nameField, (short) 1, String.class, String.class);
@@ -443,9 +443,12 @@ public class ThriftGenTest {
   }
 
   private static ImmutableMap<String, ThriftFields> indexFields(
-      Class<? extends ThriftEntity> structClass) {
+      Class<? extends ThriftEntity> structClass, String... expectedFieldNames) {
 
-    return Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
+    ImmutableMap<String, ThriftFields> fieldsByName =
+        Maps.uniqueIndex(ThriftEntity.fields(structClass), ThriftFields::getFieldName);
+    assertEquals(ImmutableSet.copyOf(expectedFieldNames), fieldsByName.keySet());
+    return fieldsByName;
   }
 
   @Test
@@ -456,7 +459,7 @@ public class ThriftGenTest {
         includedFile,
         "namespace java test.subpackage",
         "",
-        "const string NAME = \"George\"",
+        "const string NAME = 'George'",
         "",
         "enum States {",
         "  ON = 1",
@@ -468,7 +471,7 @@ public class ThriftGenTest {
         thriftFile,
         "namespace java test",
         "",
-        "include \"subdir/included.thrift\"",
+        "include 'subdir/included.thrift'",
         "",
         "struct Struct {",
         "  1: string name = included.NAME",
@@ -485,7 +488,7 @@ public class ThriftGenTest {
         compileStructClass("test.Struct", "test.subpackage.States");
     ThriftStruct struct = ThriftStruct.builder(structClass).build();
 
-    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass);
+    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(structClass, "name", "state");
     assertEquals("George", struct.getFieldValue(fieldsByName.get("name")));
     Class<? extends Enum> enumClass = assertEnumClass(loadClass("test.subpackage.States"));
     Enum on = assertEnum(enumClass, "ON", 1);
@@ -500,10 +503,10 @@ public class ThriftGenTest {
         "struct AnnotatedStruct {",
         "} (",
         "  age=1,", // Bare ints should go to strings.
-        "  doc=\"",
+        "  doc='",
         "Multiline strings should work",
         "for annotation values making them ~natural for doc",
-        "\"",
+        "'",
         ")");
     assertOutdirFiles(outdirPath("test", "AnnotatedStruct.java"));
     Class<? extends ThriftStruct> structClass = compileStructClass("test.AnnotatedStruct");
@@ -521,6 +524,83 @@ public class ThriftGenTest {
                     "for annotation values making them ~natural for doc",
                     ""))}),
         annotation);
+  }
+
+  @Test
+  @SuppressWarnings({"raw", "unchecked"}) // Needed to to extract fields.
+  public void testStructLiteral() throws Exception {
+    generateThrift(
+        "namespace java test",
+        "",
+        "enum States {",
+        "  NH = 1",
+        "  MA = 2",
+        "  NC = 3",
+        "  WV = 4",
+        "  MT = 5",
+        "}",
+        "",
+        "struct A {",
+        "  1: string street",
+        "  2: optional States state",
+        "  3: required string zip",
+        "}",
+        "",
+        "struct B {",
+        "  1: string name",
+        "  2: set<A> addresses",
+        "}",
+        "",
+        "struct C {",
+        "  1: B b = {",
+        "    'name': 'bob', ",
+        "    'addresses': [",
+        "      {",
+        "        'street': '123 Main St.',",
+        "        'state': State.MT,",
+        "        'zip': '59715'",
+        "      }",
+        "      {",
+        "        'zip': '02134'",
+        "      }",
+        "    ]",
+        "  }",
+        "}");
+    assertOutdirFiles(
+        outdirPath("test", "C.java"),
+        outdirPath("test", "B.java"),
+        outdirPath("test", "A.java"),
+        outdirPath("test", "States.java"));
+    Class<? extends ThriftStruct> cClass =
+        compileStructClass("test.C", "test.B", "test.A", "test.States");
+
+    ThriftStruct defaultC = ThriftStruct.builder(cClass).build();
+
+    ImmutableMap<String, ThriftFields> cFields = indexFields(cClass, "b");
+
+    Class<? extends Enum> statesClass = assertEnumClass(loadClass("test.States"));
+    Enum montana = assertEnum(statesClass, "MT", 5);
+
+    Class<? extends ThriftStruct> aClass = (Class<? extends ThriftStruct>) loadClass("test.A");
+    ImmutableMap<String, ThriftFields> aFields = indexFields(aClass, "street", "state", "zip");
+    Object address1 =
+        ThriftStruct.builder(aClass)
+            .set(aFields.get("street"), "123 Main St.")
+            .set(aFields.get("state"), montana)
+            .set(aFields.get("zip"), "59715")
+            .build();
+    Object address2 = ThriftStruct.builder(aClass).set(aFields.get("zip"), "02134").build();
+
+    Class<? extends ThriftStruct> bClass = (Class<? extends ThriftStruct>) loadClass("test.B");
+    ImmutableMap<String, ThriftFields> bFields = indexFields(bClass, "name", "addresses");
+    ThriftStruct expectedDefaultB =
+        ThriftStruct.builder(bClass)
+            .set(bFields.get("name"), "bob")
+            .set(bFields.get("addresses"), ImmutableSet.of(address1, address2))
+            .build();
+
+    Object actualDefaultB = defaultC.getFieldValue(cFields.get("b"));
+    assertEquals(expectedDefaultB, actualDefaultB);
   }
 
   private Class<? extends ThriftUnion> compileUnionClass(
@@ -558,8 +638,8 @@ public class ThriftGenTest {
     assertOutdirFiles(outdirPath("test", "Error.java"), outdirPath("test", "Response.java"));
     Class<? extends ThriftUnion> unionClass = compileUnionClass("test.Response", "test.Error");
 
-    ImmutableMap<String, ThriftFields> fieldsByName = indexFields(unionClass);
-    assertEquals(ImmutableSet.of("error", "errors", "noop"), fieldsByName.keySet());
+    ImmutableMap<String, ThriftFields> fieldsByName =
+        indexFields(unionClass, "error", "errors", "noop");
 
     // We know test.Error is a struct from reading the thrift above.
     @SuppressWarnings("unchecked")
@@ -575,6 +655,8 @@ public class ThriftGenTest {
     assertField(noopField, (short) 6, boolean.class, boolean.class);
 
     ThriftStruct errorStruct = ThriftStruct.builder(errorStructClass).build();
+    assertSerializationRoundTrip(errorStructClass, errorStruct);
+
     ThriftUnion errorResponse = ThriftUnion.create(unionClass, errorField, errorStruct);
     assertSame(errorField, errorResponse.getSetField());
     assertSame(errorStruct, errorResponse.getFieldValue());
@@ -660,7 +742,7 @@ public class ThriftGenTest {
         "namespace java test",
         "",
         "service UserInfo {",
-        "  string getStatus(1: string userName (secured=\"true\"), 2: bool verbose)",
+        "  string getStatus(1: string userName (secured='true'), 2: bool verbose)",
         "}");
     Class<? extends ThriftService> userInfoSyncServiceClass =
         loadThriftService(compileClass("test.UserInfo"), "test.UserInfo$Sync");

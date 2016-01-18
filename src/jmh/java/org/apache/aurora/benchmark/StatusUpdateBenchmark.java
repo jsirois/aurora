@@ -247,6 +247,8 @@ public class StatusUpdateBenchmark {
             bind(TaskStatusHandlerImpl.class).in(Singleton.class);
             bind(TierManager.class).to(TierManager.TierManagerImpl.class);
             bind(TierManager.TierManagerImpl.class).in(Singleton.class);
+            bind(TierManager.TierManagerImpl.TierConfig.class)
+                .toInstance(TierManager.TierManagerImpl.TierConfig.EMPTY);
           }
         }
     );

@@ -1,0 +1,16 @@
+package org.apache.aurora.test.peer;
+
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.MultipleThriftAnnotationsContainer;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutableMultipleThriftAnnotationsContainer {
+  private String one;
+
+  private MutableMultipleThriftAnnotationsContainer() {}
+
+  public final MultipleThriftAnnotationsContainer toThrift() {
+    return MultipleThriftAnnotationsContainer.builder().setOne(one).build();
+  }
+}

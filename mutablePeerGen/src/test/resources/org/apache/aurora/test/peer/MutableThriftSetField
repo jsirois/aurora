@@ -1,0 +1,20 @@
+package org.apache.aurora.test.peer;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.ThriftSetField;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutableThriftSetField {
+  private Set<MutablePrimitiveField> one;
+
+  private MutableThriftSetField() {}
+
+  public final ThriftSetField toThrift() {
+    return ThriftSetField.builder()
+        .setOne(one.stream().map(MutablePrimitiveField::toThrift).collect(Collectors.toSet()))
+        .build();
+  }
+}

@@ -52,8 +52,8 @@ public class MutablePeerProcessorTest {
   }
 
   private static JavaFileObject javaFile(String fullyQualifiedClassName) {
-    // NB: We load java sources from files w/o java extension to prevent a host of issues that can
-    // crop up when resource files are `.java` files.
+    // NB: We load java sources from files w/o java extension to prevent a host of build issues
+    // that can crop up when resource files are `.java` files.
     URL resource = Resources.getResource(fullyQualifiedClassName.replace('.', '/'));
     String code = loadCode(resource);
     return JavaFileObjects.forSourceString(fullyQualifiedClassName, code);

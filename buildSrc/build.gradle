@@ -15,3 +15,64 @@
 if (gradle.gradleVersion != GRADLE_VERSION) {
   throw new GradleException("Building is only supported with gradle version: $GRADLE_VERSION .")
 }
+
+def minJavaVersion = JavaVersion.VERSION_1_8;
+
+compileJava {
+  sourceCompatibility = minJavaVersion
+  targetCompatibility = minJavaVersion
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // TODO(John Sirois): Should not need this dep - its implicit; however the java code in buildSrc
+  // is getting re-compiled in later - non bootstrap - phases that don't apply the implicits like
+  // the gradle core does.  Track down and squash this second compile... maybe.  It may be the only
+  // way to add tests of the custom task?.
+  compile gradleApi()
+
+  compile "com.google.guava:guava:18.0"
+
+  compile subprojects.findAll { it.getTasksByName("jar", false) }
+}
+
+import javax.tools.ToolProvider
+
+subprojects {
+  apply plugin: 'java'
+
+  compileJava {
+    sourceCompatibility = minJavaVersion
+    targetCompatibility = minJavaVersion
+  }
+
+  repositories {
+    mavenCentral()
+  }
+
+  dependencies {
+    compile "com.facebook.swift:swift-annotations:0.17.0"
+    compile "com.facebook.swift:swift-codec:0.17.0"
+    compile "com.facebook.swift:swift-idl-parser:0.17.0"
+    compile "com.google.auto.value:auto-value:1.1"
+    compile "com.google.guava:guava:18.0"
+    compile "com.squareup:javapoet:1.4.0"
+    compile "org.apache.thrift:libthrift:0.9.1"
+    compile "org.immutables:value:2.1.0"
+    compile "org.slf4j:slf4j-jdk14:1.7.12"
+
+    // Tests need tools.jar and that contains the javac compile tool, so this should be a portable
+    // way to find that jar.
+    testCompile files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
+
+    testCompile "com.google.jimfs:jimfs:1.0"
+    testCompile "junit:junit:4.12"
+  }
+
+  rootProject.dependencies {
+    compile project(path)
+  }
+}

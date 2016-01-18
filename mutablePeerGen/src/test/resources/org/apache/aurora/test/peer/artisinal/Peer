@@ -1,0 +1,9 @@
+package org.apache.aurora.test.peer.artisinal;
+
+import org.apache.aurora.test.PreExistingPeer;
+
+public class Peer {
+  public PreExistingPeer toThrift() {
+    return null;
+  }
+}

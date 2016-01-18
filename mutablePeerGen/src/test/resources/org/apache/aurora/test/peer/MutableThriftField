@@ -1,0 +1,16 @@
+package org.apache.aurora.test.peer;
+
+import javax.annotation.Generated;
+
+import org.apache.aurora.test.ThriftField;
+
+@Generated("org.apache.aurora.storage.db.mybatis.peer.MutablePeerProcessor")
+public final class MutableThriftField {
+  private MutablePrimitiveField one;
+
+  private MutablePrimitiveField() {}
+
+  public final ThriftField toThrift() {
+    return ThriftField.builder().setOne(one == null ? null : one.toThrift()).build();
+  }
+}

@@ -20,6 +20,9 @@
 /build/
 /buildSrc/build/
 /buildSrc/dist/
+/buildSrc/thriftGen/build/
+/buildSrc/thriftGen/dist/
+/buildSrc/thriftGen/out/
 /commons-args/dist/
 /commons-args/out/
 /commons/dist/

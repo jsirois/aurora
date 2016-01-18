@@ -11,5 +11,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-rootProject.name = 'aurora'
-include 'api', 'buildSrc', 'buildSrc:thriftGen', 'commons-args', 'commons'
+include 'thriftGen'

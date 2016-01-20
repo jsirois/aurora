@@ -110,6 +110,11 @@ For more details, please see https://issues.apache.org/jira/browse/AURORA-1169
       failOnVersionConflict()
       force "com.fasterxml.jackson.core:jackson-annotations:${jacksonRev}"
       force "com.fasterxml.jackson.core:jackson-core:${jacksonRev}"
+
+      // TODO(John Sirois): XXX thriftGen cleanup & centralize a swiftRev
+      force "com.facebook.swift:swift-codec:0.17.0"
+      force "com.facebook.swift:swift-annotations:0.17.0"
+
       force "com.google.code.findbugs:annotations:3.0.0"
       force "com.google.code.gson:gson:${gsonRev}"
       force "com.google.guava:guava:${guavaRev}"
@@ -206,25 +211,6 @@ project(':commons') {
 
 project(':api') {
   apply plugin: org.apache.aurora.build.ThriftPlugin
-  apply plugin: org.apache.aurora.build.ThriftEntitiesPlugin
-
-  task checkPython << {
-    def python27Executable = ['python2.7', 'python'].find { python ->
-      try {
-        def check = "import sys; sys.exit(0 if sys.version_info >= (2,7) and sys.version_info < (3,) else 1)"
-        return [python, "-c", check].execute().waitFor() == 0
-      } catch (IOException e) {
-        return false
-      }
-    }
-
-    if (python27Executable == null) {
-      throw new GradleException('Build requires Python 2.7.')
-    } else {
-      thriftEntities.python = python27Executable
-    }
-  }
-  generateThriftEntitiesJava.dependsOn checkPython
 
   tasks.withType(Jar) {
     baseName "aurora-api"
@@ -244,22 +230,19 @@ project(':api') {
     }
   }
 
-  thrift {
-    version = thriftRev
-    resourcePrefix = 'org/apache/aurora/scheduler/gen/client'
+  dependencies {
+    thriftCompile project(':mutablePeerGen')
   }
 
-  thriftEntities {
-    gsonRev = project.gsonRev
-    guavaRev = project.guavaRev
-    inputFiles = fileTree("src/main/thrift/org/apache/aurora/gen").matching {
-      include "**/*.thrift"
-    }
+  thrift {
+    version = thriftRev
+    peerSources = project.file("${projectDir}/src/main/java")
+    resourcePrefix = 'org/apache/aurora/scheduler/gen/client'
   }
 
   idea {
     module {
-      [thrift.genJavaDir, thriftEntities.genJavaDir].each {
+      [thrift.genJavaDir].each {
         sourceDirs += it
         generatedSourceDirs += it
       }
@@ -303,6 +286,8 @@ compileJava {
   options.compilerArgs << '-Xlint:-processing'
   // Don't fail for serialVersionUID warnings.
   options.compilerArgs << '-Xlint:-serial'
+  // Don't fail for third party classfile warnings.
+  options.compilerArgs << '-Xlint:-classfile'
   // Capture method parameter names in classfiles.
   options.compilerArgs << '-parameters'
 }
@@ -612,6 +597,14 @@ jacocoTestReport {
   reports {
     xml.enabled true
   }
+
+  // @AutoValue generated code should never count against coverage.
+  afterEvaluate {
+    classDirectories = files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: ['**/AutoValue_*'])
+    })
+  }
+
   doLast {
     println "Coverage report generated: file://$reportPath/html/index.html"
   }

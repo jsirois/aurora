@@ -38,7 +38,6 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
@@ -200,15 +199,18 @@ public class ServerSetImpl implements ServerSet {
     }
 
     byte[] serializeServiceInstance() {
-      ServiceInstance serviceInstance = new ServiceInstance(
-          ServerSets.toEndpoint(endpoint),
-          Maps.transformValues(additionalEndpoints, ServerSets.TO_ENDPOINT),
-          Status.ALIVE);
+      ServiceInstance.Builder serviceInstanceBuilder =
+          ServiceInstance.builder()
+              .setServiceEndpoint(ServerSets.toEndpoint(endpoint))
+              .setAdditionalEndpoints(
+                  Maps.transformValues(additionalEndpoints, ServerSets.TO_ENDPOINT))
+              .setStatus(Status.ALIVE);
 
       if (shardId.isPresent()) {
-        serviceInstance.setShard(shardId.get());
+        serviceInstanceBuilder.setShard(shardId.get());
       }
 
+      ServiceInstance serviceInstance = serviceInstanceBuilder.build();
       LOG.debug("updating endpoint data to:\n\t" + serviceInstance);
       try {
         return ServerSets.serializeServiceInstance(serviceInstance, codec);
@@ -459,18 +461,18 @@ public class ServerSetImpl implements ServerSet {
     @Override
     public ServiceInstance deserialize(InputStream source) throws IOException {
       ServiceInstanceSchema output = gson.fromJson(new InputStreamReader(source, ENCODING), CLASS);
-      Endpoint primary = new Endpoint(
+      Endpoint primary = Endpoint.create(
           output.getServiceEndpoint().getHost(), output.getServiceEndpoint().getPort());
       Map<String, Endpoint> additional = Maps.transformValues(
           output.getAdditionalEndpoints(),
-          endpoint -> new Endpoint(endpoint.getHost(), endpoint.getPort())
+          endpoint -> Endpoint.create(endpoint.getHost(), endpoint.getPort())
       );
-      ServiceInstance instance =
-          new ServiceInstance(primary, ImmutableMap.copyOf(additional), output.getStatus());
-      if (output.getShard() != null) {
-        instance.setShard(output.getShard());
-      }
-      return instance;
+      return ServiceInstance.builder()
+          .setServiceEndpoint(primary)
+          .setAdditionalEndpoints(additional)
+          .setStatus(output.getStatus())
+          .setShard(output.getShard())
+          .build();
     }
   }
 

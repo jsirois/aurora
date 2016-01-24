@@ -15,6 +15,9 @@ package org.apache.aurora.benchmark;
 
 import java.util.Set;
 
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.ScheduledTask;
+
 import static java.util.Objects.requireNonNull;
 
 /**

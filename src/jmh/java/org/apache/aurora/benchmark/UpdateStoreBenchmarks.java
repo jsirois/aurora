@@ -21,6 +21,10 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.storage.JobUpdateStore;
@@ -76,7 +80,7 @@ public class UpdateStoreBenchmarks {
           keyBuilder.add(key);
           String lockToken = UUID.randomUUID().toString();
           storeProvider.getLockStore().saveLock(
-              Lock.build(new Lock(LockKey.job(key.getJob().newBuilder()), lockToken, USER, 0L)));
+              Lock.create(LockKey.job(key.getJob()), lockToken, USER, 0L));
 
           updateStore.saveJobUpdate(details.getUpdate(), Optional.of(lockToken));
 

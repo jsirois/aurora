@@ -22,8 +22,6 @@ import com.google.inject.Inject;
 import org.apache.aurora.GuavaUtils;
 import org.apache.aurora.scheduler.storage.LockStore;
 import org.apache.aurora.scheduler.storage.db.views.LockRow;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
 
 import static java.util.Objects.requireNonNull;
 
@@ -45,14 +43,14 @@ class DbLockStore implements LockStore.Mutable {
 
   @Timed("lock_store_save_lock")
   @Override
-  public void saveLock(ILock lock) {
+  public void saveLock(Lock lock) {
     lockKeyMapper.insert(lock.getKey());
     mapper.insert(lock.newBuilder());
   }
 
   @Timed("lock_store_remove_lock")
   @Override
-  public void removeLock(ILockKey lockKey) {
+  public void removeLock(LockKey lockKey) {
     mapper.delete(lockKey.newBuilder());
   }
 
@@ -64,18 +62,18 @@ class DbLockStore implements LockStore.Mutable {
 
   @Timed("lock_store_fetch_locks")
   @Override
-  public Set<ILock> fetchLocks() {
+  public Set<Lock> fetchLocks() {
     return mapper.selectAll().stream().map(TO_ROW).collect(GuavaUtils.toImmutableSet());
   }
 
   @Timed("lock_store_fetch_lock")
   @Override
-  public Optional<ILock> fetchLock(ILockKey lockKey) {
+  public Optional<Lock> fetchLock(LockKey lockKey) {
     return Optional.ofNullable(mapper.select(lockKey.newBuilder())).map(TO_ROW);
   }
 
   /**
-   * LockRow converter to satisfy the ILock interface.
+   * LockRow converter to satisfy the Lock interface.
    */
-  private static final Function<LockRow, ILock> TO_ROW = input -> ILock.build(input.getLock());
+  private static final Function<LockRow, Lock> TO_ROW = input -> Lock.build(input.getLock());
 }

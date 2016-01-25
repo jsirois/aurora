@@ -23,7 +23,6 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.junit.Test;
 
 import static org.apache.aurora.gen.ScheduleStatus.ASSIGNED;
@@ -199,7 +198,7 @@ public class SlaAlgorithmTest {
   public void testJobUptimeEmpty() {
     long now = System.currentTimeMillis();
     Number actual = JOB_UPTIME_99.getAlgorithm().calculate(
-        new LinkedList<IScheduledTask>(),
+        new LinkedList<ScheduledTask>(),
         Range.closed(0L, now));
     assertEquals(0, actual);
   }
@@ -207,7 +206,7 @@ public class SlaAlgorithmTest {
   @Test
   public void testJobUptimeNonTerminalIgnored() {
     long now = System.currentTimeMillis();
-    Set<IScheduledTask> instances = makeUptimeTasks(100, now);
+    Set<ScheduledTask> instances = makeUptimeTasks(100, now);
     instances.add(makeTask(ImmutableMap.of(now - 5000, RUNNING, now - 3000, KILLED)));
     Number actual = JOB_UPTIME_99.getAlgorithm().calculate(instances, Range.closed(0L, now));
     assertEquals(1, actual);
@@ -216,7 +215,7 @@ public class SlaAlgorithmTest {
   @Test
   public void testJobUptimeLiveNonTerminalIgnored() {
     long now = System.currentTimeMillis();
-    Set<IScheduledTask> instances = makeUptimeTasks(100, now);
+    Set<ScheduledTask> instances = makeUptimeTasks(100, now);
     instances.add(makeTask(ImmutableMap.of(now - 5000, RUNNING, now - 3000, RESTARTING)));
     Number actual = JOB_UPTIME_99.getAlgorithm().calculate(instances, Range.closed(0L, now));
     assertEquals(1, actual);
@@ -274,19 +273,19 @@ public class SlaAlgorithmTest {
     assertEquals(100.0, actual);
   }
 
-  private static Set<IScheduledTask> makeUptimeTasks(int num, long now) {
-    Set<IScheduledTask> instances = Sets.newHashSet();
+  private static Set<ScheduledTask> makeUptimeTasks(int num, long now) {
+    Set<ScheduledTask> instances = Sets.newHashSet();
     for (int i = 0; i < num; i++) {
       instances.add(makeTask(ImmutableMap.of(now - (i + 1) * 1000, RUNNING)));
     }
     return instances;
   }
 
-  private static IScheduledTask makeTask(Map<Long, ScheduleStatus> events) {
+  private static ScheduledTask makeTask(Map<Long, ScheduleStatus> events) {
     return makeTask(events, 0);
   }
 
-  private static IScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
+  private static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
     return SlaTestUtil.makeTask(events, instanceId);
   }
 }

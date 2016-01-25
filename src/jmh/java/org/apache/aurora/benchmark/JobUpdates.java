@@ -35,8 +35,6 @@ import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
 
 /**
  * Job update factory.
@@ -58,13 +56,13 @@ final class JobUpdates {
       return this;
     }
 
-    Set<IJobUpdateDetails> build(int count) {
-      ImmutableSet.Builder<IJobUpdateDetails> result = ImmutableSet.builder();
+    Set<JobUpdateDetails> build(int count) {
+      ImmutableSet.Builder<JobUpdateDetails> result = ImmutableSet.builder();
       for (int i = 0; i < count; i++) {
         JobKey job = new JobKey("role", "env", UUID.randomUUID().toString());
         JobUpdateKey key = new JobUpdateKey().setJob(job).setId(UUID.randomUUID().toString());
 
-        TaskConfig task = TaskTestUtil.makeConfig(IJobKey.build(job)).newBuilder();
+        TaskConfig task = TaskTestUtil.makeConfig(JobKey.build(job)).newBuilder();
         task.getExecutorConfig().setData(string(10000));
 
         JobUpdate update = new JobUpdate()
@@ -99,7 +97,7 @@ final class JobUpdates {
           instances.add(new JobInstanceUpdateEvent(k, 0L, JobUpdateAction.INSTANCE_UPDATING));
         }
 
-        result.add(IJobUpdateDetails.build(new JobUpdateDetails()
+        result.add(JobUpdateDetails.build(new JobUpdateDetails()
             .setUpdate(update)
             .setUpdateEvents(events.build())
             .setInstanceEvents(instances.build())));

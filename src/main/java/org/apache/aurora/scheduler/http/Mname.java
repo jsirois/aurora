@@ -40,8 +40,6 @@ import com.google.common.collect.Iterables;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -184,7 +182,7 @@ public class Mname {
       UriInfo uriInfo,
       Optional<String> forwardRequest) {
 
-    IScheduledTask task = Iterables.getOnlyElement(
+    ScheduledTask task = Iterables.getOnlyElement(
         Storage.Util.fetchTasks(storage,
             Query.instanceScoped(JobKeys.from(role, env, job), instanceId).active()),
         null);
@@ -196,7 +194,7 @@ public class Mname {
       return respond(NOT_FOUND, "The selected instance is currently in state " + task.getStatus());
     }
 
-    IAssignedTask assignedTask = task.getAssignedTask();
+    AssignedTask assignedTask = task.getAssignedTask();
     Optional<Integer> port = getRedirectPort(assignedTask);
     if (!port.isPresent()) {
       return respond(NOT_FOUND, "The task does not have a registered http port.");
@@ -217,7 +215,7 @@ public class Mname {
   }
 
   @VisibleForTesting
-  static Optional<Integer> getRedirectPort(IAssignedTask task) {
+  static Optional<Integer> getRedirectPort(AssignedTask task) {
     Map<String, Integer> ports = task.isSetAssignedPorts()
         ? task.getAssignedPorts() : ImmutableMap.of();
     for (String httpPortName : HTTP_PORT_NAMES) {

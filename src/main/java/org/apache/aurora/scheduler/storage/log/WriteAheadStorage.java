@@ -46,18 +46,6 @@ import org.apache.aurora.scheduler.storage.QuotaStore;
 import org.apache.aurora.scheduler.storage.SchedulerStore;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.slf4j.Logger;
 
 import uno.perk.forward.Forward;
@@ -161,7 +149,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public boolean unsafeModifyInPlace(final String taskId, final ITaskConfig taskConfiguration) {
+  public boolean unsafeModifyInPlace(final String taskId, final TaskConfig taskConfiguration) {
     requireNonNull(taskId);
     requireNonNull(taskConfiguration);
 
@@ -181,19 +169,19 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveTasks(final Set<IScheduledTask> newTasks) {
+  public void saveTasks(final Set<ScheduledTask> newTasks) {
     requireNonNull(newTasks);
 
-    write(Op.saveTasks(new SaveTasks(IScheduledTask.toBuildersSet(newTasks))));
+    write(Op.saveTasks(new SaveTasks(ScheduledTask.toBuildersSet(newTasks))));
     taskStore.saveTasks(newTasks);
   }
 
   @Override
-  public Optional<IScheduledTask> mutateTask(
+  public Optional<ScheduledTask> mutateTask(
       String taskId,
-      Function<IScheduledTask, IScheduledTask> mutator) {
+      Function<ScheduledTask, IScheduledTask> mutator) {
 
-    Optional<IScheduledTask> mutated = taskStore.mutateTask(taskId, mutator);
+    Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId, mutator);
     log.debug("Storing updated task to log: {}={}", taskId, mutated.get().getStatus());
     write(Op.saveTasks(new SaveTasks(ImmutableSet.of(mutated.get().newBuilder()))));
 
@@ -201,7 +189,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveQuota(final String role, final IResourceAggregate quota) {
+  public void saveQuota(final String role, final ResourceAggregate quota) {
     requireNonNull(role);
     requireNonNull(quota);
 
@@ -210,7 +198,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public boolean saveHostAttributes(final IHostAttributes attrs) {
+  public boolean saveHostAttributes(final HostAttributes attrs) {
     requireNonNull(attrs);
 
     boolean changed = attributeStore.saveHostAttributes(attrs);
@@ -222,7 +210,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void removeJob(final IJobKey jobKey) {
+  public void removeJob(final JobKey jobKey) {
     requireNonNull(jobKey);
 
     write(Op.removeJob(new RemoveJob().setJobKey(jobKey.newBuilder())));
@@ -230,7 +218,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveAcceptedJob(final IJobConfiguration jobConfig) {
+  public void saveAcceptedJob(final JobConfiguration jobConfig) {
     requireNonNull(jobConfig);
 
     write(Op.saveCronJob(new SaveCronJob(jobConfig.newBuilder())));
@@ -246,7 +234,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveLock(final ILock lock) {
+  public void saveLock(final Lock lock) {
     requireNonNull(lock);
 
     write(Op.saveLock(new SaveLock(lock.newBuilder())));
@@ -254,7 +242,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void removeLock(final ILockKey lockKey) {
+  public void removeLock(final LockKey lockKey) {
     requireNonNull(lockKey);
 
     write(Op.removeLock(new RemoveLock(lockKey.newBuilder())));
@@ -262,7 +250,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveJobUpdate(IJobUpdate update, Optional<String> lockToken) {
+  public void saveJobUpdate(JobUpdate update, Optional<String> lockToken) {
     requireNonNull(update);
 
     write(Op.saveJobUpdate(new SaveJobUpdate(update.newBuilder(), lockToken.orNull())));
@@ -270,7 +258,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveJobUpdateEvent(IJobUpdateKey key, IJobUpdateEvent event) {
+  public void saveJobUpdateEvent(JobUpdateKey key, JobUpdateEvent event) {
     requireNonNull(key);
     requireNonNull(event);
 
@@ -279,7 +267,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public void saveJobInstanceUpdateEvent(IJobUpdateKey key, IJobInstanceUpdateEvent event) {
+  public void saveJobInstanceUpdateEvent(JobUpdateKey key, JobInstanceUpdateEvent event) {
     requireNonNull(key);
     requireNonNull(event);
 
@@ -289,8 +277,8 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   }
 
   @Override
-  public Set<IJobUpdateKey> pruneHistory(int perJobRetainCount, long historyPruneThresholdMs) {
-    Set<IJobUpdateKey> prunedUpdates = jobUpdateStore.pruneHistory(
+  public Set<JobUpdateKey> pruneHistory(int perJobRetainCount, long historyPruneThresholdMs) {
+    Set<JobUpdateKey> prunedUpdates = jobUpdateStore.pruneHistory(
         perJobRetainCount,
         historyPruneThresholdMs);
 

@@ -20,11 +20,11 @@ import com.google.common.collect.ImmutableList;
 
 import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.gen.storage.DeduplicatedSnapshot;
 import org.apache.aurora.gen.storage.LogEntry;
 import org.apache.aurora.gen.storage.Op;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.storageConstants;
 import org.apache.aurora.scheduler.log.Log.Position;
 import org.apache.aurora.scheduler.log.Log.Stream;
 import org.apache.aurora.scheduler.storage.log.Entries;
@@ -84,7 +84,7 @@ public class LogOpMatcher implements IArgumentMatcher {
      */
     public IExpectationSetters<Position> expectTransaction(Op...ops) {
       LogEntry entry = LogEntry.transaction(
-          new Transaction(ImmutableList.copyOf(ops), storageConstants.CURRENT_SCHEMA_VERSION));
+          new Transaction(ImmutableList.copyOf(ops), Constants.CURRENT_SCHEMA_VERSION));
       return expect(stream.append(sameEntry(entry)));
     }
 

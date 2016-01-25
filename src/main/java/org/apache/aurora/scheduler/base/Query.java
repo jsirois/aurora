@@ -23,8 +23,6 @@ import com.google.common.primitives.Ints;
 
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.TaskQuery;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
 
 import static java.util.Objects.requireNonNull;
 
@@ -70,23 +68,23 @@ public final class Query {
     return unscoped().byEnv(role, environment);
   }
 
-  public static Builder jobScoped(IJobKey jobKey) {
+  public static Builder jobScoped(JobKey jobKey) {
     return unscoped().byJob(jobKey);
   }
 
-  public static Builder jobScoped(Iterable<IJobKey> jobKeys) {
+  public static Builder jobScoped(Iterable<JobKey> jobKeys) {
     return unscoped().byJobKeys(jobKeys);
   }
 
-  public static Builder instanceScoped(IInstanceKey instanceKey) {
+  public static Builder instanceScoped(InstanceKey instanceKey) {
     return instanceScoped(instanceKey.getJobKey(), instanceKey.getInstanceId());
   }
 
-  public static Builder instanceScoped(IJobKey jobKey, int instanceId, int... instanceIds) {
+  public static Builder instanceScoped(JobKey jobKey, int instanceId, int... instanceIds) {
     return unscoped().byInstances(jobKey, instanceId, instanceIds);
   }
 
-  public static Builder instanceScoped(IJobKey jobKey, Iterable<Integer> instanceIds) {
+  public static Builder instanceScoped(JobKey jobKey, Iterable<Integer> instanceIds) {
     return unscoped().byInstances(jobKey, instanceIds);
   }
 
@@ -242,7 +240,7 @@ public final class Query {
      * @param jobKey The key of the job to scope the query to.
      * @return A new Builder scoped to the given jobKey.
      */
-    public Builder byJob(IJobKey jobKey) {
+    public Builder byJob(JobKey jobKey) {
       JobKeys.assertValid(jobKey);
 
       return new Builder(
@@ -317,7 +315,7 @@ public final class Query {
      * @param instanceIds Additional instance ids of the target job.
      * @return A new Builder scoped to the given instance ids.
      */
-    public Builder byInstances(IJobKey jobKey, int instanceId, int... instanceIds) {
+    public Builder byInstances(JobKey jobKey, int instanceId, int... instanceIds) {
       JobKeys.assertValid(jobKey);
 
       return new Builder(
@@ -340,7 +338,7 @@ public final class Query {
      * @param instanceIds Instances of the target job.
      * @return A new Builder scoped to the given instance ids.
      */
-    public Builder byInstances(IJobKey jobKey, Iterable<Integer> instanceIds) {
+    public Builder byInstances(JobKey jobKey, Iterable<Integer> instanceIds) {
       JobKeys.assertValid(jobKey);
       requireNonNull(instanceIds);
 
@@ -359,10 +357,10 @@ public final class Query {
      * @param jobKeys The job keys to scope this builder to.
      * @return A new Builder scoped to the job keys.
      */
-    public Builder byJobKeys(Iterable<IJobKey> jobKeys) {
+    public Builder byJobKeys(Iterable<JobKey> jobKeys) {
       requireNonNull(jobKeys);
 
-      return new Builder(query.deepCopy().setJobKeys(IJobKey.toBuildersSet(jobKeys)));
+      return new Builder(query.deepCopy().setJobKeys(JobKey.toBuildersSet(jobKeys)));
     }
 
     /**

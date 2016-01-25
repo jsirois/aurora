@@ -55,7 +55,6 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGe
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGetter;
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
 import org.apache.aurora.scheduler.thrift.Responses;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
@@ -92,10 +91,10 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class, JobKey.class) {
         @Override
         public Optional<JobKey> apply(TaskQuery input) {
-          Optional<Set<IJobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));
+          Optional<Set<JobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));
           if (targetJobs.isPresent() && targetJobs.get().size() == 1) {
             return Optional.of(Iterables.getOnlyElement(targetJobs.get()))
-                .transform(IJobKey::newBuilder);
+                .transform(JobKey::newBuilder);
           } else {
             return Optional.absent();
           }
@@ -311,7 +310,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   }
 
   @VisibleForTesting
-  Permission makeTargetPermission(String methodName, IJobKey jobKey) {
+  Permission makeTargetPermission(String methodName, JobKey jobKey) {
     return Permissions.createJobScopedPermission(methodName, jobKey);
   }
 
@@ -327,10 +326,10 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       return invocation.proceed();
     }
 
-    Optional<IJobKey> jobKey = authorizingParamGetters
+    Optional<JobKey> jobKey = authorizingParamGetters
         .getUnchecked(invocation.getMethod())
         .apply(invocation.getArguments())
-        .transform(IJobKey::build);
+        .transform(JobKey::build);
     if (jobKey.isPresent() && JobKeys.isValid(jobKey.get())) {
       Permission targetPermission = makeTargetPermission(method.getName(), jobKey.get());
       if (subject.isPermitted(targetPermission)) {

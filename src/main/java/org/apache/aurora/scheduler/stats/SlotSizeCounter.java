@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 
 import org.apache.aurora.scheduler.ResourceAggregates;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
 
 import static java.util.Objects.requireNonNull;
 
@@ -35,7 +34,7 @@ import static java.util.Objects.requireNonNull;
  * slot sizes, broken down by dedicated and non-dedicated hosts.
  */
 class SlotSizeCounter implements Runnable {
-  private static final Map<String, IResourceAggregate> SLOT_SIZES = ImmutableMap.of(
+  private static final Map<String, ResourceAggregate> SLOT_SIZES = ImmutableMap.of(
       "small", ResourceAggregates.SMALL,
       "medium", ResourceAggregates.MEDIUM,
       "large", ResourceAggregates.LARGE,
@@ -49,13 +48,13 @@ class SlotSizeCounter implements Runnable {
       getPrefix(true, true)
   );
 
-  private final Map<String, IResourceAggregate> slotSizes;
+  private final Map<String, ResourceAggregate> slotSizes;
   private final MachineResourceProvider machineResourceProvider;
   private final CachedCounters cachedCounters;
 
   @VisibleForTesting
   SlotSizeCounter(
-      final Map<String, IResourceAggregate> slotSizes,
+      final Map<String, ResourceAggregate> slotSizes,
       MachineResourceProvider machineResourceProvider,
       CachedCounters cachedCounters) {
 
@@ -65,17 +64,17 @@ class SlotSizeCounter implements Runnable {
   }
 
   static class MachineResource {
-    private final IResourceAggregate size;
+    private final ResourceAggregate size;
     private final boolean dedicated;
     private final boolean revocable;
 
-    MachineResource(IResourceAggregate size, boolean dedicated, boolean revocable) {
+    MachineResource(ResourceAggregate size, boolean dedicated, boolean revocable) {
       this.size = requireNonNull(size);
       this.dedicated = dedicated;
       this.revocable = revocable;
     }
 
-    public IResourceAggregate getSize() {
+    public ResourceAggregate getSize() {
       return size;
     }
 
@@ -125,8 +124,8 @@ class SlotSizeCounter implements Runnable {
     return getPrefix(dedicated, revocable) + slotName;
   }
 
-  private int countSlots(Iterable<IResourceAggregate> slots, final IResourceAggregate slotSize) {
-    Function<IResourceAggregate, Integer> counter =
+  private int countSlots(Iterable<ResourceAggregate> slots, final ResourceAggregate slotSize) {
+    Function<ResourceAggregate, Integer> counter =
         machineSlack -> ResourceAggregates.divide(machineSlack, slotSize);
 
     int sum = 0;
@@ -139,14 +138,14 @@ class SlotSizeCounter implements Runnable {
   private void updateStats(
       String name,
       Iterable<MachineResource> slots,
-      IResourceAggregate slotSize) {
+      ResourceAggregate slotSize) {
 
-    ImmutableMultimap.Builder<String, IResourceAggregate> builder = ImmutableMultimap.builder();
+    ImmutableMultimap.Builder<String, ResourceAggregate> builder = ImmutableMultimap.builder();
     for (MachineResource slot : slots) {
       builder.put(getStatName(name, slot.isDedicated(), slot.isRevocable()), slot.getSize());
     }
 
-    ImmutableMultimap<String, IResourceAggregate> sizes = builder.build();
+    ImmutableMultimap<String, ResourceAggregate> sizes = builder.build();
 
     for (String slotGroup : SLOT_GROUPS) {
       String statName = slotGroup + name;

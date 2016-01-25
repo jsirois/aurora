@@ -30,8 +30,6 @@ import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEvent.TasksDeleted;
 import org.apache.aurora.scheduler.scheduling.TaskGroups.TaskGroupsSettings;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.testing.FakeScheduledExecutor;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +41,7 @@ import static org.easymock.EasyMock.expect;
 public class TaskGroupsTest extends EasyMockTest {
   private static final Amount<Long, Time> FIRST_SCHEDULE_DELAY = Amount.of(1L, Time.MILLISECONDS);
   private static final Amount<Long, Time> RESCHEDULE_DELAY = FIRST_SCHEDULE_DELAY;
-  private static final IJobKey JOB_A = IJobKey.build(new JobKey("role", "test", "jobA"));
+  private static final JobKey JOB_A = JobKey.build(new JobKey("role", "test", "jobA"));
   private static final String TASK_A_ID = "a";
 
   private BackoffStrategy backoffStrategy;
@@ -81,7 +79,7 @@ public class TaskGroupsTest extends EasyMockTest {
 
   @Test
   public void testTaskDeletedBeforeEvaluating() {
-    final IScheduledTask task = makeTask(TASK_A_ID);
+    final ScheduledTask task = makeTask(TASK_A_ID);
     expect(rateLimiter.acquire()).andReturn(0D);
     expect(taskScheduler.schedule(Tasks.id(task))).andAnswer(() -> {
       // Test a corner case where a task is deleted while it is being evaluated by the task
@@ -125,7 +123,7 @@ public class TaskGroupsTest extends EasyMockTest {
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a1", 1), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a2", 2), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(
-        makeTask(IJobKey.build(JOB_A.newBuilder().setName("jobB")), "b0", 0), INIT));
+        makeTask(JobKey.build(JOB_A.newBuilder().setName("jobB")), "b0", 0), INIT));
 
     clock.advance(FIRST_SCHEDULE_DELAY);
   }
@@ -134,17 +132,17 @@ public class TaskGroupsTest extends EasyMockTest {
   public void testNonPendingIgnored() {
     control.replay();
 
-    IScheduledTask task =
-        IScheduledTask.build(makeTask(TASK_A_ID).newBuilder().setStatus(ASSIGNED));
+    ScheduledTask task =
+        ScheduledTask.build(makeTask(TASK_A_ID).newBuilder().setStatus(ASSIGNED));
     taskGroups.taskChangedState(TaskStateChange.initialized(task));
   }
 
-  private static IScheduledTask makeTask(String id) {
+  private static ScheduledTask makeTask(String id) {
     return makeTask(JOB_A, id, 0);
   }
 
-  private static IScheduledTask makeTask(IJobKey jobKey, String id, int instanceId) {
-    return IScheduledTask.build(new ScheduledTask()
+  private static ScheduledTask makeTask(JobKey jobKey, String id, int instanceId) {
+    return ScheduledTask.build(new ScheduledTask()
         .setStatus(ScheduleStatus.PENDING)
         .setAssignedTask(new AssignedTask()
             .setInstanceId(instanceId)

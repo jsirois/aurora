@@ -18,14 +18,6 @@ import java.util.Set;
 
 import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IDockerContainer;
-import org.apache.aurora.scheduler.storage.entities.IDockerParameter;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.ILimitConstraint;
-import org.apache.aurora.scheduler.storage.entities.IMetadata;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IValueConstraint;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -40,7 +32,7 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
    * @param result Container for auto-generated ID of the inserted row.
    */
   void insert(
-      @Param("config") ITaskConfig config,
+      @Param("config") TaskConfig config,
       @Param("result") InsertResult result);
 
   /**
@@ -49,10 +41,10 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
    * @param job Job to look up.
    * @return Task config row container.
    */
-  List<DbTaskConfig> selectConfigsByJob(IJobKey job);
+  List<DbTaskConfig> selectConfigsByJob(JobKey job);
 
   /**
-   * Inserts the constraint association within an {@link ITaskConfig}.
+   * Inserts the constraint association within an {@link TaskConfig}.
    *
    * @param configId Task config ID.
    * @param constraint Constraint to insert.
@@ -60,21 +52,21 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
    */
   void insertConstraint(
       @Param("configId") long configId,
-      @Param("constraint") IConstraint constraint,
+      @Param("constraint") Constraint constraint,
       @Param("result") InsertResult result);
 
   /**
-   * Inserts the limit constraint association within an {@link IConstraint}.
+   * Inserts the limit constraint association within an {@link Constraint}.
    *
    * @param constraintId Constraint ID.
    * @param constraint Constraint to insert.
    */
   void insertLimitConstraint(
       @Param("constraintId") long constraintId,
-      @Param("constraint") ILimitConstraint constraint);
+      @Param("constraint") LimitConstraint constraint);
 
   /**
-   * Inserts the value constraint association within an {@link IConstraint}.
+   * Inserts the value constraint association within an {@link Constraint}.
    *
    * @param constraintId Constraint ID.
    * @param constraint Constraint to insert.
@@ -82,11 +74,11 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
    */
   void insertValueConstraint(
       @Param("constraintId") long constraintId,
-      @Param("constraint") IValueConstraint constraint,
+      @Param("constraint") ValueConstraint constraint,
       @Param("result") InsertResult result);
 
   /**
-   * Inserts the values association within an {@link IValueConstraint}.
+   * Inserts the values association within an {@link ValueConstraint}.
    *
    * @param valueConstraintId Value constraint ID.
    * @param values Values to insert.
@@ -96,7 +88,7 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
       @Param("values") Set<String> values);
 
   /**
-   * Inserts the requested ports association within an {@link ITaskConfig}.
+   * Inserts the requested ports association within an {@link TaskConfig}.
    *
    * @param configId Task config ID.
    * @param ports Port names to insert.
@@ -106,7 +98,7 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
       @Param("ports") Set<String> ports);
 
   /**
-   * Inserts the task links association within an {@link ITaskConfig}.
+   * Inserts the task links association within an {@link TaskConfig}.
    *
    * @param configId Task config ID.
    * @param links Task links to insert.
@@ -116,35 +108,35 @@ interface TaskConfigMapper extends GarbageCollectedTableMapper {
       @Param("links") List<Pair<String, String>> links);
 
   /**
-   * Inserts the container association within an {@link ITaskConfig}.
+   * Inserts the container association within an {@link TaskConfig}.
    *
    * @param configId Task config ID.
    * @param container Container to insert.
    */
   void insertContainer(
       @Param("configId") long configId,
-      @Param("container") IDockerContainer container,
+      @Param("container") DockerContainer container,
       @Param("result") InsertResult result);
 
   /**
-   * Inserts docker parameters in associationw ith an {@link IDockerContainer}.
+   * Inserts docker parameters in associationw ith an {@link DockerContainer}.
    *
    * @param containerId Docker container row ID.
    * @param parameters Parameters to insert.
    */
   void insertDockerParameters(
       @Param("containerId") long containerId,
-      @Param("parameters") List<IDockerParameter> parameters);
+      @Param("parameters") List<DockerParameter> parameters);
 
   /**
-   * Inserts the metadata association within an {@link ITaskConfig}.
+   * Inserts the metadata association within an {@link TaskConfig}.
    *
    * @param configId Task config ID.
    * @param metadata Metadata associated with the task config.
    */
   void insertMetadata(
       @Param("configId") long configId,
-      @Param("metadata") Set<IMetadata> metadata);
+      @Param("metadata") Set<Metadata> metadata);
 
   /**
    * Deletes task configs.

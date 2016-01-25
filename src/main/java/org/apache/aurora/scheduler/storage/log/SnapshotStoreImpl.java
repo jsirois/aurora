@@ -42,15 +42,6 @@ import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.Volatile;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +61,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
         // references to be valid on insertion.
         @Override
         public void saveToSnapshot(StoreProvider store, Snapshot snapshot) {
-          snapshot.setLocks(ILock.toBuildersSet(store.getLockStore().fetchLocks()));
+          snapshot.setLocks(Lock.toBuildersSet(store.getLockStore().fetchLocks()));
         }
 
         @Override
@@ -79,7 +70,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
 
           if (snapshot.isSetLocks()) {
             for (Lock lock : snapshot.getLocks()) {
-              store.getLockStore().saveLock(ILock.build(lock));
+              store.getLockStore().saveLock(Lock.build(lock));
             }
           }
         }
@@ -88,7 +79,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
         @Override
         public void saveToSnapshot(StoreProvider storeProvider, Snapshot snapshot) {
           snapshot.setHostAttributes(
-              IHostAttributes.toBuildersSet(storeProvider.getAttributeStore().getHostAttributes()));
+              HostAttributes.toBuildersSet(storeProvider.getAttributeStore().getHostAttributes()));
         }
 
         @Override
@@ -101,7 +92,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
               // unknown hosts.  5cf760b began rejecting these, but the replicated log may still
               // contain entries with a null slave ID.
               if (attributes.isSetSlaveId()) {
-                store.getAttributeStore().saveHostAttributes(IHostAttributes.build(attributes));
+                store.getAttributeStore().saveHostAttributes(HostAttributes.build(attributes));
               } else {
                 LOG.info("Dropping host attributes with no slave ID: " + attributes);
               }
@@ -113,7 +104,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
         @Override
         public void saveToSnapshot(StoreProvider store, Snapshot snapshot) {
           snapshot.setTasks(
-              IScheduledTask.toBuildersSet(store.getTaskStore().fetchTasks(Query.unscoped())));
+              ScheduledTask.toBuildersSet(store.getTaskStore().fetchTasks(Query.unscoped())));
         }
 
         @Override
@@ -122,7 +113,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
 
           if (snapshot.isSetTasks()) {
             store.getUnsafeTaskStore().saveTasks(
-                IScheduledTask.setFromBuilders(snapshot.getTasks()));
+                ScheduledTask.setFromBuilders(snapshot.getTasks()));
           }
         }
       },
@@ -131,7 +122,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
         public void saveToSnapshot(StoreProvider store, Snapshot snapshot) {
           ImmutableSet.Builder<StoredCronJob> jobs = ImmutableSet.builder();
 
-          for (IJobConfiguration config : store.getCronJobStore().fetchJobs()) {
+          for (JobConfiguration config : store.getCronJobStore().fetchJobs()) {
             jobs.add(new StoredCronJob(config.newBuilder()));
           }
           snapshot.setCronJobs(jobs.build());
@@ -144,7 +135,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
           if (snapshot.isSetCronJobs()) {
             for (StoredCronJob job : snapshot.getCronJobs()) {
               store.getCronJobStore().saveAcceptedJob(
-                  IJobConfiguration.build(job.getJobConfiguration()));
+                  JobConfiguration.build(job.getJobConfiguration()));
             }
           }
         }
@@ -170,7 +161,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
         @Override
         public void saveToSnapshot(StoreProvider store, Snapshot snapshot) {
           ImmutableSet.Builder<QuotaConfiguration> quotas = ImmutableSet.builder();
-          for (Map.Entry<String, IResourceAggregate> entry
+          for (Map.Entry<String, ResourceAggregate> entry
               : store.getQuotaStore().fetchQuotas().entrySet()) {
 
             quotas.add(new QuotaConfiguration(entry.getKey(), entry.getValue().newBuilder()));
@@ -186,7 +177,7 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
           if (snapshot.isSetQuotaConfigurations()) {
             for (QuotaConfiguration quota : snapshot.getQuotaConfigurations()) {
               store.getQuotaStore()
-                  .saveQuota(quota.getRole(), IResourceAggregate.build(quota.getQuota()));
+                  .saveQuota(quota.getRole(), ResourceAggregate.build(quota.getQuota()));
             }
           }
         }
@@ -206,22 +197,22 @@ public class SnapshotStoreImpl implements SnapshotStore<Snapshot> {
             for (StoredJobUpdateDetails storedDetails : snapshot.getJobUpdateDetails()) {
               JobUpdateDetails details = storedDetails.getDetails();
               updateStore.saveJobUpdate(
-                  IJobUpdate.build(details.getUpdate()),
+                  JobUpdate.build(details.getUpdate()),
                   Optional.fromNullable(storedDetails.getLockToken()));
 
               if (details.getUpdateEventsSize() > 0) {
                 for (JobUpdateEvent updateEvent : details.getUpdateEvents()) {
                   updateStore.saveJobUpdateEvent(
-                      IJobUpdateKey.build(details.getUpdate().getSummary().getKey()),
-                      IJobUpdateEvent.build(updateEvent));
+                      JobUpdateKey.build(details.getUpdate().getSummary().getKey()),
+                      JobUpdateEvent.build(updateEvent));
                 }
               }
 
               if (details.getInstanceEventsSize() > 0) {
                 for (JobInstanceUpdateEvent instanceEvent : details.getInstanceEvents()) {
                   updateStore.saveJobInstanceUpdateEvent(
-                      IJobUpdateKey.build(details.getUpdate().getSummary().getKey()),
-                      IJobInstanceUpdateEvent.build(instanceEvent));
+                      JobUpdateKey.build(details.getUpdate().getSummary().getKey()),
+                      JobInstanceUpdateEvent.build(instanceEvent));
                 }
               }
             }

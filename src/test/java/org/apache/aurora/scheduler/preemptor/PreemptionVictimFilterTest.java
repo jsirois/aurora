@@ -42,9 +42,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.filter.SchedulingFilterImpl;
 import org.apache.aurora.scheduler.mesos.TaskExecutors;
 import org.apache.aurora.scheduler.stats.CachedCounters;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos;
@@ -112,7 +109,7 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
             tierManager);
 
     return filter.filterPreemptionVictims(
-        ITaskConfig.build(pendingTask.getAssignedTask().getTask()),
+        TaskConfig.build(pendingTask.getAssignedTask().getTask()),
         preemptionVictims(victims),
         EMPTY,
         offer,
@@ -473,7 +470,7 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
   private static ImmutableSet<PreemptionVictim> preemptionVictims(ScheduledTask... tasks) {
     return FluentIterable.from(ImmutableSet.copyOf(tasks))
         .transform(
-            task -> PreemptionVictim.fromTask(IAssignedTask.build(task.getAssignedTask()))).toSet();
+            task -> PreemptionVictim.fromTask(AssignedTask.build(task.getAssignedTask()))).toSet();
   }
 
   private static void assertVictims(
@@ -519,7 +516,7 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
 
     return Optional.of(new HostOffer(
         builder.build(),
-        IHostAttributes.build(new HostAttributes().setMode(NONE))));
+        HostAttributes.build(new HostAttributes().setMode(NONE))));
   }
 
   private IExpectationSetters<Set<SchedulingFilter.Veto>> expectFiltering() {
@@ -593,7 +590,7 @@ public class PreemptionVictimFilterTest extends EasyMockTest {
 
   // Sets up a normal host, no dedicated hosts and no maintenance.
   private void setUpHost() {
-    IHostAttributes hostAttrs = IHostAttributes.build(
+    HostAttributes hostAttrs = HostAttributes.build(
         new HostAttributes().setHost(HOST_A).setSlaveId(HOST_A + "_id")
             .setMode(NONE).setAttributes(ImmutableSet.of(rack(RACK_A), host(RACK_A))));
 

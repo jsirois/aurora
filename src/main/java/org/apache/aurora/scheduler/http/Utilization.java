@@ -41,8 +41,6 @@ import org.apache.aurora.scheduler.stats.ResourceCounter;
 import org.apache.aurora.scheduler.stats.ResourceCounter.GlobalMetric;
 import org.apache.aurora.scheduler.stats.ResourceCounter.Metric;
 import org.apache.aurora.scheduler.stats.ResourceCounter.MetricType;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 /**
  * A servlet to give an aggregate view of cluster resources consumed, grouped by category.
@@ -55,7 +53,7 @@ public class Utilization {
   private final StringTemplateHelper templateHelper;
 
   @Inject
-  Utilization(ResourceCounter counter, IServerInfo serverInfo) {
+  Utilization(ResourceCounter counter, ServerInfo serverInfo) {
     templateHelper = new StringTemplateHelper(getClass(), "utilization", true);
     this.counter = Objects.requireNonNull(counter);
     this.clusterName = MorePreconditions.checkNotBlank(serverInfo.getClusterName());
@@ -182,7 +180,7 @@ public class Utilization {
   public Response aggregateRoles(@PathParam("metric") final String metric) {
     final MetricType type = getTypeByName(metric);
 
-    Function<ITaskConfig, Display> toKey = task -> {
+    Function<TaskConfig, Display> toKey = task -> {
       String role = task.getJob().getRole();
       return new Display(role, metric + "/" + role);
     };
@@ -206,7 +204,7 @@ public class Utilization {
       @PathParam("role") String role) {
 
     MetricType type = getTypeByName(metric);
-    Function<ITaskConfig, Display> toKey = task -> new Display(task.getJob().getName(), null);
+    Function<TaskConfig, Display> toKey = task -> new Display(task.getJob().getName(), null);
     Map<Display, Metric> byJob =
         counter.computeAggregates(Query.roleScoped(role).active(), type.filter, toKey);
     return Response.ok(fillTemplate(byJob)).build();

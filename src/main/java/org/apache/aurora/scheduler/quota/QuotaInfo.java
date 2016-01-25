@@ -17,26 +17,24 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-
 import static java.util.Objects.requireNonNull;
 
 /**
  * Wraps allocated quota and consumption details.
  */
 public class QuotaInfo {
-  private final IResourceAggregate quota;
-  private final IResourceAggregate prodSharedConsumption;
-  private final IResourceAggregate prodDedicatedConsumption;
-  private final IResourceAggregate nonProdSharedConsumption;
-  private final IResourceAggregate nonProdDedicatedConsumption;
+  private final ResourceAggregate quota;
+  private final ResourceAggregate prodSharedConsumption;
+  private final ResourceAggregate prodDedicatedConsumption;
+  private final ResourceAggregate nonProdSharedConsumption;
+  private final ResourceAggregate nonProdDedicatedConsumption;
 
   QuotaInfo(
-      IResourceAggregate quota,
-      IResourceAggregate prodSharedConsumption,
-      IResourceAggregate prodDedicatedConsumption,
-      IResourceAggregate nonProdSharedConsumption,
-      IResourceAggregate nonProdDedicatedConsumption) {
+      ResourceAggregate quota,
+      ResourceAggregate prodSharedConsumption,
+      ResourceAggregate prodDedicatedConsumption,
+      ResourceAggregate nonProdSharedConsumption,
+      ResourceAggregate nonProdDedicatedConsumption) {
 
     this.quota = requireNonNull(quota);
     this.prodSharedConsumption = requireNonNull(prodSharedConsumption);
@@ -50,7 +48,7 @@ public class QuotaInfo {
    *
    * @return Available quota.
    */
-  public IResourceAggregate getQuota() {
+  public ResourceAggregate getQuota() {
     return quota;
   }
 
@@ -59,7 +57,7 @@ public class QuotaInfo {
    *
    * @return Production job consumption.
    */
-  public IResourceAggregate getProdSharedConsumption() {
+  public ResourceAggregate getProdSharedConsumption() {
     return prodSharedConsumption;
   }
 
@@ -68,7 +66,7 @@ public class QuotaInfo {
    *
    * @return Production dedicated job consumption.
    */
-  public IResourceAggregate getProdDedicatedConsumption() {
+  public ResourceAggregate getProdDedicatedConsumption() {
     return prodDedicatedConsumption;
   }
 
@@ -77,7 +75,7 @@ public class QuotaInfo {
    *
    * @return Non production job consumption.
    */
-  public IResourceAggregate getNonProdSharedConsumption() {
+  public ResourceAggregate getNonProdSharedConsumption() {
     return nonProdSharedConsumption;
   }
 
@@ -86,7 +84,7 @@ public class QuotaInfo {
    *
    * @return Non production dedicated job consumption.
    */
-  public IResourceAggregate getNonProdDedicatedConsumption() {
+  public ResourceAggregate getNonProdDedicatedConsumption() {
     return nonProdDedicatedConsumption;
   }
 

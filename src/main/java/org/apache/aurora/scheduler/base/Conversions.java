@@ -29,7 +29,6 @@ import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.TaskState;
@@ -113,12 +112,12 @@ public final class Conversions {
    * @param offer Resource offer.
    * @return Equivalent thrift host attributes.
    */
-  public static IHostAttributes getAttributes(Offer offer) {
+  public static HostAttributes getAttributes(Offer offer) {
     // Group by attribute name.
     Multimap<String, Protos.Attribute> valuesByName =
         Multimaps.index(offer.getAttributesList(), ATTRIBUTE_NAME);
 
-    return IHostAttributes.build(new HostAttributes(
+    return HostAttributes.build(new HostAttributes(
         offer.getHostname(),
         FluentIterable.from(valuesByName.asMap().entrySet())
             .transform(ATTRIBUTE_CONVERTER)

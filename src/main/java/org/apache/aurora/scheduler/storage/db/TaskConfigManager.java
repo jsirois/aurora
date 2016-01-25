@@ -22,10 +22,6 @@ import com.google.common.collect.Maps;
 
 import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IDockerContainer;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IValueConstraint;
 
 import static java.util.Objects.requireNonNull;
 
@@ -39,10 +35,10 @@ class TaskConfigManager {
     this.jobKeyMapper = requireNonNull(jobKeyMapper);
   }
 
-  private Optional<Long> getConfigRow(ITaskConfig config) {
+  private Optional<Long> getConfigRow(TaskConfig config) {
     // We could optimize this slightly by first comparing the un-hydrated row and breaking early.
 
-    Map<ITaskConfig, DbTaskConfig> rowsByConfig =
+    Map<TaskConfig, DbTaskConfig> rowsByConfig =
         Maps.uniqueIndex(
             configMapper.selectConfigsByJob(config.getJob()),
             DbTaskConfig::toImmutable);
@@ -50,7 +46,7 @@ class TaskConfigManager {
     return Optional.ofNullable(rowsByConfig.get(config)).map(DbTaskConfig::getRowId);
   }
 
-  long insert(ITaskConfig config) {
+  long insert(TaskConfig config) {
     InsertResult configInsert = new InsertResult();
 
     // Determine whether this config is already stored.
@@ -61,12 +57,12 @@ class TaskConfigManager {
 
     jobKeyMapper.merge(config.getJob());
     configMapper.insert(config, configInsert);
-    for (IConstraint constraint : config.getConstraints()) {
+    for (Constraint constraint : config.getConstraints()) {
       InsertResult constraintResult = new InsertResult();
       configMapper.insertConstraint(configInsert.getId(), constraint, constraintResult);
       switch (constraint.getConstraint().getSetField()) {
         case VALUE:
-          IValueConstraint valueConstraint = constraint.getConstraint().getValue();
+          ValueConstraint valueConstraint = constraint.getConstraint().getValue();
           InsertResult valueResult = new InsertResult();
           configMapper.insertValueConstraint(
               constraintResult.getId(),
@@ -105,7 +101,7 @@ class TaskConfigManager {
 
     // TODO(wfarner): It would be nice if this generalized to different Container types.
     if (config.getContainer().isSetDocker()) {
-      IDockerContainer container = config.getContainer().getDocker();
+      DockerContainer container = config.getContainer().getDocker();
       InsertResult containerInsert = new InsertResult();
       configMapper.insertContainer(configInsert.getId(), container, containerInsert);
       if (!container.getParameters().isEmpty()) {

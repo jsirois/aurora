@@ -23,8 +23,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
 
 final class SlaTestUtil {
 
@@ -32,24 +30,24 @@ final class SlaTestUtil {
     // Utility class.
   }
 
-  static IScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
+  static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
     return makeTask(events, instanceId, true);
   }
 
-  static IScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId, boolean isProd) {
-    List<ITaskEvent> taskEvents = makeEvents(events);
+  static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId, boolean isProd) {
+    List<TaskEvent> taskEvents = makeEvents(events);
     ScheduledTask builder = TaskTestUtil.makeTask("task_id", TaskTestUtil.JOB).newBuilder()
         .setStatus(Iterables.getLast(taskEvents).getStatus())
-        .setTaskEvents(ITaskEvent.toBuildersList(taskEvents));
+        .setTaskEvents(TaskEvent.toBuildersList(taskEvents));
     builder.getAssignedTask().setInstanceId(instanceId);
     builder.getAssignedTask().getTask().setProduction(isProd);
-    return IScheduledTask.build(builder);
+    return ScheduledTask.build(builder);
   }
 
-  private static List<ITaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
-    ImmutableList.Builder<ITaskEvent> taskEvents = ImmutableList.builder();
+  private static List<TaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
+    ImmutableList.Builder<TaskEvent> taskEvents = ImmutableList.builder();
     for (Map.Entry<Long, ScheduleStatus> entry : events.entrySet()) {
-      taskEvents.add(ITaskEvent.build(new TaskEvent(entry.getKey(), entry.getValue())));
+      taskEvents.add(TaskEvent.build(new TaskEvent(entry.getKey(), entry.getValue())));
     }
 
     return taskEvents.build();

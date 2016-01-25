@@ -36,9 +36,6 @@ import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.TierInfo;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 /**
  * Convenience methods for working with tasks.
@@ -48,7 +45,7 @@ import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
  */
 public final class TaskTestUtil {
 
-  public static final IJobKey JOB = JobKeys.from("role", "env", "job");
+  public static final JobKey JOB = JobKeys.from("role", "env", "job");
   public static final TierInfo REVOCABLE_TIER = new TierInfo(true);
   public static final ConfigurationManager CONFIGURATION_MANAGER =
       new ConfigurationManager(ImmutableSet.of(_Fields.MESOS), false, ImmutableMultimap.of());
@@ -57,8 +54,8 @@ public final class TaskTestUtil {
     // Utility class.
   }
 
-  public static ITaskConfig makeConfig(IJobKey job) {
-    return ITaskConfig.build(new TaskConfig()
+  public static TaskConfig makeConfig(JobKey job) {
+    return TaskConfig.build(new TaskConfig()
         .setJob(job.newBuilder())
         .setJobName(job.getName())
         .setEnvironment(job.getEnvironment())
@@ -91,12 +88,12 @@ public final class TaskTestUtil {
                     new DockerParameter("c", "d"))))));
   }
 
-  public static IScheduledTask makeTask(String id, IJobKey job) {
+  public static ScheduledTask makeTask(String id, JobKey job) {
     return makeTask(id, makeConfig(job));
   }
 
-  public static IScheduledTask makeTask(String id, ITaskConfig config) {
-    return IScheduledTask.build(new ScheduledTask()
+  public static ScheduledTask makeTask(String id, TaskConfig config) {
+    return ScheduledTask.build(new ScheduledTask()
         .setStatus(ScheduleStatus.ASSIGNED)
         .setTaskEvents(ImmutableList.of(
             new TaskEvent(100L, ScheduleStatus.PENDING)
@@ -114,8 +111,8 @@ public final class TaskTestUtil {
             .setTask(config.newBuilder())));
   }
 
-  public static IScheduledTask addStateTransition(
-      IScheduledTask task,
+  public static ScheduledTask addStateTransition(
+      ScheduledTask task,
       ScheduleStatus status,
       long timestamp) {
 
@@ -125,6 +122,6 @@ public final class TaskTestUtil {
         .setTimestamp(timestamp)
         .setStatus(status)
         .setScheduler("scheduler"));
-    return IScheduledTask.build(builder);
+    return ScheduledTask.build(builder);
   }
 }

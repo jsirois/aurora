@@ -19,7 +19,6 @@ import javax.annotation.Nullable;
 
 import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -27,11 +26,11 @@ import org.apache.ibatis.annotations.Param;
  */
 interface AttributeMapper {
   /**
-   * Saves attributes for a host, based on {@link IHostAttributes#getHost()}.
+   * Saves attributes for a host, based on {@link HostAttributes#getHost()}.
    *
    * @param attributes Host attributes to save.
    */
-  void insert(IHostAttributes attributes);
+  void insert(HostAttributes attributes);
 
   /**
    * Deletes all attributes and attribute values associated with a slave.
@@ -53,12 +52,12 @@ interface AttributeMapper {
       @Param("slaveId") String slaveId);
 
   /**
-   * Inserts values in {@link IHostAttributes#getAttributes()}, associating them with
-   * {@link IHostAttributes#getSlaveId()}.
+   * Inserts values in {@link HostAttributes#getAttributes()}, associating them with
+   * {@link HostAttributes#getSlaveId()}.
    *
    * @param attributes Attributes containing values to insert.
    */
-  void insertAttributeValues(IHostAttributes attributes);
+  void insertAttributeValues(HostAttributes attributes);
 
   /**
    * Retrieves the host attributes associated with a host.

@@ -28,7 +28,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.state.TaskAssigner;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,7 +76,7 @@ public class PreemptorModuleTest extends EasyMockTest {
     assertEquals(
         Optional.absent(),
         injector.getInstance(Preemptor.class).attemptPreemptionFor(
-            IAssignedTask.build(new AssignedTask()),
+            AssignedTask.build(new AssignedTask()),
             AttributeAggregate.EMPTY,
             storageUtil.mutableStoreProvider));
   }

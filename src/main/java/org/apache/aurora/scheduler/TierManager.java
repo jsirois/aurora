@@ -20,7 +20,6 @@ import javax.inject.Inject;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -39,7 +38,7 @@ public interface TierManager {
    * @param taskConfig Task configuration to get tier for.
    * @return {@link TierInfo} for the given {@code taskConfig}.
    */
-  TierInfo getTier(ITaskConfig taskConfig);
+  TierInfo getTier(TaskConfig taskConfig);
 
   class TierManagerImpl implements TierManager {
     private final TierConfig tierConfig;
@@ -68,7 +67,7 @@ public interface TierManager {
     }
 
     @Override
-    public TierInfo getTier(ITaskConfig taskConfig) {
+    public TierInfo getTier(TaskConfig taskConfig) {
       if (taskConfig.isSetTier()) {
         // The default behavior in case of tier config file absence or tier name mismatch is to use
         // non-revocable resources. This is subject to change once the feature is ready.

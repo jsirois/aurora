@@ -28,7 +28,6 @@ import com.google.common.collect.Maps;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.LockManager;
-import org.apache.aurora.scheduler.storage.entities.ILock;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
@@ -56,17 +55,17 @@ public class Locks {
         Maps.uniqueIndex(lockManager.getLocks(), TO_LOCK_KEY), TO_BEAN)).build();
   }
 
-  private static final Function<ILock, String> TO_LOCK_KEY =
+  private static final Function<Lock, String> TO_LOCK_KEY =
       lock -> lock.getKey().getSetField() == LockKey._Fields.JOB
           ? JobKeys.canonicalString(lock.getKey().getJob())
           : "Unknown lock key type: " + lock.getKey().getSetField();
 
-  private static final Function<ILock, LockBean> TO_BEAN = LockBean::new;
+  private static final Function<Lock, LockBean> TO_BEAN = LockBean::new;
 
   private static final class LockBean {
-    private final ILock lock;
+    private final Lock lock;
 
-    LockBean(ILock lock) {
+    LockBean(Lock lock) {
       this.lock = lock;
     }
 

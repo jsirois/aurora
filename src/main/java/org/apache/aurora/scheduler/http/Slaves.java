@@ -28,13 +28,8 @@ import com.google.common.collect.Ordering;
 
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 
 import static java.util.Objects.requireNonNull;
-
-import static org.apache.aurora.common.base.MorePreconditions.checkNotBlank;
 
 /**
  * HTTP interface to serve as a HUD for the mesos slaves tracked in the scheduler.
@@ -51,17 +46,17 @@ public class Slaves extends JerseyTemplateServlet {
    * @param storage store to fetch the host attributes from
    */
   @Inject
-  public Slaves(IServerInfo serverInfo, Storage storage) {
+  public Slaves(ServerInfo serverInfo, Storage storage) {
     super("slaves");
     this.clusterName = checkNotBlank(serverInfo.getClusterName());
     this.storage = requireNonNull(storage);
   }
 
-  private Iterable<IHostAttributes> getHostAttributes() {
+  private Iterable<HostAttributes> getHostAttributes() {
     return storage.read(storeProvider -> storeProvider.getAttributeStore().getHostAttributes());
   }
 
-  private static final Function<IHostAttributes, Slave> TO_SLAVE =
+  private static final Function<HostAttributes, Slave> TO_SLAVE =
       Slave::new;
 
   /**
@@ -80,10 +75,10 @@ public class Slaves extends JerseyTemplateServlet {
     });
   }
 
-  private static final Ordering<IAttribute> ATTR_ORDER = Ordering.natural().onResultOf(
-      new Function<IAttribute, String>() {
+  private static final Ordering<Attribute> ATTR_ORDER = Ordering.natural().onResultOf(
+      new Function<Attribute, String>() {
         @Override
-        public String apply(IAttribute attr) {
+        public String apply(Attribute attr) {
           return attr .getName();
         }
       });
@@ -92,9 +87,9 @@ public class Slaves extends JerseyTemplateServlet {
    * Template object to represent a slave.
    */
   private static class Slave {
-    private final IHostAttributes attributes;
+    private final HostAttributes attributes;
 
-    Slave(IHostAttributes attributes) {
+    Slave(HostAttributes attributes) {
       this.attributes = attributes;
     }
 
@@ -110,7 +105,7 @@ public class Slaves extends JerseyTemplateServlet {
       return attributes.getMode();
     }
 
-    private static final Function<IAttribute, String> ATTR_TO_STRING =
+    private static final Function<Attribute, String> ATTR_TO_STRING =
         attr -> attr.getName() + "=[" + Joiner.on(",").join(attr.getValues()) + "]";
 
     public String getAttributes() {

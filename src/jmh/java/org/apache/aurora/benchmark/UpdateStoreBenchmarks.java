@@ -27,11 +27,6 @@ import org.apache.aurora.scheduler.storage.JobUpdateStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -58,7 +53,7 @@ public class UpdateStoreBenchmarks {
   public static class JobDetailsBenchmark {
     private static final String USER = "user";
     private Storage storage;
-    private Set<IJobUpdateKey> keys;
+    private Set<JobUpdateKey> keys;
 
     @Param({"1000", "5000", "10000"})
     private int instances;
@@ -72,24 +67,24 @@ public class UpdateStoreBenchmarks {
     public void setUpIteration() {
       storage.write((NoResult.Quiet) storeProvider -> {
         JobUpdateStore.Mutable updateStore = storeProvider.getJobUpdateStore();
-        Set<IJobUpdateDetails> updates =
+        Set<JobUpdateDetails> updates =
             new JobUpdates.Builder().setNumInstanceEvents(instances).build(1);
 
-        ImmutableSet.Builder<IJobUpdateKey> keyBuilder = ImmutableSet.builder();
-        for (IJobUpdateDetails details : updates) {
-          IJobUpdateKey key = details.getUpdate().getSummary().getKey();
+        ImmutableSet.Builder<JobUpdateKey> keyBuilder = ImmutableSet.builder();
+        for (JobUpdateDetails details : updates) {
+          JobUpdateKey key = details.getUpdate().getSummary().getKey();
           keyBuilder.add(key);
           String lockToken = UUID.randomUUID().toString();
           storeProvider.getLockStore().saveLock(
-              ILock.build(new Lock(LockKey.job(key.getJob().newBuilder()), lockToken, USER, 0L)));
+              Lock.build(new Lock(LockKey.job(key.getJob().newBuilder()), lockToken, USER, 0L)));
 
           updateStore.saveJobUpdate(details.getUpdate(), Optional.of(lockToken));
 
-          for (IJobUpdateEvent updateEvent : details.getUpdateEvents()) {
+          for (JobUpdateEvent updateEvent : details.getUpdateEvents()) {
             updateStore.saveJobUpdateEvent(key, updateEvent);
           }
 
-          for (IJobInstanceUpdateEvent instanceEvent : details.getInstanceEvents()) {
+          for (JobInstanceUpdateEvent instanceEvent : details.getInstanceEvents()) {
             updateStore.saveJobInstanceUpdateEvent(key, instanceEvent);
           }
         }
@@ -106,7 +101,7 @@ public class UpdateStoreBenchmarks {
     }
 
     @Benchmark
-    public IJobUpdateDetails run() throws TException {
+    public JobUpdateDetails run() throws TException {
       return storage.read(store -> store.getJobUpdateStore().fetchJobUpdateDetails(
           Iterables.getOnlyElement(keys)).get());
     }

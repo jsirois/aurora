@@ -36,7 +36,6 @@ import org.apache.aurora.scheduler.events.PubsubEvent.TaskStatusReceived;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.scheduler.storage.Storage.StorageException;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos.ExecutorID;
@@ -85,7 +84,7 @@ public class MesosSchedulerImplTest extends EasyMockTest {
           .setHostname(SLAVE_HOST)
           .setId(OFFER_ID)
           .build(),
-      IHostAttributes.build(
+      HostAttributes.build(
           new HostAttributes()
               .setHost(SLAVE_HOST)
               .setSlaveId(SLAVE_ID.getValue())
@@ -98,7 +97,7 @@ public class MesosSchedulerImplTest extends EasyMockTest {
           .setHostname(SLAVE_HOST_2)
           .setId(OFFER_ID_2)
           .build(),
-      IHostAttributes.build(
+      HostAttributes.build(
           new HostAttributes()
               .setHost(SLAVE_HOST_2)
               .setSlaveId(SLAVE_ID_2.getValue())
@@ -215,11 +214,11 @@ public class MesosSchedulerImplTest extends EasyMockTest {
     new AbstractOfferTest() {
       @Override
       void respondToOffer() {
-        IHostAttributes draining =
-            IHostAttributes.build(OFFER.getAttributes().newBuilder().setMode(DRAINING));
+        HostAttributes draining =
+            HostAttributes.build(OFFER.getAttributes().newBuilder().setMode(DRAINING));
         expect(storageUtil.attributeStore.getHostAttributes(OFFER.getOffer().getHostname()))
             .andReturn(Optional.of(draining));
-        IHostAttributes saved = IHostAttributes.build(
+        HostAttributes saved = HostAttributes.build(
             Conversions.getAttributes(OFFER.getOffer()).newBuilder().setMode(DRAINING));
         expect(storageUtil.attributeStore.saveHostAttributes(saved)).andReturn(true);
 
@@ -380,7 +379,7 @@ public class MesosSchedulerImplTest extends EasyMockTest {
   private void expectOfferAttributesSaved(HostOffer offer) {
     expect(storageUtil.attributeStore.getHostAttributes(offer.getOffer().getHostname()))
         .andReturn(Optional.absent());
-    IHostAttributes defaultMode = IHostAttributes.build(
+    HostAttributes defaultMode = HostAttributes.build(
         Conversions.getAttributes(offer.getOffer()).newBuilder().setMode(NONE));
     expect(storageUtil.attributeStore.saveHostAttributes(defaultMode)).andReturn(true);
   }

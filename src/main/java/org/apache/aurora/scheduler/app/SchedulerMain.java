@@ -58,7 +58,6 @@ import org.apache.aurora.scheduler.stats.StatsModule;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.backup.BackupModule;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 import org.apache.aurora.scheduler.storage.log.LogStorageModule;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 import org.apache.aurora.scheduler.zookeeper.guice.client.ZooKeeperClientModule;
@@ -167,8 +166,8 @@ public class SchedulerMain {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(IServerInfo.class).toInstance(
-                IServerInfo.build(
+            bind(ServerInfo.class).toInstance(
+                ServerInfo.build(
                     new ServerInfo()
                         .setClusterName(CLUSTER_NAME.get())
                         .setStatsUrlPrefix(STATS_URL_PREFIX.get())));

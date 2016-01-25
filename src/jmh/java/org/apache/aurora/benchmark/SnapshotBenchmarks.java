@@ -36,8 +36,6 @@ import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -109,15 +107,15 @@ public class SnapshotBenchmarks {
   }
 
   private static Snapshot createSnapshot(int updates, int events, int instanceEvents) {
-    Set<IJobUpdateDetails> updateDetails = new JobUpdates.Builder()
+    Set<JobUpdateDetails> updateDetails = new JobUpdates.Builder()
         .setNumEvents(events)
         .setNumInstanceEvents(instanceEvents)
         .build(updates);
 
     ImmutableSet.Builder<Lock> lockBuilder = ImmutableSet.builder();
     ImmutableSet.Builder<StoredJobUpdateDetails> detailsBuilder = ImmutableSet.builder();
-    for (IJobUpdateDetails details : updateDetails) {
-      IJobUpdateKey key = details.getUpdate().getSummary().getKey();
+    for (JobUpdateDetails details : updateDetails) {
+      JobUpdateKey key = details.getUpdate().getSummary().getKey();
       String lockToken = UUID.randomUUID().toString();
 
       lockBuilder.add(new Lock(LockKey.job(key.getJob().newBuilder()), lockToken, "user", 0L));

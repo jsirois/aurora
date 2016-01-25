@@ -26,7 +26,6 @@ import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 public final class DbTaskConfig {
   private long rowId;
@@ -83,7 +82,7 @@ public final class DbTaskConfig {
             container == null ? Container.mesos(new MesosContainer()) : container.toThrift());
   }
 
-  public ITaskConfig toImmutable() {
-    return ITaskConfig.build(toThrift());
+  public TaskConfig toImmutable() {
+    return TaskConfig.build(toThrift());
   }
 }

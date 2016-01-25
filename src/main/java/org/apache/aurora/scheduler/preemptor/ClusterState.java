@@ -26,7 +26,7 @@ public interface ClusterState {
    * Gets a snapshot of the active tasks in the cluster, indexed by the slave IDs they are
    * assigned to.
    * <p>
-   * TODO(wfarner): Return a more minimal type than IAssignedTask here.
+   * TODO(wfarner): Return a more minimal type than AssignedTask here.
    *
    * @return Active tasks and their associated slave IDs.
    */

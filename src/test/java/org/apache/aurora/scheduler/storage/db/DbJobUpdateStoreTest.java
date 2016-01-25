@@ -50,16 +50,6 @@ import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.Storage.StorageException;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.ILock;
 import org.apache.aurora.scheduler.storage.testing.StorageEntityUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.junit.After;
@@ -84,13 +74,13 @@ import static org.junit.Assert.fail;
 
 public class DbJobUpdateStoreTest {
 
-  private static final IJobKey JOB = JobKeys.from("testRole", "testEnv", "job");
-  private static final IJobUpdateKey UPDATE1 =
-      IJobUpdateKey.build(new JobUpdateKey(JOB.newBuilder(), "update1"));
-  private static final IJobUpdateKey UPDATE2 = IJobUpdateKey.build(
+  private static final JobKey JOB = JobKeys.from("testRole", "testEnv", "job");
+  private static final JobUpdateKey UPDATE1 =
+      JobUpdateKey.build(new JobUpdateKey(JOB.newBuilder(), "update1"));
+  private static final JobUpdateKey UPDATE2 = JobUpdateKey.build(
       new JobUpdateKey(JobKeys.from("testRole", "testEnv", "job2").newBuilder(), "update2"));
   private static final long CREATED_MS = 111L;
-  private static final IJobUpdateEvent FIRST_EVENT =
+  private static final JobUpdateEvent FIRST_EVENT =
       makeJobUpdateEvent(ROLLING_FORWARD, CREATED_MS);
 
   private Storage storage;
@@ -108,7 +98,7 @@ public class DbJobUpdateStoreTest {
     truncateUpdates();
   }
 
-  private static IJobUpdate makeFullyPopulatedUpdate(IJobUpdateKey key) {
+  private static JobUpdate makeFullyPopulatedUpdate(JobUpdateKey key) {
     JobUpdate builder = makeJobUpdate(key).newBuilder();
     JobUpdateInstructions instructions = builder.getInstructions();
     Stream.of(
@@ -127,16 +117,16 @@ public class DbJobUpdateStoreTest {
             range.setLast(1);
           }
         });
-    return IJobUpdate.build(builder);
+    return JobUpdate.build(builder);
   }
 
   @Test
   public void testSaveJobUpdates() {
-    IJobUpdateKey updateId1 = makeKey(JobKeys.from("role", "env", "name1"), "u1");
-    IJobUpdateKey updateId2 = makeKey(JobKeys.from("role", "env", "name2"), "u2");
+    JobUpdateKey updateId1 = makeKey(JobKeys.from("role", "env", "name1"), "u1");
+    JobUpdateKey updateId2 = makeKey(JobKeys.from("role", "env", "name2"), "u2");
 
-    IJobUpdate update1 = makeFullyPopulatedUpdate(updateId1);
-    IJobUpdate update2 = makeJobUpdate(updateId2);
+    JobUpdate update1 = makeFullyPopulatedUpdate(updateId1);
+    JobUpdate update2 = makeJobUpdate(updateId2);
 
     assertEquals(Optional.absent(), getUpdate(updateId1));
     assertEquals(Optional.absent(), getUpdate(updateId2));
@@ -144,7 +134,7 @@ public class DbJobUpdateStoreTest {
     StorageEntityUtil.assertFullyPopulated(
         update1,
         StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(IJobUpdateSummary.class, "state"),
+        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
         StorageEntityUtil.getField(Range.class, "first"),
         StorageEntityUtil.getField(Range.class, "last"));
     saveUpdate(update1, Optional.of("lock1"));
@@ -154,7 +144,7 @@ public class DbJobUpdateStoreTest {
     assertUpdate(update2);
 
     // Colliding update keys should be forbidden.
-    IJobUpdate update3 = makeJobUpdate(updateId2);
+    JobUpdate update3 = makeJobUpdate(updateId2);
     try {
       saveUpdate(update3, Optional.absent());
       fail("Update ID collision should not be allowed");
@@ -166,21 +156,21 @@ public class DbJobUpdateStoreTest {
   @Test
   public void testSaveJobUpdateWithLargeTaskConfigValues() {
     // AURORA-1494 regression test validating max resources values are allowed.
-    IJobUpdateKey updateId = makeKey(JobKeys.from("role", "env", "name1"), "u1");
+    JobUpdateKey updateId = makeKey(JobKeys.from("role", "env", "name1"), "u1");
 
     JobUpdate builder = makeFullyPopulatedUpdate(updateId).newBuilder();
     builder.getInstructions().getDesiredState().getTask().setNumCpus(Double.MAX_VALUE);
     builder.getInstructions().getDesiredState().getTask().setRamMb(Long.MAX_VALUE);
     builder.getInstructions().getDesiredState().getTask().setDiskMb(Long.MAX_VALUE);
 
-    IJobUpdate update = IJobUpdate.build(builder);
+    JobUpdate update = JobUpdate.build(builder);
 
     assertEquals(Optional.absent(), getUpdate(updateId));
 
     StorageEntityUtil.assertFullyPopulated(
         update,
         StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(IJobUpdateSummary.class, "state"),
+        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
         StorageEntityUtil.getField(Range.class, "first"),
         StorageEntityUtil.getField(Range.class, "last"));
     saveUpdate(update, Optional.of("lock1"));
@@ -193,10 +183,10 @@ public class DbJobUpdateStoreTest {
     builder.getInstructions().unsetInitialState();
 
     // Save with null initial state instances.
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
 
     builder.getInstructions().setInitialState(ImmutableSet.of());
-    assertUpdate(IJobUpdate.build(builder));
+    assertUpdate(JobUpdate.build(builder));
   }
 
   @Test
@@ -205,9 +195,9 @@ public class DbJobUpdateStoreTest {
     builder.getInstructions().unsetDesiredState();
 
     // Save with null desired state instances.
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
 
-    assertUpdate(IJobUpdate.build(builder));
+    assertUpdate(JobUpdate.build(builder));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -216,7 +206,7 @@ public class DbJobUpdateStoreTest {
     builder.getInstructions().unsetInitialState();
     builder.getInstructions().unsetDesiredState();
 
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
   }
 
   @Test(expected = NullPointerException.class)
@@ -225,7 +215,7 @@ public class DbJobUpdateStoreTest {
     builder.getInstructions().getInitialState().add(
         new InstanceTaskConfig(null, ImmutableSet.of()));
 
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -236,7 +226,7 @@ public class DbJobUpdateStoreTest {
             TaskTestUtil.makeConfig(TaskTestUtil.JOB).newBuilder(),
             ImmutableSet.of()));
 
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
   }
 
   @Test(expected = NullPointerException.class)
@@ -244,7 +234,7 @@ public class DbJobUpdateStoreTest {
     JobUpdate builder = makeJobUpdate(makeKey("u1")).newBuilder();
     builder.getInstructions().getDesiredState().setTask(null);
 
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -252,18 +242,18 @@ public class DbJobUpdateStoreTest {
     JobUpdate builder = makeJobUpdate(makeKey("u1")).newBuilder();
     builder.getInstructions().getDesiredState().setInstances(ImmutableSet.of());
 
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
   }
 
   @Test
   public void testSaveJobUpdateEmptyInstanceOverrides() {
-    IJobUpdateKey updateId = makeKey("u1");
+    JobUpdateKey updateId = makeKey("u1");
 
-    IJobUpdate update = makeJobUpdate(updateId);
+    JobUpdate update = makeJobUpdate(updateId);
     JobUpdate builder = update.newBuilder();
     builder.getInstructions().getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of());
 
-    IJobUpdate expected = IJobUpdate.build(builder);
+    JobUpdate expected = JobUpdate.build(builder);
 
     // Save with empty overrides.
     saveUpdate(expected, Optional.of("lock"));
@@ -272,24 +262,24 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testSaveJobUpdateNullInstanceOverrides() {
-    IJobUpdateKey updateId = makeKey("u1");
+    JobUpdateKey updateId = makeKey("u1");
 
-    IJobUpdate update = makeJobUpdate(updateId);
+    JobUpdate update = makeJobUpdate(updateId);
     JobUpdate builder = update.newBuilder();
     builder.getInstructions().getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of());
 
-    IJobUpdate expected = IJobUpdate.build(builder);
+    JobUpdate expected = JobUpdate.build(builder);
 
     // Save with null overrides.
     builder.getInstructions().getSettings().setUpdateOnlyTheseInstances(null);
-    saveUpdate(IJobUpdate.build(builder), Optional.of("lock"));
+    saveUpdate(JobUpdate.build(builder), Optional.of("lock"));
     assertUpdate(expected);
   }
 
   @Test(expected = StorageException.class)
   public void testSaveJobUpdateTwiceThrows() {
-    IJobUpdateKey updateId = makeKey("u1");
-    IJobUpdate update = makeJobUpdate(updateId);
+    JobUpdateKey updateId = makeKey("u1");
+    JobUpdate update = makeJobUpdate(updateId);
 
     saveUpdate(update, Optional.of("lock1"));
     saveUpdate(update, Optional.of("lock2"));
@@ -297,10 +287,10 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testSaveJobEvents() {
-    IJobUpdateKey updateId = makeKey("u3");
-    IJobUpdate update = makeJobUpdate(updateId);
-    IJobUpdateEvent event1 = makeJobUpdateEvent(ROLLING_FORWARD, 124L);
-    IJobUpdateEvent event2 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 125L);
+    JobUpdateKey updateId = makeKey("u3");
+    JobUpdate update = makeJobUpdate(updateId);
+    JobUpdateEvent event1 = makeJobUpdateEvent(ROLLING_FORWARD, 124L);
+    JobUpdateEvent event2 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 125L);
 
     saveUpdate(update, Optional.of("lock1"));
     assertUpdate(update);
@@ -331,10 +321,10 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testSaveInstanceEvents() {
-    IJobUpdateKey updateId = makeKey("u3");
-    IJobUpdate update = makeJobUpdate(updateId);
-    IJobInstanceUpdateEvent event1 = makeJobInstanceEvent(0, 125L, INSTANCE_UPDATED);
-    IJobInstanceUpdateEvent event2 = makeJobInstanceEvent(1, 126L, INSTANCE_ROLLING_BACK);
+    JobUpdateKey updateId = makeKey("u3");
+    JobUpdate update = makeJobUpdate(updateId);
+    JobInstanceUpdateEvent event1 = makeJobInstanceEvent(0, 125L, INSTANCE_UPDATED);
+    JobInstanceUpdateEvent event2 = makeJobInstanceEvent(1, 126L, INSTANCE_ROLLING_BACK);
 
     saveUpdate(update, Optional.of("lock"));
     assertUpdate(update);
@@ -368,8 +358,8 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testSaveJobUpdateStateIgnored() {
-    IJobUpdateKey updateId = makeKey("u1");
-    IJobUpdate update = populateExpected(makeJobUpdate(updateId), ABORTED, 567L, 567L);
+    JobUpdateKey updateId = makeKey("u1");
+    JobUpdate update = populateExpected(makeJobUpdate(updateId), ABORTED, 567L, 567L);
     saveUpdate(update, Optional.of("lock1"));
 
     // Assert state fields were ignored.
@@ -378,9 +368,9 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testSaveJobUpdateWithoutEventFailsSelect() {
-    IJobUpdateKey updateId = makeKey("u3");
+    JobUpdateKey updateId = makeKey("u3");
     storage.write((NoResult.Quiet) storeProvider -> {
-      IJobUpdate update = makeJobUpdate(updateId);
+      JobUpdate update = makeJobUpdate(updateId);
       storeProvider.getLockStore().saveLock(makeLock(update, "lock1"));
       storeProvider.getJobUpdateStore().saveJobUpdate(update, Optional.of("lock1"));
     });
@@ -389,10 +379,10 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testMultipleJobDetails() {
-    IJobUpdateKey updateId1 = makeKey(JobKeys.from("role", "env", "name1"), "u1");
-    IJobUpdateKey updateId2 = makeKey(JobKeys.from("role", "env", "name2"), "u2");
-    IJobUpdateDetails details1 = makeJobDetails(makeJobUpdate(updateId1));
-    IJobUpdateDetails details2 = makeJobDetails(makeJobUpdate(updateId2));
+    JobUpdateKey updateId1 = makeKey(JobKeys.from("role", "env", "name1"), "u1");
+    JobUpdateKey updateId2 = makeKey(JobKeys.from("role", "env", "name2"), "u2");
+    JobUpdateDetails details1 = makeJobDetails(makeJobUpdate(updateId1));
+    JobUpdateDetails details2 = makeJobDetails(makeJobUpdate(updateId2));
 
     assertEquals(ImmutableList.of(), getInstanceEvents(updateId2, 3));
 
@@ -404,15 +394,15 @@ public class DbJobUpdateStoreTest {
     assertEquals(Optional.of(details1), getUpdateDetails(updateId1));
     assertEquals(Optional.of(details2), getUpdateDetails(updateId2));
 
-    IJobUpdateEvent jEvent11 = makeJobUpdateEvent(ROLLING_FORWARD, 456L);
-    IJobUpdateEvent jEvent12 = makeJobUpdateEvent(ERROR, 457L);
-    IJobInstanceUpdateEvent iEvent11 = makeJobInstanceEvent(1, 451L, INSTANCE_UPDATED);
-    IJobInstanceUpdateEvent iEvent12 = makeJobInstanceEvent(2, 452L, INSTANCE_UPDATING);
+    JobUpdateEvent jEvent11 = makeJobUpdateEvent(ROLLING_FORWARD, 456L);
+    JobUpdateEvent jEvent12 = makeJobUpdateEvent(ERROR, 457L);
+    JobInstanceUpdateEvent iEvent11 = makeJobInstanceEvent(1, 451L, INSTANCE_UPDATED);
+    JobInstanceUpdateEvent iEvent12 = makeJobInstanceEvent(2, 452L, INSTANCE_UPDATING);
 
-    IJobUpdateEvent jEvent21 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 567L);
-    IJobUpdateEvent jEvent22 = makeJobUpdateEvent(ABORTED, 568L);
-    IJobInstanceUpdateEvent iEvent21 = makeJobInstanceEvent(3, 561L, INSTANCE_UPDATING);
-    IJobInstanceUpdateEvent iEvent22 = makeJobInstanceEvent(3, 562L, INSTANCE_UPDATED);
+    JobUpdateEvent jEvent21 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 567L);
+    JobUpdateEvent jEvent22 = makeJobUpdateEvent(ABORTED, 568L);
+    JobInstanceUpdateEvent iEvent21 = makeJobInstanceEvent(3, 561L, INSTANCE_UPDATING);
+    JobInstanceUpdateEvent iEvent22 = makeJobInstanceEvent(3, 562L, INSTANCE_UPDATED);
 
     saveJobEvent(jEvent11, updateId1);
     saveJobEvent(jEvent12, updateId1);
@@ -452,9 +442,9 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testTruncateJobUpdates() {
-    IJobUpdateKey updateId = makeKey("u5");
-    IJobUpdate update = makeJobUpdate(updateId);
-    IJobInstanceUpdateEvent instanceEvent = IJobInstanceUpdateEvent.build(
+    JobUpdateKey updateId = makeKey("u5");
+    JobUpdate update = makeJobUpdate(updateId);
+    JobInstanceUpdateEvent instanceEvent = JobInstanceUpdateEvent.build(
         new JobInstanceUpdateEvent(0, 125L, INSTANCE_ROLLBACK_FAILED));
 
     saveUpdate(update, Optional.of("lock"));
@@ -472,30 +462,30 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testPruneHistory() {
-    IJobUpdateKey updateId1 = makeKey("u11");
-    IJobUpdateKey updateId2 = makeKey("u12");
-    IJobUpdateKey updateId3 = makeKey("u13");
-    IJobUpdateKey updateId4 = makeKey("u14");
-    IJobKey job2 = JobKeys.from("testRole2", "testEnv2", "job2");
-    IJobUpdateKey updateId5 = makeKey(job2, "u15");
-    IJobUpdateKey updateId6 = makeKey(job2, "u16");
-    IJobUpdateKey updateId7 = makeKey(job2, "u17");
+    JobUpdateKey updateId1 = makeKey("u11");
+    JobUpdateKey updateId2 = makeKey("u12");
+    JobUpdateKey updateId3 = makeKey("u13");
+    JobUpdateKey updateId4 = makeKey("u14");
+    JobKey job2 = JobKeys.from("testRole2", "testEnv2", "job2");
+    JobUpdateKey updateId5 = makeKey(job2, "u15");
+    JobUpdateKey updateId6 = makeKey(job2, "u16");
+    JobUpdateKey updateId7 = makeKey(job2, "u17");
 
-    IJobUpdate update1 = makeJobUpdate(updateId1);
-    IJobUpdate update2 = makeJobUpdate(updateId2);
-    IJobUpdate update3 = makeJobUpdate(updateId3);
-    IJobUpdate update4 = makeJobUpdate(updateId4);
-    IJobUpdate update5 = makeJobUpdate(updateId5);
-    IJobUpdate update6 = makeJobUpdate(updateId6);
-    IJobUpdate update7 = makeJobUpdate(updateId7);
+    JobUpdate update1 = makeJobUpdate(updateId1);
+    JobUpdate update2 = makeJobUpdate(updateId2);
+    JobUpdate update3 = makeJobUpdate(updateId3);
+    JobUpdate update4 = makeJobUpdate(updateId4);
+    JobUpdate update5 = makeJobUpdate(updateId5);
+    JobUpdate update6 = makeJobUpdate(updateId6);
+    JobUpdate update7 = makeJobUpdate(updateId7);
 
-    IJobUpdateEvent updateEvent1 = makeJobUpdateEvent(ROLLING_BACK, 123L);
-    IJobUpdateEvent updateEvent2 = makeJobUpdateEvent(ABORTED, 124L);
-    IJobUpdateEvent updateEvent3 = makeJobUpdateEvent(ROLLED_BACK, 125L);
-    IJobUpdateEvent updateEvent4 = makeJobUpdateEvent(FAILED, 126L);
-    IJobUpdateEvent updateEvent5 = makeJobUpdateEvent(ERROR, 123L);
-    IJobUpdateEvent updateEvent6 = makeJobUpdateEvent(FAILED, 125L);
-    IJobUpdateEvent updateEvent7 = makeJobUpdateEvent(ROLLING_FORWARD, 126L);
+    JobUpdateEvent updateEvent1 = makeJobUpdateEvent(ROLLING_BACK, 123L);
+    JobUpdateEvent updateEvent2 = makeJobUpdateEvent(ABORTED, 124L);
+    JobUpdateEvent updateEvent3 = makeJobUpdateEvent(ROLLED_BACK, 125L);
+    JobUpdateEvent updateEvent4 = makeJobUpdateEvent(FAILED, 126L);
+    JobUpdateEvent updateEvent5 = makeJobUpdateEvent(ERROR, 123L);
+    JobUpdateEvent updateEvent6 = makeJobUpdateEvent(FAILED, 125L);
+    JobUpdateEvent updateEvent7 = makeJobUpdateEvent(ROLLING_FORWARD, 126L);
 
     update1 = populateExpected(
         saveUpdateNoEvent(update1, Optional.of("lock1")), ROLLING_BACK, 123L, 123L);
@@ -582,29 +572,29 @@ public class DbJobUpdateStoreTest {
 
   @Test(expected = StorageException.class)
   public void testSaveUpdateWithoutLock() {
-    IJobUpdate update = makeJobUpdate(makeKey("updateId"));
+    JobUpdate update = makeJobUpdate(makeKey("updateId"));
     storage.write((NoResult.Quiet) storeProvider ->
         storeProvider.getJobUpdateStore().saveJobUpdate(update, Optional.of("lock")));
   }
 
   @Test(expected = StorageException.class)
   public void testSaveTwoUpdatesForOneJob() {
-    IJobUpdate update = makeJobUpdate(makeKey("updateId"));
+    JobUpdate update = makeJobUpdate(makeKey("updateId"));
     saveUpdate(update, Optional.of("lock1"));
     saveUpdate(update, Optional.of("lock2"));
   }
 
   @Test(expected = StorageException.class)
   public void testSaveTwoUpdatesSameJobKey() {
-    IJobUpdate update1 = makeJobUpdate(makeKey("update1"));
-    IJobUpdate update2 = makeJobUpdate(makeKey("update2"));
+    JobUpdate update1 = makeJobUpdate(makeKey("update1"));
+    JobUpdate update2 = makeJobUpdate(makeKey("update2"));
     saveUpdate(update1, Optional.of("lock1"));
     saveUpdate(update2, Optional.of("lock1"));
   }
 
   @Test
   public void testLockCleared() {
-    IJobUpdate update = makeJobUpdate(makeKey("update1"));
+    JobUpdate update = makeJobUpdate(makeKey("update1"));
     saveUpdate(update, Optional.of("lock1"));
 
     removeLock(update, "lock1");
@@ -632,8 +622,8 @@ public class DbJobUpdateStoreTest {
   @Test
   public void testGetLockToken() {
     storage.write((NoResult.Quiet) storeProvider -> {
-      IJobUpdate update1 = makeJobUpdate(UPDATE1);
-      IJobUpdate update2 = makeJobUpdate(UPDATE2);
+      JobUpdate update1 = makeJobUpdate(UPDATE1);
+      JobUpdate update2 = makeJobUpdate(UPDATE2);
       saveUpdate(update1, Optional.of("lock1"));
       assertEquals(
           Optional.of("lock1"),
@@ -663,20 +653,20 @@ public class DbJobUpdateStoreTest {
   @Test
   public void testGetSummaries() {
     String role1 = "role1";
-    IJobKey job1 = JobKeys.from(role1, "env", "name1");
-    IJobKey job2 = JobKeys.from(role1, "env", "name2");
-    IJobKey job3 = JobKeys.from(role1, "env", "name3");
-    IJobKey job4 = JobKeys.from(role1, "env", "name4");
-    IJobKey job5 = JobKeys.from("role", "env", "name5");
-    IJobUpdateSummary s1 =
+    JobKey job1 = JobKeys.from(role1, "env", "name1");
+    JobKey job2 = JobKeys.from(role1, "env", "name2");
+    JobKey job3 = JobKeys.from(role1, "env", "name3");
+    JobKey job4 = JobKeys.from(role1, "env", "name4");
+    JobKey job5 = JobKeys.from("role", "env", "name5");
+    JobUpdateSummary s1 =
         saveSummary(makeKey(job1, "u1"), 1230L, ROLLED_BACK, "user", Optional.of("lock1"));
-    IJobUpdateSummary s2 =
+    JobUpdateSummary s2 =
         saveSummary(makeKey(job2, "u2"), 1231L, ABORTED, "user", Optional.of("lock2"));
-    IJobUpdateSummary s3 =
+    JobUpdateSummary s3 =
         saveSummary(makeKey(job3, "u3"), 1239L, ERROR, "user2", Optional.of("lock3"));
-    IJobUpdateSummary s4 =
+    JobUpdateSummary s4 =
         saveSummary(makeKey(job4, "u4"), 1234L, ROLL_BACK_PAUSED, "user3", Optional.of("lock4"));
-    IJobUpdateSummary s5 =
+    JobUpdateSummary s5 =
         saveSummary(makeKey(job5, "u5"), 1235L, ROLLING_FORWARD, "user4", Optional.of("lock5"));
 
     // Test empty query returns all.
@@ -748,13 +738,13 @@ public class DbJobUpdateStoreTest {
 
   @Test
   public void testQueryDetails() {
-    IJobKey jobKey1 = JobKeys.from("role1", "env", "name1");
-    IJobUpdateKey updateId1 = makeKey(jobKey1, "u1");
-    IJobKey jobKey2 = JobKeys.from("role2", "env", "name2");
-    IJobUpdateKey updateId2 = makeKey(jobKey2, "u2");
+    JobKey jobKey1 = JobKeys.from("role1", "env", "name1");
+    JobUpdateKey updateId1 = makeKey(jobKey1, "u1");
+    JobKey jobKey2 = JobKeys.from("role2", "env", "name2");
+    JobUpdateKey updateId2 = makeKey(jobKey2, "u2");
 
-    IJobUpdate update1 = makeJobUpdate(updateId1);
-    IJobUpdate update2 = makeJobUpdate(updateId2);
+    JobUpdate update1 = makeJobUpdate(updateId1);
+    JobUpdate update2 = makeJobUpdate(updateId2);
 
     assertEquals(ImmutableList.of(), getInstanceEvents(updateId2, 3));
 
@@ -764,15 +754,15 @@ public class DbJobUpdateStoreTest {
     updateJobDetails(populateExpected(update1), FIRST_EVENT);
     updateJobDetails(populateExpected(update2), FIRST_EVENT);
 
-    IJobUpdateEvent jEvent11 = makeJobUpdateEvent(ROLLING_BACK, 450L);
-    IJobUpdateEvent jEvent12 = makeJobUpdateEvent(ROLLED_BACK, 500L);
-    IJobInstanceUpdateEvent iEvent11 = makeJobInstanceEvent(1, 451L, INSTANCE_ROLLING_BACK);
-    IJobInstanceUpdateEvent iEvent12 = makeJobInstanceEvent(2, 458L, INSTANCE_ROLLED_BACK);
+    JobUpdateEvent jEvent11 = makeJobUpdateEvent(ROLLING_BACK, 450L);
+    JobUpdateEvent jEvent12 = makeJobUpdateEvent(ROLLED_BACK, 500L);
+    JobInstanceUpdateEvent iEvent11 = makeJobInstanceEvent(1, 451L, INSTANCE_ROLLING_BACK);
+    JobInstanceUpdateEvent iEvent12 = makeJobInstanceEvent(2, 458L, INSTANCE_ROLLED_BACK);
 
-    IJobUpdateEvent jEvent21 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 550L);
-    IJobUpdateEvent jEvent22 = makeJobUpdateEvent(ABORTED, 600L);
-    IJobInstanceUpdateEvent iEvent21 = makeJobInstanceEvent(3, 561L, INSTANCE_UPDATING);
-    IJobInstanceUpdateEvent iEvent22 = makeJobInstanceEvent(3, 570L, INSTANCE_UPDATED);
+    JobUpdateEvent jEvent21 = makeJobUpdateEvent(ROLL_FORWARD_PAUSED, 550L);
+    JobUpdateEvent jEvent22 = makeJobUpdateEvent(ABORTED, 600L);
+    JobInstanceUpdateEvent iEvent21 = makeJobInstanceEvent(3, 561L, INSTANCE_UPDATING);
+    JobInstanceUpdateEvent iEvent22 = makeJobInstanceEvent(3, 570L, INSTANCE_UPDATED);
 
     saveJobEvent(jEvent11, updateId1);
     saveJobEvent(jEvent12, updateId1);
@@ -785,8 +775,8 @@ public class DbJobUpdateStoreTest {
     saveJobInstanceEvent(iEvent21, updateId2);
     saveJobInstanceEvent(iEvent22, updateId2);
 
-    IJobUpdateDetails details1 = getUpdateDetails(updateId1).get();
-    IJobUpdateDetails details2 = getUpdateDetails(updateId2).get();
+    JobUpdateDetails details1 = getUpdateDetails(updateId1).get();
+    JobUpdateDetails details2 = getUpdateDetails(updateId2).get();
 
     // Test empty query returns all.
     assertEquals(ImmutableList.of(details2, details1), queryDetails(new JobUpdateQuery()));
@@ -817,36 +807,36 @@ public class DbJobUpdateStoreTest {
         queryDetails(new JobUpdateQuery().setRole("no match")));
   }
 
-  private static IJobUpdateKey makeKey(String id) {
+  private static JobUpdateKey makeKey(String id) {
     return makeKey(JOB, id);
   }
 
-  private static IJobUpdateKey makeKey(IJobKey job, String id) {
-    return IJobUpdateKey.build(new JobUpdateKey(job.newBuilder(), id));
+  private static JobUpdateKey makeKey(JobKey job, String id) {
+    return JobUpdateKey.build(new JobUpdateKey(job.newBuilder(), id));
   }
 
-  private void assertUpdate(IJobUpdate expected) {
-    IJobUpdateKey key = expected.getSummary().getKey();
+  private void assertUpdate(JobUpdate expected) {
+    JobUpdateKey key = expected.getSummary().getKey();
     assertEquals(populateExpected(expected), getUpdate(key).get());
     assertEquals(getUpdate(key).get(), getUpdateDetails(key).get().getUpdate());
     assertEquals(getUpdateInstructions(key).get(), expected.getInstructions());
   }
 
-  private Optional<IJobUpdate> getUpdate(IJobUpdateKey key) {
+  private Optional<JobUpdate> getUpdate(JobUpdateKey key) {
     return storage.read(storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdate(key));
   }
 
-  private List<IJobInstanceUpdateEvent> getInstanceEvents(IJobUpdateKey key, int id) {
+  private List<JobInstanceUpdateEvent> getInstanceEvents(JobUpdateKey key, int id) {
     return storage.read(
         storeProvider -> storeProvider.getJobUpdateStore().fetchInstanceEvents(key, id));
   }
 
-  private Optional<IJobUpdateInstructions> getUpdateInstructions(IJobUpdateKey key) {
+  private Optional<JobUpdateInstructions> getUpdateInstructions(JobUpdateKey key) {
     return storage.read(
         storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdateInstructions(key));
   }
 
-  private Optional<IJobUpdateDetails> getUpdateDetails(IJobUpdateKey key) {
+  private Optional<JobUpdateDetails> getUpdateDetails(JobUpdateKey key) {
     return storage.read(
         storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdateDetails(key));
   }
@@ -856,25 +846,25 @@ public class DbJobUpdateStoreTest {
         storeProvider -> storeProvider.getJobUpdateStore().fetchAllJobUpdateDetails());
   }
 
-  private List<IJobUpdateDetails> queryDetails(JobUpdateQuery query) {
+  private List<JobUpdateDetails> queryDetails(JobUpdateQuery query) {
     return storage.read(storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdateDetails(
-        IJobUpdateQuery.build(query)));
+        JobUpdateQuery.build(query)));
   }
 
-  private List<IJobUpdateSummary> getSummaries(JobUpdateQuery query) {
+  private List<JobUpdateSummary> getSummaries(JobUpdateQuery query) {
     return storage.read(storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdateSummaries(
-        IJobUpdateQuery.build(query)));
+        JobUpdateQuery.build(query)));
   }
 
-  private static ILock makeLock(IJobUpdate update, String lockToken) {
-    return ILock.build(new Lock()
+  private static Lock makeLock(JobUpdate update, String lockToken) {
+    return Lock.build(new Lock()
         .setKey(LockKey.job(update.getSummary().getKey().getJob().newBuilder()))
         .setToken(lockToken)
         .setTimestampMs(100)
         .setUser("fake user"));
   }
 
-  private IJobUpdate saveUpdate(IJobUpdate update, Optional<String> lockToken) {
+  private JobUpdate saveUpdate(JobUpdate update, Optional<String> lockToken) {
     storage.write((NoResult.Quiet) storeProvider -> {
       if (lockToken.isPresent()) {
         storeProvider.getLockStore().saveLock(makeLock(update, lockToken.get()));
@@ -888,7 +878,7 @@ public class DbJobUpdateStoreTest {
     return update;
   }
 
-  private IJobUpdate saveUpdateNoEvent(IJobUpdate update, Optional<String> lockToken) {
+  private JobUpdate saveUpdateNoEvent(JobUpdate update, Optional<String> lockToken) {
     storage.write((NoResult.Quiet) storeProvider -> {
       if (lockToken.isPresent()) {
         storeProvider.getLockStore().saveLock(makeLock(update, lockToken.get()));
@@ -899,12 +889,12 @@ public class DbJobUpdateStoreTest {
     return update;
   }
 
-  private void saveJobEvent(IJobUpdateEvent event, IJobUpdateKey key) {
+  private void saveJobEvent(JobUpdateEvent event, JobUpdateKey key) {
     storage.write((NoResult.Quiet)
         storeProvider -> storeProvider.getJobUpdateStore().saveJobUpdateEvent(key, event));
   }
 
-  private void saveJobInstanceEvent(IJobInstanceUpdateEvent event, IJobUpdateKey key) {
+  private void saveJobInstanceEvent(JobInstanceUpdateEvent event, JobUpdateKey key) {
     storage.write((NoResult.Quiet)
         storeProvider -> storeProvider.getJobUpdateStore().saveJobInstanceUpdateEvent(key, event));
   }
@@ -914,22 +904,22 @@ public class DbJobUpdateStoreTest {
         storeProvider -> storeProvider.getJobUpdateStore().deleteAllUpdatesAndEvents());
   }
 
-  private Set<IJobUpdateKey> pruneHistory(int retainCount, long pruningThresholdMs) {
+  private Set<JobUpdateKey> pruneHistory(int retainCount, long pruningThresholdMs) {
     return storage.write(storeProvider ->
         storeProvider.getJobUpdateStore().pruneHistory(retainCount, pruningThresholdMs));
   }
 
-  private void removeLock(IJobUpdate update, String lockToken) {
+  private void removeLock(JobUpdate update, String lockToken) {
     storage.write((NoResult.Quiet) storeProvider ->
         storeProvider.getLockStore().removeLock(makeLock(update, lockToken).getKey()));
   }
 
-  private IJobUpdate populateExpected(IJobUpdate update) {
+  private JobUpdate populateExpected(JobUpdate update) {
     return populateExpected(update, ROLLING_FORWARD, CREATED_MS, CREATED_MS);
   }
 
-  private IJobUpdate populateExpected(
-      IJobUpdate update,
+  private JobUpdate populateExpected(
+      JobUpdate update,
       JobUpdateStatus status,
       long createdMs,
       long lastMs) {
@@ -940,90 +930,90 @@ public class DbJobUpdateStoreTest {
         .setStatus(status);
     JobUpdate builder = update.newBuilder();
     builder.getSummary().setState(state);
-    return IJobUpdate.build(builder);
+    return JobUpdate.build(builder);
   }
 
-  private static IJobUpdateEvent makeJobUpdateEvent(JobUpdateStatus status, long timestampMs) {
-    return IJobUpdateEvent.build(
+  private static JobUpdateEvent makeJobUpdateEvent(JobUpdateStatus status, long timestampMs) {
+    return JobUpdateEvent.build(
         new JobUpdateEvent(status, timestampMs)
             .setUser("user")
             .setMessage("message"));
   }
 
-  private IJobInstanceUpdateEvent makeJobInstanceEvent(
+  private JobInstanceUpdateEvent makeJobInstanceEvent(
       int instanceId,
       long timestampMs,
       JobUpdateAction action) {
 
-    return IJobInstanceUpdateEvent.build(
+    return JobInstanceUpdateEvent.build(
         new JobInstanceUpdateEvent(instanceId, timestampMs, action));
   }
 
-  private IJobUpdateDetails makeJobDetails(IJobUpdate update) {
+  private JobUpdateDetails makeJobDetails(JobUpdate update) {
     return updateJobDetails(
         update,
         ImmutableList.of(FIRST_EVENT),
         ImmutableList.of());
   }
 
-  private IJobUpdateDetails updateJobDetails(IJobUpdate update, IJobUpdateEvent event) {
+  private JobUpdateDetails updateJobDetails(JobUpdate update, JobUpdateEvent event) {
     return updateJobDetails(
         update,
         ImmutableList.of(event),
         ImmutableList.of());
   }
 
-  private IJobUpdateDetails updateJobDetails(
-      IJobUpdate update,
-      List<IJobUpdateEvent> jobEvents,
-      List<IJobInstanceUpdateEvent> instanceEvents) {
+  private JobUpdateDetails updateJobDetails(
+      JobUpdate update,
+      List<JobUpdateEvent> jobEvents,
+      List<JobInstanceUpdateEvent> instanceEvents) {
 
-    return IJobUpdateDetails.build(new JobUpdateDetails()
+    return JobUpdateDetails.build(new JobUpdateDetails()
         .setUpdate(update.newBuilder())
-        .setUpdateEvents(IJobUpdateEvent.toBuildersList(jobEvents))
-        .setInstanceEvents(IJobInstanceUpdateEvent.toBuildersList(instanceEvents)));
+        .setUpdateEvents(JobUpdateEvent.toBuildersList(jobEvents))
+        .setInstanceEvents(JobInstanceUpdateEvent.toBuildersList(instanceEvents)));
   }
 
-  private static IJobUpdateSummary makeSummary(IJobUpdateKey key, String user) {
-    return IJobUpdateSummary.build(new JobUpdateSummary()
+  private static JobUpdateSummary makeSummary(JobUpdateKey key, String user) {
+    return JobUpdateSummary.build(new JobUpdateSummary()
         .setKey(key.newBuilder())
         .setUser(user));
   }
 
-  private IJobUpdateSummary saveSummary(
-      IJobUpdateKey key,
+  private JobUpdateSummary saveSummary(
+      JobUpdateKey key,
       Long modifiedTimestampMs,
       JobUpdateStatus status,
       String user,
       Optional<String> lockToken) {
 
-    IJobUpdateSummary summary = IJobUpdateSummary.build(new JobUpdateSummary()
+    JobUpdateSummary summary = JobUpdateSummary.build(new JobUpdateSummary()
         .setKey(key.newBuilder())
         .setUser(user));
 
-    IJobUpdate update = makeJobUpdate(summary);
+    JobUpdate update = makeJobUpdate(summary);
     saveUpdate(update, lockToken);
     saveJobEvent(makeJobUpdateEvent(status, modifiedTimestampMs), key);
     return populateExpected(update, status, CREATED_MS, modifiedTimestampMs).getSummary();
   }
 
-  private IJobUpdate makeJobUpdate(IJobUpdateSummary summary) {
-    return IJobUpdate.build(makeJobUpdate().newBuilder().setSummary(summary.newBuilder()));
+  private JobUpdate makeJobUpdate(JobUpdateSummary summary) {
+    return JobUpdate.build(makeJobUpdate().newBuilder().setSummary(summary.newBuilder()));
   }
 
-  private static IJobUpdate makeJobUpdate(IJobUpdateKey key) {
-    return IJobUpdate.build(makeJobUpdate().newBuilder()
+  private static JobUpdate makeJobUpdate(JobUpdateKey key) {
+    return JobUpdate.build(makeJobUpdate().newBuilder()
         .setSummary(makeSummary(key, "user").newBuilder()));
   }
 
-  private static IJobUpdate makeJobUpdate() {
-    return IJobUpdate.build(new JobUpdate()
+  private static JobUpdate makeJobUpdate() {
+    return JobUpdate.build(new JobUpdate()
         .setInstructions(makeJobUpdateInstructions().newBuilder()));
   }
 
-  private static IJobUpdateInstructions makeJobUpdateInstructions() {
+  private static JobUpdateInstructions makeJobUpdateInstructions() {
     TaskConfig config = TaskTestUtil.makeConfig(JOB).newBuilder();
-    return IJobUpdateInstructions.build(new JobUpdateInstructions()
+    return JobUpdateInstructions.build(new JobUpdateInstructions()
         .setDesiredState(new InstanceTaskConfig()
             .setTask(config)
             .setInstances(ImmutableSet.of(new Range(0, 7), new Range(8, 9))))

@@ -24,8 +24,6 @@ import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StorageException;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
 import org.apache.aurora.scheduler.storage.testing.StorageEntityUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,36 +35,36 @@ public class DbLockStoreTest {
 
   private Storage storage;
 
-  private void assertLocks(ILock... expected) {
+  private void assertLocks(Lock... expected) {
     assertEquals(
-        ImmutableSet.<ILock>builder().add(expected).build(),
+        ImmutableSet.<Lock>builder().add(expected).build(),
         storage.read(storeProvider -> storeProvider.getLockStore().fetchLocks()));
   }
 
-  private Optional<ILock> getLock(ILockKey key) {
+  private Optional<Lock> getLock(LockKey key) {
     return storage.read(storeProvider -> storeProvider.getLockStore().fetchLock(key));
   }
 
-  private void saveLocks(ILock... locks) {
+  private void saveLocks(Lock... locks) {
     storage.write(storeProvider -> {
-      for (ILock lock : locks) {
+      for (Lock lock : locks) {
         storeProvider.getLockStore().saveLock(lock);
       }
       return null;
     });
   }
 
-  private void removeLocks(ILock... locks) {
+  private void removeLocks(Lock... locks) {
     storage.write(storeProvider -> {
-      for (ILock lock : locks) {
+      for (Lock lock : locks) {
         storeProvider.getLockStore().removeLock(lock.getKey());
       }
       return null;
     });
   }
 
-  private static ILock makeLock(JobKey key, String token) {
-    return ILock.build(new Lock()
+  private static Lock makeLock(JobKey key, String token) {
+    return Lock.build(new Lock()
       .setKey(LockKey.job(key))
       .setToken(token)
       .setUser("testUser")
@@ -88,8 +86,8 @@ public class DbLockStoreTest {
     String job1 = "testJob1";
     String job2 = "testJob2";
 
-    ILock lock1 = makeLock(JobKeys.from(role, env, job1).newBuilder(), "token1");
-    ILock lock2 = makeLock(JobKeys.from(role, env, job2).newBuilder(), "token2");
+    Lock lock1 = makeLock(JobKeys.from(role, env, job1).newBuilder(), "token1");
+    Lock lock2 = makeLock(JobKeys.from(role, env, job2).newBuilder(), "token2");
 
     saveLocks(lock1, lock2);
     assertLocks(lock1, lock2);
@@ -106,7 +104,7 @@ public class DbLockStoreTest {
     String env = "testEnv";
     String job = "testJob";
 
-    ILock lock = makeLock(JobKeys.from(role, env, job).newBuilder(), "token1");
+    Lock lock = makeLock(JobKeys.from(role, env, job).newBuilder(), "token1");
 
     saveLocks(lock);
     try {
@@ -125,7 +123,7 @@ public class DbLockStoreTest {
     String env = "testEnv";
     String job = "testJob";
 
-    ILock lock = makeLock(JobKeys.from(role, env, job).newBuilder(), "token1");
+    Lock lock = makeLock(JobKeys.from(role, env, job).newBuilder(), "token1");
 
     saveLocks(lock);
     removeLocks(lock);
@@ -143,8 +141,8 @@ public class DbLockStoreTest {
     String env = "testEnv";
     String job = "testJob";
 
-    ILock lock1 = makeLock(JobKeys.from(role1, env, job).newBuilder(), "token1");
-    ILock lock2 = makeLock(JobKeys.from(role2, env, job).newBuilder(), "token2");
+    Lock lock1 = makeLock(JobKeys.from(role1, env, job).newBuilder(), "token1");
+    Lock lock2 = makeLock(JobKeys.from(role2, env, job).newBuilder(), "token2");
 
     assertEquals(Optional.empty(), getLock(lock1.getKey()));
     assertEquals(Optional.empty(), getLock(lock2.getKey()));
@@ -169,8 +167,8 @@ public class DbLockStoreTest {
     String job1 = "testJob1";
     String job2 = "testJob2";
 
-    ILock lock1 = makeLock(JobKeys.from(role, env, job1).newBuilder(), "token1");
-    ILock lock2 = makeLock(JobKeys.from(role, env, job2).newBuilder(), "token2");
+    Lock lock1 = makeLock(JobKeys.from(role, env, job1).newBuilder(), "token1");
+    Lock lock2 = makeLock(JobKeys.from(role, env, job2).newBuilder(), "token2");
 
     saveLocks(lock1, lock2);
     assertLocks(lock1, lock2);
@@ -185,7 +183,7 @@ public class DbLockStoreTest {
 
   @Test
   public void testDuplicateToken() throws Exception {
-    ILock lock = makeLock(JobKeys.from("role", "env", "job1").newBuilder(), "token1");
+    Lock lock = makeLock(JobKeys.from("role", "env", "job1").newBuilder(), "token1");
     saveLocks(lock);
     try {
       saveLocks(makeLock(JobKeys.from("role", "env", "job2").newBuilder(), "token1"));

@@ -15,8 +15,6 @@ package org.apache.aurora.scheduler.cron;
 
 import com.google.common.base.Optional;
 
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-
 /**
  * An execution manager that executes work on a cron schedule.
  */
@@ -27,5 +25,5 @@ public interface CronScheduler {
    * @param key Key previously returned from {@link #schedule(CrontabEntry, Runnable)}.
    * @return The task's cron schedule, if a matching task was found.
    */
-  Optional<CrontabEntry> getSchedule(IJobKey key);
+  Optional<CrontabEntry> getSchedule(JobKey key);
 }

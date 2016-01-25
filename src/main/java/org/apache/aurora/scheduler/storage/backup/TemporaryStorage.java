@@ -27,7 +27,6 @@ import org.apache.aurora.scheduler.storage.SnapshotStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.storage.log.SnapshotStoreImpl;
 
 import static org.apache.aurora.common.util.testing.FakeBuildInfo.generateBuildInfo;
@@ -51,7 +50,7 @@ interface TemporaryStorage {
    * @param query Query builder for tasks to fetch.
    * @return Matching tasks.
    */
-  Iterable<IScheduledTask> fetchTasks(Query.Builder query);
+  Iterable<ScheduledTask> fetchTasks(Query.Builder query);
 
   /**
    * Creates a snapshot of the contents of the temporary storage.
@@ -88,7 +87,7 @@ interface TemporaryStorage {
         }
 
         @Override
-        public Iterable<IScheduledTask> fetchTasks(final Query.Builder query) {
+        public Iterable<ScheduledTask> fetchTasks(final Query.Builder query) {
           return storage.read(storeProvider -> storeProvider.getTaskStore().fetchTasks(query));
         }
 

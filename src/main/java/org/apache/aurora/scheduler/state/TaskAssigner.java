@@ -39,7 +39,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoGroup;
 import org.apache.aurora.scheduler.mesos.MesosTaskFactory;
 import org.apache.aurora.scheduler.offers.OfferManager;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
 import org.apache.mesos.Protos.TaskInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +116,7 @@ public interface TaskAssigner {
       Map<String, Integer> portsByName = FluentIterable.from(selectedPorts)
           .uniqueIndex(input -> names.next());
 
-      IAssignedTask assigned = stateManager.assignTask(
+      AssignedTask assigned = stateManager.assignTask(
           storeProvider,
           taskId,
           host,

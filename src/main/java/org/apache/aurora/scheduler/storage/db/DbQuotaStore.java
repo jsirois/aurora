@@ -21,7 +21,6 @@ import com.google.inject.Inject;
 
 import org.apache.aurora.gen.storage.SaveQuota;
 import org.apache.aurora.scheduler.storage.QuotaStore;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
 
 import static java.util.Objects.requireNonNull;
 
@@ -41,17 +40,17 @@ class DbQuotaStore implements QuotaStore.Mutable {
 
   @Timed("quota_store_fetch_quota")
   @Override
-  public Optional<IResourceAggregate> fetchQuota(String role) {
+  public Optional<ResourceAggregate> fetchQuota(String role) {
     return Optional.fromNullable(mapper.select(role))
-        .transform(IResourceAggregate::build);
+        .transform(ResourceAggregate::build);
   }
 
   @Timed("quota_store_fetch_quotas")
   @Override
-  public Map<String, IResourceAggregate> fetchQuotas() {
-    ImmutableMap.Builder<String, IResourceAggregate> results = ImmutableMap.builder();
+  public Map<String, ResourceAggregate> fetchQuotas() {
+    ImmutableMap.Builder<String, ResourceAggregate> results = ImmutableMap.builder();
     for (SaveQuota result : mapper.selectAll()) {
-      results.put(result.getRole(), IResourceAggregate.build(result.getQuota()));
+      results.put(result.getRole(), ResourceAggregate.build(result.getQuota()));
     }
     return results.build();
   }
@@ -70,7 +69,7 @@ class DbQuotaStore implements QuotaStore.Mutable {
 
   @Timed("quota_store_save_quota")
   @Override
-  public void saveQuota(String role, IResourceAggregate quota) {
+  public void saveQuota(String role, ResourceAggregate quota) {
     mapper.merge(role, quota.newBuilder());
   }
 }

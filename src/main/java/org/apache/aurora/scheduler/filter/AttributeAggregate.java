@@ -26,9 +26,6 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -61,7 +58,7 @@ public final class AttributeAggregate {
    */
   public static AttributeAggregate getJobActiveState(
       final StoreProvider storeProvider,
-      final IJobKey jobKey) {
+      final JobKey jobKey) {
 
     return create(
         () -> storeProvider.getTaskStore()
@@ -71,10 +68,10 @@ public final class AttributeAggregate {
 
   @VisibleForTesting
   static AttributeAggregate create(
-      final Supplier<Iterable<IScheduledTask>> taskSupplier,
+      final Supplier<Iterable<ScheduledTask>> taskSupplier,
       final AttributeStore attributeStore) {
 
-    final Function<String, Iterable<IAttribute>> getHostAttributes =
+    final Function<String, Iterable<Attribute>> getHostAttributes =
         host -> {
           // Note: this assumes we have access to attributes for hosts where all active tasks
           // reside.
@@ -90,11 +87,11 @@ public final class AttributeAggregate {
   }
 
   @VisibleForTesting
-  static AttributeAggregate create(Supplier<Iterable<IAttribute>> attributes) {
+  static AttributeAggregate create(Supplier<Iterable<Attribute>> attributes) {
     Supplier<Multiset<Pair<String, String>>> aggregator = Suppliers.compose(
         attributes1 -> {
           ImmutableMultiset.Builder<Pair<String, String>> builder = ImmutableMultiset.builder();
-          for (IAttribute attribute : attributes1) {
+          for (Attribute attribute : attributes1) {
             for (String value : attribute.getValues()) {
               builder.add(Pair.of(attribute.getName(), value));
             }

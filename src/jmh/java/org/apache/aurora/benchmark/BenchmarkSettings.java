@@ -15,25 +15,22 @@ package org.apache.aurora.benchmark;
 
 import java.util.Set;
 
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-
 import static java.util.Objects.requireNonNull;
 
 /**
  * Benchmark test settings.
  */
 final class BenchmarkSettings {
-  private final Set<IHostAttributes> hostAttributes;
+  private final Set<HostAttributes> hostAttributes;
   private final double clusterUtilization;
   private final boolean allVictimsEligibleForPreemption;
-  private final Set<IScheduledTask> tasks;
+  private final Set<ScheduledTask> tasks;
 
   private BenchmarkSettings(
       double clusterUtilization,
       boolean allVictimsEligibleForPreemption,
-      Set<IHostAttributes> hostAttributes,
-      Set<IScheduledTask> tasks) {
+      Set<HostAttributes> hostAttributes,
+      Set<ScheduledTask> tasks) {
 
     this.clusterUtilization = clusterUtilization;
     this.allVictimsEligibleForPreemption = allVictimsEligibleForPreemption;
@@ -63,9 +60,9 @@ final class BenchmarkSettings {
   /**
    * Gets a set of cluster host attributes.
    *
-   * @return Set of {@link IHostAttributes}.
+   * @return Set of {@link HostAttributes}.
    */
-  Set<IHostAttributes> getHostAttributes() {
+  Set<HostAttributes> getHostAttributes() {
     return hostAttributes;
   }
 
@@ -74,15 +71,15 @@ final class BenchmarkSettings {
    *
    * @return Task to run a benchmark for.
    */
-  Set<IScheduledTask> getTasks() {
+  Set<ScheduledTask> getTasks() {
     return tasks;
   }
 
   static class Builder {
     private double clusterUtilization = 0.9;
     private boolean allVictimsEligibleForPreemption;
-    private Set<IHostAttributes> hostAttributes;
-    private Set<IScheduledTask> tasks;
+    private Set<HostAttributes> hostAttributes;
+    private Set<ScheduledTask> tasks;
 
     Builder setClusterUtilization(double newClusterUtilization) {
       clusterUtilization = newClusterUtilization;
@@ -94,12 +91,12 @@ final class BenchmarkSettings {
       return this;
     }
 
-    Builder setHostAttributes(Set<IHostAttributes> newHostAttributes) {
+    Builder setHostAttributes(Set<HostAttributes> newHostAttributes) {
       hostAttributes = newHostAttributes;
       return this;
     }
 
-    Builder setTasks(Set<IScheduledTask> newTasks) {
+    Builder setTasks(Set<ScheduledTask> newTasks) {
       tasks = newTasks;
       return this;
     }

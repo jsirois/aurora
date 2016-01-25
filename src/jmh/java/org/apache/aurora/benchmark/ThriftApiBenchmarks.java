@@ -40,7 +40,6 @@ import org.apache.aurora.scheduler.quota.QuotaManager;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.thrift.ThriftModule;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -174,7 +173,7 @@ public class ThriftApiBenchmarks {
           String env = "env" + envId;
           for (int jobId = 0; jobId < config.jobs; jobId++) {
             String job = "job" + jobId;
-            ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
+            ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
             tasks.addAll(new Tasks.Builder()
                 .setRole(role)
                 .setEnv(env)

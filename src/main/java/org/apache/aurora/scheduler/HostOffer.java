@@ -17,8 +17,6 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-
 import static java.util.Objects.requireNonNull;
 
 import static org.apache.mesos.Protos.Offer;
@@ -28,9 +26,9 @@ import static org.apache.mesos.Protos.Offer;
  */
 public class HostOffer {
   private final Offer offer;
-  private final IHostAttributes hostAttributes;
+  private final HostAttributes hostAttributes;
 
-  public HostOffer(Offer offer, IHostAttributes hostAttributes) {
+  public HostOffer(Offer offer, HostAttributes hostAttributes) {
     this.offer = requireNonNull(offer);
     this.hostAttributes = requireNonNull(hostAttributes);
   }
@@ -39,7 +37,7 @@ public class HostOffer {
     return offer;
   }
 
-  public IHostAttributes getAttributes() {
+  public HostAttributes getAttributes() {
     return hostAttributes;
   }
 

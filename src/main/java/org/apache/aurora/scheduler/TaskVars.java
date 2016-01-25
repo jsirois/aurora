@@ -45,8 +45,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.VetoGroup;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,16 +102,16 @@ class TaskVars extends AbstractIdleService implements EventSubscriber {
   }
 
   @VisibleForTesting
-  static String jobStatName(IScheduledTask task, ScheduleStatus status) {
+  static String jobStatName(ScheduledTask task, ScheduleStatus status) {
     return String.format(
         "tasks_%s_%s",
         status,
         JobKeys.canonicalString(task.getAssignedTask().getTask().getJob()));
   }
 
-  private static final Predicate<IAttribute> IS_RACK = attr -> "rack".equals(attr.getName());
+  private static final Predicate<Attribute> IS_RACK = attr -> "rack".equals(attr.getName());
 
-  private static final Function<IAttribute, String> ATTR_VALUE =
+  private static final Function<Attribute, String> ATTR_VALUE =
       attr -> Iterables.getOnlyElement(attr.getValues());
 
   private Counter getCounter(ScheduleStatus status) {
@@ -128,14 +126,14 @@ class TaskVars extends AbstractIdleService implements EventSubscriber {
     getCounter(status).decrement();
   }
 
-  private void updateRackCounters(IScheduledTask task, ScheduleStatus newState) {
+  private void updateRackCounters(ScheduledTask task, ScheduleStatus newState) {
     final String host = task.getAssignedTask().getSlaveHost();
     Optional<String> rack;
     if (Strings.isNullOrEmpty(task.getAssignedTask().getSlaveHost())) {
       rack = Optional.absent();
     } else {
       rack = storage.read(storeProvider -> {
-        Optional<IAttribute> rack1 = FluentIterable
+        Optional<Attribute> rack1 = FluentIterable
             .from(AttributeStore.Util.attributesOrNone(storeProvider, host))
             .firstMatch(IS_RACK);
         return rack1.transform(ATTR_VALUE);
@@ -157,7 +155,7 @@ class TaskVars extends AbstractIdleService implements EventSubscriber {
     }
   }
 
-  private void updateJobCounters(IScheduledTask task, ScheduleStatus newState) {
+  private void updateJobCounters(ScheduledTask task, ScheduleStatus newState) {
     if (TRACKED_JOB_STATES.contains(newState)) {
       untrackedCounters.getUnchecked(jobStatName(task, newState)).increment();
     }
@@ -165,7 +163,7 @@ class TaskVars extends AbstractIdleService implements EventSubscriber {
 
   @Subscribe
   public void taskChangedState(TaskStateChange stateChange) {
-    IScheduledTask task = stateChange.getTask();
+    ScheduledTask task = stateChange.getTask();
     Optional<ScheduleStatus> previousState = stateChange.getOldState();
 
     if (stateChange.isTransition() && !previousState.equals(Optional.of(ScheduleStatus.INIT))) {
@@ -206,7 +204,7 @@ class TaskVars extends AbstractIdleService implements EventSubscriber {
 
   @Subscribe
   public void tasksDeleted(final TasksDeleted event) {
-    for (IScheduledTask task : event.getTasks()) {
+    for (ScheduledTask task : event.getTasks()) {
       decrementCount(task.getStatus());
     }
   }

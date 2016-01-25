@@ -15,8 +15,6 @@ package org.apache.aurora.scheduler.base;
 
 import org.apache.aurora.gen.JobStats;
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.storage.entities.IJobStats;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 
 /**
  * Convenience methods related to jobs.
@@ -33,12 +31,12 @@ public final class Jobs {
    * @param tasks a collection of tasks for which statistics are sought
    * @return an JobStats object containing the statistics about the tasks.
    */
-  public static IJobStats getJobStats(Iterable<IScheduledTask> tasks) {
+  public static JobStats getJobStats(Iterable<ScheduledTask> tasks) {
     JobStats stats = new JobStats();
-    for (IScheduledTask task : tasks) {
+    for (ScheduledTask task : tasks) {
       updateStats(stats, task.getStatus());
     }
-    return IJobStats.build(stats);
+    return JobStats.build(stats);
   }
 
   private static void updateStats(JobStats stats, ScheduleStatus status) {

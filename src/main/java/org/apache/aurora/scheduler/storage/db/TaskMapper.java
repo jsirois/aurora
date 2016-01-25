@@ -22,8 +22,6 @@ import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -37,7 +35,7 @@ interface TaskMapper {
    * @param task Task to insert.
    */
   void insertScheduledTask(
-      @Param("task") IScheduledTask task,
+      @Param("task") ScheduledTask task,
       @Param("configId") long configId,
       @Param("result") InsertResult result);
 
@@ -67,18 +65,18 @@ interface TaskMapper {
 
   /**
    * Inserts the task events association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.IScheduledTask}.
+   * {@link org.apache.aurora.scheduler.storage.entities.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param events Events to insert.
    */
   void insertTaskEvents(
       @Param("taskRowId") long taskRowId,
-      @Param("events") List<ITaskEvent> events);
+      @Param("events") List<TaskEvent> events);
 
   /**
    * Inserts the assigned ports association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.IScheduledTask}.
+   * {@link org.apache.aurora.scheduler.storage.entities.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param ports Assigned ports to insert.

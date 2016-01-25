@@ -28,9 +28,6 @@ import org.apache.aurora.common.thrift.Util;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.Work.Quiet;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.thrift.TBase;
 
 import static java.util.Objects.requireNonNull;
@@ -91,10 +88,10 @@ public class StructDump extends JerseyTemplateServlet {
       @PathParam("environment") final String environment,
       @PathParam("job") final String job) {
 
-    final IJobKey jobKey = JobKeys.from(role, environment, job);
+    final JobKey jobKey = JobKeys.from(role, environment, job);
     return dumpEntity("Cron job " + JobKeys.canonicalString(jobKey),
         storeProvider -> storeProvider.getCronJobStore().fetchJob(jobKey)
-            .transform(IJobConfiguration::newBuilder));
+            .transform(JobConfiguration::newBuilder));
   }
 
   private Response dumpEntity(final String id, final Quiet<Optional<? extends TBase<?, ?>>> work) {

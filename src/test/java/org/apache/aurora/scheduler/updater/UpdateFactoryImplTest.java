@@ -21,7 +21,6 @@ import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateSettings;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,7 +33,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class UpdateFactoryImplTest {
 
-  private static final IJobUpdateInstructions INSTRUCTIONS = IJobUpdateInstructions.build(
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
       new JobUpdateInstructions()
           .setDesiredState(instanceConfig(new Range(0, 2)))
           .setInitialState(ImmutableSet.of(instanceConfig(new Range(1, 2))))
@@ -72,7 +71,7 @@ public class UpdateFactoryImplTest {
     config.setDesiredState(instanceConfig(new Range(1, 1)));
     config.getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of(new Range(0, 1)));
 
-    Update update = factory.newUpdate(IJobUpdateInstructions.build(config), true);
+    Update update = factory.newUpdate(JobUpdateInstructions.build(config), true);
     assertEquals(ImmutableSet.of(1), update.getUpdater().getInstances());
   }
 
@@ -83,7 +82,7 @@ public class UpdateFactoryImplTest {
     config.setDesiredState(instanceConfig(new Range(1, 1)));
     config.getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of(new Range(0, 1)));
 
-    Update update = factory.newUpdate(IJobUpdateInstructions.build(config), false);
+    Update update = factory.newUpdate(JobUpdateInstructions.build(config), false);
     assertEquals(ImmutableSet.of(1), update.getUpdater().getInstances());
   }
 
@@ -92,7 +91,7 @@ public class UpdateFactoryImplTest {
     JobUpdateInstructions config = INSTRUCTIONS.newBuilder();
     config.getDesiredState().setInstances(ImmutableSet.of(new Range(0, 1)));
 
-    Update update = factory.newUpdate(IJobUpdateInstructions.build(config), true);
+    Update update = factory.newUpdate(JobUpdateInstructions.build(config), true);
     assertEquals(ImmutableSet.of(0, 1, 2), update.getUpdater().getInstances());
   }
 

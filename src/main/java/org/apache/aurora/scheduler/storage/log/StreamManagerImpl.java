@@ -35,6 +35,7 @@ import com.google.inject.assistedinject.Assisted;
 import org.apache.aurora.common.base.Closure;
 import org.apache.aurora.common.stats.Stats;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.gen.storage.Frame;
 import org.apache.aurora.gen.storage.FrameHeader;
 import org.apache.aurora.gen.storage.LogEntry;
@@ -44,7 +45,6 @@ import org.apache.aurora.gen.storage.SaveHostAttributes;
 import org.apache.aurora.gen.storage.SaveTasks;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.gen.storage.Transaction;
-import org.apache.aurora.gen.storage.storageConstants;
 import org.apache.aurora.scheduler.log.Log;
 import org.apache.aurora.scheduler.log.Log.Stream;
 import org.slf4j.Logger;
@@ -232,7 +232,7 @@ class StreamManagerImpl implements StreamManager {
 
   final class StreamTransactionImpl implements StreamTransaction {
     private final Transaction transaction =
-        new Transaction().setSchemaVersion(storageConstants.CURRENT_SCHEMA_VERSION);
+        new Transaction().setSchemaVersion(Constants.CURRENT_SCHEMA_VERSION);
     private final AtomicBoolean committed = new AtomicBoolean(false);
 
     StreamTransactionImpl() {

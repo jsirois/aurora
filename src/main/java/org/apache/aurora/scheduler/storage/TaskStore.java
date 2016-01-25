@@ -22,9 +22,6 @@ import com.google.common.base.Predicate;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static com.google.common.base.CharMatcher.WHITESPACE;
 
@@ -48,21 +45,21 @@ public interface TaskStore {
    * @param query Builder of the query to identify tasks with.
    * @return A read-only view of matching tasks.
    */
-  Iterable<IScheduledTask> fetchTasks(Query.Builder query);
+  Iterable<ScheduledTask> fetchTasks(Query.Builder query);
 
   /**
    * Fetches all job keys represented in the task store.
    *
    * @return Job keys of stored tasks.
    */
-  Set<IJobKey> getJobKeys();
+  Set<JobKey> getJobKeys();
 
   interface Mutable extends TaskStore {
 
     /**
      * A convenience interface to allow callers to more concisely implement a task mutation.
      */
-    interface TaskMutation extends Function<IScheduledTask, IScheduledTask> {
+    interface TaskMutation extends Function<ScheduledTask, ScheduledTask> {
     }
 
     /**
@@ -73,7 +70,7 @@ public interface TaskStore {
      *
      * @param tasks Tasks to add.
      */
-    void saveTasks(Set<IScheduledTask> tasks);
+    void saveTasks(Set<ScheduledTask> tasks);
 
     /**
      * Removes all tasks from the store.
@@ -96,16 +93,16 @@ public interface TaskStore {
      * @param mutator The mutate operation.
      * @return The result of the mutate operation, if performed.
      */
-    Optional<IScheduledTask> mutateTask(
+    Optional<ScheduledTask> mutateTask(
         String taskId,
-        Function<IScheduledTask, IScheduledTask> mutator);
+        Function<ScheduledTask, ScheduledTask> mutator);
 
     /**
      * Rewrites a task's configuration in-place.
      * <p>
      * <b>WARNING</b>: this is a dangerous operation, and should not be used without exercising
      * great care.  This feature should be used as a last-ditch effort to rewrite things that
-     * the scheduler otherwise can't (e.g. {@link ITaskConfig#executorConfig}) rewrite in a
+     * the scheduler otherwise can't (e.g. {@link TaskConfig#executorConfig}) rewrite in a
      * controlled/tested backfill operation.
      *
      * @param taskId ID of the task to alter.
@@ -114,7 +111,7 @@ public interface TaskStore {
      * @return {@code true} if the modification took effect, or {@code false} if the task does not
      *         exist in the store.
      */
-    boolean unsafeModifyInPlace(String taskId, ITaskConfig taskConfiguration);
+    boolean unsafeModifyInPlace(String taskId, TaskConfig taskConfiguration);
   }
 
   final class Util {
@@ -122,10 +119,10 @@ public interface TaskStore {
       // Utility class.
     }
 
-    public static Predicate<IScheduledTask> queryFilter(final Query.Builder queryBuilder) {
+    public static Predicate<ScheduledTask> queryFilter(final Query.Builder queryBuilder) {
       return task -> {
         TaskQuery query = queryBuilder.get();
-        ITaskConfig config = task.getAssignedTask().getTask();
+        TaskConfig config = task.getAssignedTask().getTask();
         // TODO(wfarner): Investigate why blank inputs are treated specially for the role field.
         if (query.getRole() != null
             && !WHITESPACE.matchesAllOf(query.getRole())

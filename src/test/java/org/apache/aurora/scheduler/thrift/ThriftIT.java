@@ -39,8 +39,6 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.backup.Recovery;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.updater.JobUpdateController;
@@ -49,13 +47,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.apache.aurora.gen.ResponseCode.OK;
-import static org.junit.Assert.assertEquals;
 
 public class ThriftIT extends EasyMockTest {
 
   private static final String USER = "someuser";
-  private static final IResourceAggregate QUOTA =
-      IResourceAggregate.build(new ResourceAggregate(1, 1, 1));
+  private static final ResourceAggregate QUOTA =
+      ResourceAggregate.build(new ResourceAggregate(1, 1, 1));
 
   private AuroraAdmin.Iface thrift;
   private StorageTestUtil storageTestUtil;
@@ -95,7 +92,7 @@ public class ThriftIT extends EasyMockTest {
             bind(NonVolatileStorage.class).toInstance(storageTestUtil.storage);
             bindMock(StorageBackup.class);
             bind(QuotaManager.class).toInstance(quotaManager);
-            bind(IServerInfo.class).toInstance(IServerInfo.build(new ServerInfo()));
+            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()));
             bindMock(CronPredictor.class);
           }
 

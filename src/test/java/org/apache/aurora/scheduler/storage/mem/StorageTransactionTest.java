@@ -35,8 +35,6 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -85,7 +83,7 @@ public class StorageTransactionTest extends TearDownTestCase {
     assertEquals("slowResult", future.get());
   }
 
-  private IScheduledTask makeTask(String taskId) {
+  private ScheduledTask makeTask(String taskId) {
     return TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB);
   }
 
@@ -114,7 +112,7 @@ public class StorageTransactionTest extends TearDownTestCase {
 
   @Test
   public void testWritesUnderTransaction() {
-    IResourceAggregate quota = IResourceAggregate
+    ResourceAggregate quota = ResourceAggregate
         .build(new ResourceAggregate().setDiskMb(100).setNumCpus(2.0).setRamMb(512));
 
     try {

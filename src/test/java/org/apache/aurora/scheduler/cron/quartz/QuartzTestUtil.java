@@ -25,16 +25,13 @@ import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.quartz.JobKey;
 
 /**
  * Fixtures used across quartz tests.
  */
 final class QuartzTestUtil {
-  static final IJobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
-  static final IJobConfiguration JOB = IJobConfiguration.build(
+  static final JobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
+  static final JobConfiguration JOB = JobConfiguration.build(
       new JobConfiguration()
           .setCronSchedule("* * * * SUN")
           .setInstanceCount(10)
@@ -54,7 +51,7 @@ final class QuartzTestUtil {
     try {
       return SanitizedCronJob.fromUnsanitized(
           TaskTestUtil.CONFIGURATION_MANAGER,
-          IJobConfiguration.build(JOB.newBuilder().setCronCollisionPolicy(collisionPolicy)));
+          JobConfiguration.build(JOB.newBuilder().setCronCollisionPolicy(collisionPolicy)));
     } catch (CronException | ConfigurationManager.TaskDescriptionException e) {
       throw Throwables.propagate(e);
     }
@@ -67,6 +64,6 @@ final class QuartzTestUtil {
   static SanitizedCronJob makeUpdatedJob() throws Exception {
     return SanitizedCronJob.fromUnsanitized(
         TaskTestUtil.CONFIGURATION_MANAGER,
-        IJobConfiguration.build(JOB.newBuilder().setCronSchedule("* * 1 * *")));
+        JobConfiguration.build(JOB.newBuilder().setCronSchedule("* * 1 * *")));
   }
 }

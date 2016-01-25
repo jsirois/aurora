@@ -23,8 +23,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.TaskStatus;
 
@@ -45,13 +43,13 @@ public interface PubsubEvent {
    * Event sent when tasks were deleted.
    */
   class TasksDeleted implements PubsubEvent {
-    private final Set<IScheduledTask> tasks;
+    private final Set<ScheduledTask> tasks;
 
-    public TasksDeleted(Set<IScheduledTask> tasks) {
+    public TasksDeleted(Set<ScheduledTask> tasks) {
       this.tasks = requireNonNull(tasks);
     }
 
-    public Set<IScheduledTask> getTasks() {
+    public Set<ScheduledTask> getTasks() {
       return tasks;
     }
 
@@ -84,10 +82,10 @@ public interface PubsubEvent {
    * This class is final as it should only be constructed through declared factory methods.
    */
   final class TaskStateChange implements PubsubEvent {
-    private final IScheduledTask task;
+    private final ScheduledTask task;
     private final Optional<ScheduleStatus> oldState;
 
-    private TaskStateChange(IScheduledTask task, Optional<ScheduleStatus> oldState) {
+    private TaskStateChange(ScheduledTask task, Optional<ScheduleStatus> oldState) {
       this.task = requireNonNull(task);
       this.oldState = requireNonNull(oldState);
     }
@@ -98,7 +96,7 @@ public interface PubsubEvent {
      * @param task Task structure.
      * @return A state change event.
      */
-    public static TaskStateChange initialized(IScheduledTask task) {
+    public static TaskStateChange initialized(ScheduledTask task) {
       return new TaskStateChange(task, Optional.absent());
     }
 
@@ -109,7 +107,7 @@ public interface PubsubEvent {
      * @param oldState State the task was previously in.
      * @return A state change event.
      */
-    public static TaskStateChange transition(IScheduledTask task, ScheduleStatus oldState) {
+    public static TaskStateChange transition(ScheduledTask task, ScheduleStatus oldState) {
       return new TaskStateChange(task, Optional.of(oldState));
     }
 
@@ -125,7 +123,7 @@ public interface PubsubEvent {
       return oldState.isPresent();
     }
 
-    public IScheduledTask getTask() {
+    public ScheduledTask getTask() {
       return task;
     }
 
@@ -163,13 +161,13 @@ public interface PubsubEvent {
    * Event sent when a host's attributes change.
    */
   class HostAttributesChanged implements PubsubEvent {
-    private final IHostAttributes attributes;
+    private final HostAttributes attributes;
 
-    public HostAttributesChanged(IHostAttributes attributes) {
+    public HostAttributesChanged(HostAttributes attributes) {
       this.attributes = requireNonNull(attributes);
     }
 
-    public IHostAttributes getAttributes() {
+    public HostAttributes getAttributes() {
       return attributes;
     }
 

@@ -22,7 +22,6 @@ import org.apache.aurora.common.quantity.Data;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.offers.OfferManager;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.mesos.Protos;
 
 import static org.apache.aurora.scheduler.TierInfo.DEFAULT;
@@ -85,10 +84,10 @@ final class Offers {
      * @param hostAttributes Host attributes to initialize offers from.
      * @return Set of offers.
      */
-    Set<HostOffer> build(Set<IHostAttributes> hostAttributes) {
+    Set<HostOffer> build(Set<HostAttributes> hostAttributes) {
       ImmutableSet.Builder<HostOffer> offers = ImmutableSet.builder();
       int id = 0;
-      for (IHostAttributes attributes : hostAttributes) {
+      for (HostAttributes attributes : hostAttributes) {
         Protos.Offer offer = Protos.Offer.newBuilder()
             .addAllResources(new ResourceSlot(cpu, ram, disk, ports)
                 .toResourceList(DEFAULT))

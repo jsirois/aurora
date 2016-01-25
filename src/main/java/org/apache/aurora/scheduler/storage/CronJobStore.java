@@ -15,9 +15,6 @@ package org.apache.aurora.scheduler.storage;
 
 import com.google.common.base.Optional;
 
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-
 /**
  * Stores cron job configuration data.
  */
@@ -28,7 +25,7 @@ public interface CronJobStore {
    *
    * @return {@link Iterable} of job configurations.
    */
-  Iterable<IJobConfiguration> fetchJobs();
+  Iterable<JobConfiguration> fetchJobs();
 
   /**
    * Fetches the {@code JobConfiguration} for the specified {@code jobKey} if it exists.
@@ -36,7 +33,7 @@ public interface CronJobStore {
    * @param jobKey The jobKey identifying the job to be fetched.
    * @return the job configuration for the given {@code jobKey} or absent if none is found.
    */
-  Optional<IJobConfiguration> fetchJob(IJobKey jobKey);
+  Optional<JobConfiguration> fetchJob(JobKey jobKey);
 
   interface Mutable extends CronJobStore {
     /**
@@ -46,7 +43,7 @@ public interface CronJobStore {
      *
      * @param jobConfig The configuration of the accepted job.
      */
-    void saveAcceptedJob(IJobConfiguration jobConfig);
+    void saveAcceptedJob(JobConfiguration jobConfig);
 
     /**
      * Removes the job configuration for the job identified by {@code jobKey}.
@@ -54,7 +51,7 @@ public interface CronJobStore {
      *
      * @param jobKey the key identifying the job to delete.
      */
-    void removeJob(IJobKey jobKey);
+    void removeJob(JobKey jobKey);
 
     /**
      * Deletes all jobs.

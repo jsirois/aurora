@@ -27,14 +27,12 @@ import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 
 public class AddTaskTest extends EasyMockTest {
-  private static final IJobUpdateInstructions INSTRUCTIONS = IJobUpdateInstructions.build(
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
       new JobUpdateInstructions()
           .setDesiredState(new InstanceTaskConfig()
               .setTask(new TaskConfig())
@@ -42,8 +40,8 @@ public class AddTaskTest extends EasyMockTest {
           .setSettings(
               new JobUpdateSettings()
                   .setMinWaitInInstanceRunningMs(1000)));
-  private static final IInstanceKey INSTANCE =
-      IInstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
+  private static final InstanceKey INSTANCE =
+      InstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
 
   private StorageTestUtil storageUtil;
   private StateManager stateManager;

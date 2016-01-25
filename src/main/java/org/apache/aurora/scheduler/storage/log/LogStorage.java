@@ -61,18 +61,6 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.Storage.NonVolatileStorage;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobInstanceUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateEvent;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.ILockKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -330,20 +318,20 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
         .put(Op._Fields.SAVE_CRON_JOB, op -> {
           SaveCronJob cronJob = op.getSaveCronJob();
           writeBehindJobStore.saveAcceptedJob(
-              IJobConfiguration.build(cronJob.getJobConfig()));
+              JobConfiguration.build(cronJob.getJobConfig()));
         })
         .put(
             Op._Fields.REMOVE_JOB,
-            op -> writeBehindJobStore.removeJob(IJobKey.build(op.getRemoveJob().getJobKey())))
+            op -> writeBehindJobStore.removeJob(JobKey.build(op.getRemoveJob().getJobKey())))
         .put(
             Op._Fields.SAVE_TASKS,
             op -> writeBehindTaskStore.saveTasks(
-            IScheduledTask.setFromBuilders(op.getSaveTasks().getTasks())))
+            ScheduledTask.setFromBuilders(op.getSaveTasks().getTasks())))
         .put(Op._Fields.REWRITE_TASK, op -> {
           RewriteTask rewriteTask = op.getRewriteTask();
           writeBehindTaskStore.unsafeModifyInPlace(
               rewriteTask.getTaskId(),
-              ITaskConfig.build(rewriteTask.getTask()));
+              TaskConfig.build(rewriteTask.getTask()));
         })
         .put(
             Op._Fields.REMOVE_TASKS,
@@ -352,7 +340,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           SaveQuota saveQuota = op.getSaveQuota();
           writeBehindQuotaStore.saveQuota(
               saveQuota.getRole(),
-              IResourceAggregate.build(saveQuota.getQuota()));
+              ResourceAggregate.build(saveQuota.getQuota()));
         })
         .put(
             Op._Fields.REMOVE_QUOTA,
@@ -363,34 +351,34 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
           // unknown hosts.  5cf760b began rejecting these, but the replicated log may still
           // contain entries with a null slave ID.
           if (attributes.isSetSlaveId()) {
-            writeBehindAttributeStore.saveHostAttributes(IHostAttributes.build(attributes));
+            writeBehindAttributeStore.saveHostAttributes(HostAttributes.build(attributes));
           } else {
             LOG.info("Dropping host attributes with no slave ID: " + attributes);
           }
         })
         .put(
             Op._Fields.SAVE_LOCK,
-            op -> writeBehindLockStore.saveLock(ILock.build(op.getSaveLock().getLock())))
+            op -> writeBehindLockStore.saveLock(Lock.build(op.getSaveLock().getLock())))
         .put(
             Op._Fields.REMOVE_LOCK,
-            op -> writeBehindLockStore.removeLock(ILockKey.build(op.getRemoveLock().getLockKey())))
+            op -> writeBehindLockStore.removeLock(LockKey.build(op.getRemoveLock().getLockKey())))
         .put(Op._Fields.SAVE_JOB_UPDATE, op -> {
           JobUpdate update = op.getSaveJobUpdate().getJobUpdate();
           writeBehindJobUpdateStore.saveJobUpdate(
-              IJobUpdate.build(update),
+              JobUpdate.build(update),
               Optional.fromNullable(op.getSaveJobUpdate().getLockToken()));
         })
         .put(Op._Fields.SAVE_JOB_UPDATE_EVENT, op -> {
           SaveJobUpdateEvent event = op.getSaveJobUpdateEvent();
           writeBehindJobUpdateStore.saveJobUpdateEvent(
-              IJobUpdateKey.build(event.getKey()),
-              IJobUpdateEvent.build(op.getSaveJobUpdateEvent().getEvent()));
+              JobUpdateKey.build(event.getKey()),
+              JobUpdateEvent.build(op.getSaveJobUpdateEvent().getEvent()));
         })
         .put(Op._Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, op -> {
           SaveJobInstanceUpdateEvent event = op.getSaveJobInstanceUpdateEvent();
           writeBehindJobUpdateStore.saveJobInstanceUpdateEvent(
-              IJobUpdateKey.build(event.getKey()),
-              IJobInstanceUpdateEvent.build(op.getSaveJobInstanceUpdateEvent().getEvent()));
+              JobUpdateKey.build(event.getKey()),
+              JobInstanceUpdateEvent.build(op.getSaveJobInstanceUpdateEvent().getEvent()));
         })
         .put(Op._Fields.PRUNE_JOB_UPDATE_HISTORY, op -> writeBehindJobUpdateStore.pruneHistory(
             op.getPruneJobUpdateHistory().getPerJobRetainCount(),

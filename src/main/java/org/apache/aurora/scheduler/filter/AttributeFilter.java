@@ -18,9 +18,6 @@ import java.util.Set;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IValueConstraint;
-
 /**
  * Utility class that matches attributes to constraints.
  */
@@ -37,7 +34,7 @@ final class AttributeFilter {
    * @param constraint Constraint to match.
    * @return {@code true} if the attribute satisfies the constraint, {@code false} otherwise.
    */
-  static boolean matches(Set<String> values, IValueConstraint constraint) {
+  static boolean matches(Set<String> values, ValueConstraint constraint) {
     boolean match = Iterables.any(constraint.getValues(), Predicates.in(values));
     return constraint.isNegated() ^ match;
   }
@@ -51,7 +48,7 @@ final class AttributeFilter {
    * @return {@code true} if the limit constraint is satisfied, {@code false} otherwise.
    */
   static boolean matches(
-      final IAttribute attribute,
+      final Attribute attribute,
       int limit,
       AttributeAggregate attributeAggregate) {
 

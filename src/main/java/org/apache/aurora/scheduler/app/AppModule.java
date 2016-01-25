@@ -31,7 +31,6 @@ import org.apache.aurora.common.stats.Stats;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.Container;
-import org.apache.aurora.gen.Container._Fields;
 import org.apache.aurora.scheduler.SchedulerModule;
 import org.apache.aurora.scheduler.SchedulerServicesModule;
 import org.apache.aurora.scheduler.async.AsyncModule;
@@ -76,8 +75,8 @@ public class AppModule extends AbstractModule {
 
   @CmdLine(name = "allowed_container_types",
       help = "Container types that are allowed to be used by jobs.")
-  private static final Arg<Set<_Fields>> ALLOWED_CONTAINER_TYPES =
-      Arg.create(ImmutableSet.of(Container._Fields.MESOS));
+  private static final Arg<Set<Container.Fields>> ALLOWED_CONTAINER_TYPES =
+      Arg.create(ImmutableSet.of(Container.Fields.MESOS));
 
   @CmdLine(name = "allow_docker_parameters",
       help = "Allow to pass docker container parameters in the job.")

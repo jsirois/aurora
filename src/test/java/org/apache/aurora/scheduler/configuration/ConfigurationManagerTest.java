@@ -34,15 +34,13 @@ import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
-import org.apache.aurora.scheduler.storage.entities.IDockerParameter;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static org.apache.aurora.gen.test.testConstants.INVALID_IDENTIFIERS;
-import static org.apache.aurora.gen.test.testConstants.VALID_IDENTIFIERS;
+import static org.apache.aurora.gen.test.Constants.INVALID_IDENTIFIERS;
+import static org.apache.aurora.gen.test.Constants.VALID_IDENTIFIERS;
 import static org.apache.aurora.scheduler.base.UserProvidedStrings.isGoodIdentifier;
 import static org.apache.aurora.scheduler.configuration.ConfigurationManager.DEDICATED_ATTRIBUTE;
 import static org.hamcrest.CoreMatchers.is;
@@ -100,7 +98,7 @@ public class ConfigurationManagerTest {
               .setOwner(new Identity()
                   .setRole("owner-role")
                   .setUser("owner-user")));
-  private static final TaskConfig CONFIG_WITH_CONTAINER = ITaskConfig.build(new TaskConfig()
+  private static final TaskConfig CONFIG_WITH_CONTAINER = TaskConfig.build(new TaskConfig()
       .setJobName("container-test")
       .setEnvironment("devel")
       .setExecutorConfig(new ExecutorConfig())
@@ -139,7 +137,7 @@ public class ConfigurationManagerTest {
     taskConfig.getContainer().getDocker().setImage(null);
 
     expectTaskDescriptionException("A container must specify an image");
-    configurationManager.validateAndPopulate(ITaskConfig.build(taskConfig));
+    configurationManager.validateAndPopulate(TaskConfig.build(taskConfig));
   }
 
   @Test
@@ -151,12 +149,12 @@ public class ConfigurationManagerTest {
         ALL_CONTAINER_TYPES, false, ImmutableMultimap.of());
 
     expectTaskDescriptionException("Docker parameters not allowed");
-    noParamsManager.validateAndPopulate(ITaskConfig.build(taskConfig));
+    noParamsManager.validateAndPopulate(TaskConfig.build(taskConfig));
   }
 
   @Test
   public void testInvalidTier() throws TaskDescriptionException {
-    ITaskConfig config = ITaskConfig.build(UNSANITIZED_JOB_CONFIGURATION.deepCopy().getTaskConfig()
+    TaskConfig config = TaskConfig.build(UNSANITIZED_JOB_CONFIGURATION.deepCopy().getTaskConfig()
         .setJobName("job")
         .setEnvironment("env")
         .setTier("pr/d"));
@@ -167,13 +165,13 @@ public class ConfigurationManagerTest {
 
   @Test
   public void testDefaultDockerParameters() throws TaskDescriptionException {
-    ITaskConfig result = dockerConfigurationManager.validateAndPopulate(
-        ITaskConfig.build(CONFIG_WITH_CONTAINER.deepCopy()));
+    TaskConfig result = dockerConfigurationManager.validateAndPopulate(
+        TaskConfig.build(CONFIG_WITH_CONTAINER.deepCopy()));
 
     // The resulting task config should contain parameters supplied to the ConfigurationManager.
-    List<IDockerParameter> params = result.getContainer().getDocker().getParameters();
+    List<DockerParameter> params = result.getContainer().getDocker().getParameters();
     assertThat(
-        params, is(Arrays.asList(IDockerParameter.build(new DockerParameter("foo", "bar")))));
+        params, is(Arrays.asList(DockerParameter.build(new DockerParameter("foo", "bar")))));
   }
 
   @Test
@@ -183,13 +181,13 @@ public class ConfigurationManagerTest {
     taskConfig.getContainer().getDocker().getParameters().clear();
     taskConfig.getContainer().getDocker().addToParameters(userParameter);
 
-    ITaskConfig result = dockerConfigurationManager.validateAndPopulate(
-        ITaskConfig.build(taskConfig));
+    TaskConfig result = dockerConfigurationManager.validateAndPopulate(
+        TaskConfig.build(taskConfig));
 
     // The resulting task config should contain parameters supplied from user config.
-    List<IDockerParameter> params = result.getContainer().getDocker().getParameters();
+    List<DockerParameter> params = result.getContainer().getDocker().getParameters();
     assertThat(
-        params, is(Arrays.asList(IDockerParameter.build(userParameter))));
+        params, is(Arrays.asList(DockerParameter.build(userParameter))));
   }
 
   private void expectTaskDescriptionException(String message) {

@@ -29,8 +29,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.ResourceRequest;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.UnusedResource;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,14 +37,14 @@ import static org.junit.Assert.assertEquals;
 
 public class NotifyingSchedulingFilterTest extends EasyMockTest {
 
-  private static final ITaskConfig TASK = ITaskConfig.build(new TaskConfig()
+  private static final TaskConfig TASK = TaskConfig.build(new TaskConfig()
       .setNumCpus(1)
       .setRamMb(1024)
       .setDiskMb(1024));
   private static final TaskGroupKey GROUP_KEY = TaskGroupKey.from(TASK);
   private static final UnusedResource RESOURCE = new UnusedResource(
       ResourceSlot.from(TASK),
-      IHostAttributes.build(new HostAttributes().setHost("host").setMode(MaintenanceMode.NONE)));
+      HostAttributes.build(new HostAttributes().setHost("host").setMode(MaintenanceMode.NONE)));
   private static final ResourceRequest REQUEST =
       new ResourceRequest(TASK, AttributeAggregate.EMPTY);
 

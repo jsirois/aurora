@@ -44,9 +44,6 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IResponse;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,8 +76,8 @@ public class ApiBetaTest extends AbstractJettyTest {
     );
   }
 
-  private static final ITaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB);
-  private static final IJobConfiguration JOB_CONFIG = IJobConfiguration.build(
+  private static final TaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB);
+  private static final JobConfiguration JOB_CONFIG = JobConfiguration.build(
       new JobConfiguration()
           .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
           .setKey(new JobKey("role", "env", "name"))
@@ -104,7 +101,7 @@ public class ApiBetaTest extends AbstractJettyTest {
             ImmutableMap.of("description", job, "lock", lock),
             MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test
@@ -141,7 +138,7 @@ public class ApiBetaTest extends AbstractJettyTest {
     Response actualResponse = getRequestBuilder("/apibeta/getJobSummary")
         .entity(ImmutableMap.of("role", "roleA"), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test
@@ -167,7 +164,7 @@ public class ApiBetaTest extends AbstractJettyTest {
     Response actualResponse = getRequestBuilder("/apibeta/getTasksStatus")
         .entity(ImmutableMap.of("query", query), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(Response.build(response), Response.build(actualResponse));
   }
 
   @Test

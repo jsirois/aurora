@@ -31,17 +31,10 @@ import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.DockerParameter;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.TaskConfig._Fields;
+import org.apache.aurora.gen.TaskConfig.Fields;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.UserProvidedStrings;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IContainer;
-import org.apache.aurora.scheduler.storage.entities.IIdentity;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.storage.entities.ITaskConstraint;
-import org.apache.aurora.scheduler.storage.entities.IValueConstraint;
 
 /**
  * Manages translation from a string-mapped configuration to a concrete configuration type, and
@@ -75,10 +68,10 @@ public class ConfigurationManager {
   }
 
   private static class RequiredFieldValidator<T> implements Validator<TaskConfig> {
-    private final _Fields field;
+    private final Fields field;
     private final Validator<T> validator;
 
-    RequiredFieldValidator(_Fields field, Validator<T> validator) {
+    RequiredFieldValidator(Fields field, Validator<T> validator) {
       this.field = field;
       this.validator = validator;
     }
@@ -93,18 +86,18 @@ public class ConfigurationManager {
     }
   }
 
-  private static final Iterable<RequiredFieldValidator<?>> REQUIRED_FIELDS_VALIDATORS =
+  private static final Iterable<RequiredFieldValidator<?>> REQUIREDFields_VALIDATORS =
       ImmutableList.of(
-          new RequiredFieldValidator<>(_Fields.NUM_CPUS, new GreaterThan(0.0, "num_cpus")),
-          new RequiredFieldValidator<>(_Fields.RAM_MB, new GreaterThan(0.0, "ram_mb")),
-          new RequiredFieldValidator<>(_Fields.DISK_MB, new GreaterThan(0.0, "disk_mb")));
+          new RequiredFieldValidator<>(Fields.NUM_CPUS, new GreaterThan(0.0, "num_cpus")),
+          new RequiredFieldValidator<>(Fields.RAM_MB, new GreaterThan(0.0, "ram_mb")),
+          new RequiredFieldValidator<>(Fields.DISK_MB, new GreaterThan(0.0, "disk_mb")));
 
-  private final ImmutableSet<Container._Fields> allowedContainerTypes;
+  private final ImmutableSet<Container.Fields> allowedContainerTypes;
   private final boolean allowDockerParameters;
   private final Multimap<String, String> defaultDockerParameters;
 
   public ConfigurationManager(
-      ImmutableSet<Container._Fields> allowedContainerTypes,
+      ImmutableSet<Container.Fields> allowedContainerTypes,
       boolean allowDockerParameters,
       Multimap<String, String> defaultDockerParameters) {
 
@@ -119,7 +112,7 @@ public class ConfigurationManager {
     }
   }
 
-  private static void assertOwnerValidity(IIdentity jobOwner) throws TaskDescriptionException {
+  private static void assertOwnerValidity(Identity jobOwner) throws TaskDescriptionException {
     requireNonNull(jobOwner, "No job owner specified!");
     requireNonNull(jobOwner.getRole(), "No job role specified!");
     requireNonNull(jobOwner.getUser(), "No job user specified!");
@@ -135,20 +128,20 @@ public class ConfigurationManager {
     }
   }
 
-  private static String getRole(IValueConstraint constraint) {
+  private static String getRole(ValueConstraint constraint) {
     return Iterables.getOnlyElement(constraint.getValues()).split("/")[0];
   }
 
-  private static boolean isValueConstraint(ITaskConstraint taskConstraint) {
-    return taskConstraint.getSetField() == TaskConstraint._Fields.VALUE;
+  private static boolean isValueConstraint(TaskConstraint taskConstraint) {
+    return taskConstraint.getSetField() == TaskConstraint.Fields.VALUE;
   }
 
-  public static boolean isDedicated(Iterable<IConstraint> taskConstraints) {
+  public static boolean isDedicated(Iterable<Constraint> taskConstraints) {
     return Iterables.any(taskConstraints, getConstraintByName(DEDICATED_ATTRIBUTE));
   }
 
   @Nullable
-  private static IConstraint getDedicatedConstraint(ITaskConfig task) {
+  private static Constraint getDedicatedConstraint(TaskConfig task) {
     return Iterables.find(task.getConstraints(), getConstraintByName(DEDICATED_ATTRIBUTE), null);
   }
 
@@ -161,7 +154,7 @@ public class ConfigurationManager {
    * @return A deep copy of {@code job} that has been populated.
    * @throws TaskDescriptionException If the job configuration is invalid.
    */
-  public IJobConfiguration validateAndPopulate(IJobConfiguration job)
+  public JobConfiguration validateAndPopulate(JobConfiguration job)
       throws TaskDescriptionException {
 
     Objects.requireNonNull(job);
@@ -189,7 +182,7 @@ public class ConfigurationManager {
     }
 
     builder.setTaskConfig(
-        validateAndPopulate(ITaskConfig.build(builder.getTaskConfig())).newBuilder());
+        validateAndPopulate(TaskConfig.build(builder.getTaskConfig())).newBuilder());
 
     // Only one of [service=true, cron_schedule] may be set.
     if (!Strings.isNullOrEmpty(job.getCronSchedule()) && builder.getTaskConfig().isIsService()) {
@@ -197,7 +190,7 @@ public class ConfigurationManager {
           "A service task may not be run on a cron schedule: " + builder);
     }
 
-    return IJobConfiguration.build(builder);
+    return JobConfiguration.build(builder);
   }
 
   /**
@@ -210,7 +203,7 @@ public class ConfigurationManager {
    * @return A reference to the modified {@code config} (for chaining).
    * @throws TaskDescriptionException If the task is invalid.
    */
-  public ITaskConfig validateAndPopulate(ITaskConfig config) throws TaskDescriptionException {
+  public TaskConfig validateAndPopulate(TaskConfig config) throws TaskDescriptionException {
     TaskConfig builder = config.newBuilder();
 
     if (!builder.isSetRequestedPorts()) {
@@ -259,17 +252,17 @@ public class ConfigurationManager {
     }
 
     // Maximize the usefulness of any thrown error message by checking required fields first.
-    for (RequiredFieldValidator<?> validator : REQUIRED_FIELDS_VALIDATORS) {
+    for (RequiredFieldValidator<?> validator : REQUIREDFields_VALIDATORS) {
       validator.validate(builder);
     }
 
-    IConstraint constraint = getDedicatedConstraint(config);
+    Constraint constraint = getDedicatedConstraint(config);
     if (constraint != null) {
       if (!isValueConstraint(constraint.getConstraint())) {
         throw new TaskDescriptionException("A dedicated constraint must be of value type.");
       }
 
-      IValueConstraint valueConstraint = constraint.getConstraint().getValue();
+      ValueConstraint valueConstraint = constraint.getConstraint().getValue();
 
       if (valueConstraint.getValues().size() != 1) {
         throw new TaskDescriptionException("A dedicated constraint must have exactly one value");
@@ -282,9 +275,9 @@ public class ConfigurationManager {
       }
     }
 
-    Optional<Container._Fields> containerType;
+    Optional<Container.Fields> containerType;
     if (config.isSetContainer()) {
-      IContainer containerConfig = config.getContainer();
+      Container containerConfig = config.getContainer();
       containerType = Optional.of(containerConfig.getSetField());
       if (containerConfig.isSetDocker()) {
         if (!containerConfig.getDocker().isSetImage()) {
@@ -304,7 +297,7 @@ public class ConfigurationManager {
       }
     } else {
       // Default to mesos container type if unset.
-      containerType = Optional.of(Container._Fields.MESOS);
+      containerType = Optional.of(Container.Fields.MESOS);
     }
     if (!containerType.isPresent()) {
       throw new TaskDescriptionException("A job must have a container type.");
@@ -314,7 +307,7 @@ public class ConfigurationManager {
           "The container type " + containerType.get().toString() + " is not allowed");
     }
 
-    return ITaskConfig.build(builder);
+    return TaskConfig.build(builder);
   }
 
   /**
@@ -323,7 +316,7 @@ public class ConfigurationManager {
    * @param name The name of the constraint.
    * @return A filter that matches the constraint.
    */
-  public static Predicate<IConstraint> getConstraintByName(final String name) {
+  public static Predicate<Constraint> getConstraintByName(final String name) {
     return constraint -> constraint.getName().equals(name);
   }
 

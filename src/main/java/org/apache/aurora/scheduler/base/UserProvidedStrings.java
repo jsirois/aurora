@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
-import static org.apache.aurora.gen.apiConstants.GOOD_IDENTIFIER_PATTERN_JVM;
+import static org.apache.aurora.gen.Constants.GOOD_IDENTIFIER_PATTERN_JVM;
 
 /**
  * Utility class for validation of strings provided by end-users.

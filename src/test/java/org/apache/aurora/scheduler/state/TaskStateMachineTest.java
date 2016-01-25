@@ -311,12 +311,13 @@ public class TaskStateMachineTest {
   }
 
   private static ScheduledTask makeTask(boolean service) {
-    ScheduledTask builder = TaskTestUtil.makeTask("test", TaskTestUtil.JOB).newBuilder();
-    builder.setStatus(INIT.getStatus().get());
-    builder.getAssignedTask().getTask()
-        .setMaxTaskFailures(0)
-        .setIsService(service);
-    return builder;
+    return TaskTestUtil.makeTask("test", TaskTestUtil.JOB)
+        .withStatus(INIT.getStatus().get())
+        .withAssignedTask(at -> at.withTask(
+            t -> t.toBuilder()
+                .setMaxTaskFailures(0)
+                .setIsService(service)
+                .build()));
   }
 
   private static final TransitionResult SAVE = new TransitionResult(

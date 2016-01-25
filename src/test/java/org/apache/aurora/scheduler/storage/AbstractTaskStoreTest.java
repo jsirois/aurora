@@ -254,23 +254,19 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
     saveTasks(TASK_A, TASK_B, TASK_C, TASK_D);
     assertQueryResults(Query.statusScoped(RUNNING));
 
-    mutateTask("a", task -> ScheduledTask.build(task.newBuilder().setStatus(RUNNING)));
+    mutateTask("a", task -> task.withStatus(RUNNING));
 
     assertQueryResults(
         Query.statusScoped(RUNNING),
         TASK_A.withStatus(RUNNING));
 
-    assertEquals(
-        Optional.absent(),
-        mutateTask(
-            "nonexistent",
-            task -> ScheduledTask.build(task.newBuilder().setStatus(RUNNING))));
+    assertEquals(Optional.absent(), mutateTask("nonexistent", task -> task.withStatus(RUNNING)));
 
     assertStoreContents(
-        ScheduledTask.build(TASK_A.newBuilder().setStatus(RUNNING)),
-        ScheduledTask.build(TASK_B.newBuilder().setStatus(ASSIGNED)),
-        ScheduledTask.build(TASK_C.newBuilder().setStatus(ASSIGNED)),
-        ScheduledTask.build(TASK_D.newBuilder().setStatus(ASSIGNED)));
+        TASK_A.withStatus(RUNNING),
+        TASK_B.withStatus(ASSIGNED),
+        TASK_C.withStatus(ASSIGNED),
+        TASK_D.withStatus(ASSIGNED));
   }
 
   @Test
@@ -328,8 +324,8 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
     assertQueryResults(jimsJob2, c);
     assertQueryResults(joesJob, d);
 
-    mutateTask(Tasks.id(a), task -> ScheduledTask.build(task.newBuilder().setStatus(RUNNING)));
-    ScheduledTask aRunning = ScheduledTask.build(a.newBuilder().setStatus(RUNNING));
+    mutateTask(Tasks.id(a), task -> task.withStatus(RUNNING));
+    ScheduledTask aRunning = a.withStatus(RUNNING);
     assertQueryResults(jimsJob, aRunning);
     assertQueryResults(jimsJob2, c);
     assertQueryResults(joesJob, d);

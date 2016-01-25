@@ -29,7 +29,6 @@ import com.sun.jersey.api.client.config.DefaultClientConfig;
 
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.AuroraAdmin;
-import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
@@ -43,6 +42,7 @@ import org.apache.aurora.gen.RoleSummary;
 import org.apache.aurora.gen.RoleSummaryResult;
 import org.apache.aurora.gen.ScheduleStatusResult;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
@@ -79,11 +79,11 @@ public class ApiBetaTest extends AbstractJettyTest {
   }
 
   private static final TaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB);
-  private static final JobConfiguration JOB_CONFIG = JobConfiguration.build(
-      new JobConfiguration()
-          .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
-          .setKey(new JobKey("role", "env", "name"))
-          .setTaskConfig(TASK_CONFIG.newBuilder()));
+  private static final JobConfiguration JOB_CONFIG = JobConfiguration.builder()
+      .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
+      .setKey(JobKey.create("role", "env", "name"))
+      .setTaskConfig(TASK_CONFIG)
+      .build();
 
   @Test
   public void testCreateJob() throws Exception {

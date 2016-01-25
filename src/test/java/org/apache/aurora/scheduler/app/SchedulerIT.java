@@ -49,15 +49,9 @@ import org.apache.aurora.common.zookeeper.ServerSetImpl;
 import org.apache.aurora.common.zookeeper.ZooKeeperClient;
 import org.apache.aurora.common.zookeeper.ZooKeeperClient.Credentials;
 import org.apache.aurora.common.zookeeper.testing.BaseZooKeeperTest;
-import org.apache.aurora.gen.AssignedTask;
-import org.apache.aurora.gen.ExecutorConfig;
-import org.apache.aurora.gen.Identity;
-import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.ServerInfo;
-import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.storage.Constants;
 import org.apache.aurora.gen.storage.LogEntry;
 import org.apache.aurora.gen.storage.Op;
@@ -274,13 +268,8 @@ public class SchedulerIT extends BaseZooKeeperTest {
   }
 
   private static ScheduledTask makeTask(String id, ScheduleStatus status) {
-    ScheduledTask builder = TaskTestUtil.addStateTransition(
-        TaskTestUtil.makeTask(id, TaskTestUtil.JOB),
-        status,
-        100)
-        .newBuilder();
-    builder.getAssignedTask().setSlaveId("slave-id");
-    return ScheduledTask.build(builder);
+    return TaskTestUtil.addStateTransition(TaskTestUtil.makeTask(id, TaskTestUtil.JOB), status, 100)
+        .withAssignedTask(at -> at.withSlaveId("slave-id"));
   }
 
   @Test
@@ -296,15 +285,14 @@ public class SchedulerIT extends BaseZooKeeperTest {
     ScheduledTask snapshotTask = makeTask("snapshotTask", ScheduleStatus.ASSIGNED);
     ScheduledTask transactionTask = makeTask("transactionTask", ScheduleStatus.RUNNING);
     Iterable<Entry> recoveredEntries = toEntries(
-        LogEntry.snapshot(new Snapshot().setTasks(ImmutableSet.of(snapshotTask.newBuilder()))),
-        LogEntry.transaction(new Transaction(
-            ImmutableList.of(Op.saveTasks(
-                new SaveTasks(ImmutableSet.of(transactionTask.newBuilder())))),
-            storageConstants.CURRENT_SCHEMA_VERSION)));
+        LogEntry.snapshot(Snapshot.builder().setTasks(snapshotTask).build()),
+        LogEntry.transaction(Transaction.create(
+            ImmutableList.of(Op.saveTasks(SaveTasks.create(ImmutableSet.of(transactionTask)))),
+            Constants.CURRENT_SCHEMA_VERSION)));
 
     expect(log.open()).andReturn(logStream);
     expect(logStream.readAll()).andReturn(recoveredEntries.iterator()).anyTimes();
-    streamMatcher.expectTransaction(Op.saveFrameworkId(new SaveFrameworkId(FRAMEWORK_ID)))
+    streamMatcher.expectTransaction(Op.saveFrameworkId(SaveFrameworkId.create(FRAMEWORK_ID)))
         .andReturn(nextPosition());
 
     CountDownLatch driverStarted = new CountDownLatch(1);

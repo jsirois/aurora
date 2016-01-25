@@ -404,14 +404,14 @@ class SchedulerThriftInterface implements AuroraAdmin.Sync {
   @Override
   public Response killTasks(
       @Nullable TaskQuery mutableQuery,
-      @Nullable Lock mutableLock,
+      @Nullable Lock lock,
       @Nullable JobKey mutableJob,
       @Nullable Set<Integer> instances) {
 
     final Query.Builder query;
-    Response response = empty();
+    ImmutableList.Builder<ResponseDetail> details = ImmutableList.builder();
     if (mutableQuery == null) {
-      JobKey jobKey = JobKeys.assertValid(JobKey.build(mutableJob));
+      JobKey jobKey = JobKeys.assertValid(mutableJob);
       if (instances == null || Iterables.isEmpty(instances)) {
         query = implicitKillQuery(Query.jobScoped(jobKey));
       } else {
@@ -419,7 +419,7 @@ class SchedulerThriftInterface implements AuroraAdmin.Sync {
       }
     } else {
       requireNonNull(mutableQuery);
-      addMessage(response, "The TaskQuery field is deprecated.");
+      details.add(ResponseDetail.create("The TaskQuery field is deprecated."));
 
       if (mutableQuery.getJobName() != null && WHITESPACE.matchesAllOf(mutableQuery.getJobName())) {
         return invalidRequest(String.format("Invalid job name: '%s'", mutableQuery.getJobName()));
@@ -450,10 +450,11 @@ class SchedulerThriftInterface implements AuroraAdmin.Sync {
             ScheduleStatus.KILLING,
             auditMessages.killedByRemoteUser());
       }
+      if (!tasksKilled) {
+        details.add(ResponseDetail.create(NO_TASKS_TO_KILL_MESSAGE));
+      }
 
-      return tasksKilled
-          ? response.setResponseCode(OK)
-          : addMessage(response, OK, NO_TASKS_TO_KILL_MESSAGE);
+      return Response.builder().setResponseCode(OK).setDetails(details.build()).build();
     });
   }
 
@@ -512,31 +513,25 @@ class SchedulerThriftInterface implements AuroraAdmin.Sync {
   @Override
   public Response startMaintenance(Hosts hosts) {
     return ok(Result.startMaintenanceResult(
-        new StartMaintenanceResult()
-            .setStatuses(HostStatus.toBuildersSet(
-                maintenance.startMaintenance(hosts.getHostNames())))));
+        StartMaintenanceResult.create(maintenance.startMaintenance(hosts.getHostNames()))));
   }
 
   @Override
   public Response drainHosts(Hosts hosts) {
     return ok(Result.drainHostsResult(
-        new DrainHostsResult().setStatuses(HostStatus.toBuildersSet(
-            maintenance.drain(hosts.getHostNames())))));
+        DrainHostsResult.create(maintenance.drain(hosts.getHostNames()))));
   }
 
   @Override
   public Response maintenanceStatus(Hosts hosts) {
     return ok(Result.maintenanceStatusResult(
-        new MaintenanceStatusResult().setStatuses(HostStatus.toBuildersSet(
-            maintenance.getStatus(hosts.getHostNames())))));
+        MaintenanceStatusResult.create(maintenance.getStatus(hosts.getHostNames()))));
   }
 
   @Override
   public Response endMaintenance(Hosts hosts) {
     return ok(Result.endMaintenanceResult(
-        new EndMaintenanceResult()
-            .setStatuses(HostStatus.toBuildersSet(
-                maintenance.endMaintenance(hosts.getHostNames())))));
+        EndMaintenanceResult.create(maintenance.endMaintenance(hosts.getHostNames()))));
   }
 
   @Override

@@ -195,7 +195,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
 
     Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId, mutator);
     log.debug("Storing updated task to log: {}={}", taskId, mutated.get().getStatus());
-    write(Op.saveTasks(new SaveTasks(ImmutableSet.of(mutated.get().newBuilder()))));
+    write(Op.saveTasks(SaveTasks.create(ImmutableSet.of(mutated.get()))));
 
     return mutated;
   }

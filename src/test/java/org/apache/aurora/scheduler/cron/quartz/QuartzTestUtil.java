@@ -20,8 +20,6 @@ import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.gen.Metadata;
-import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
@@ -34,17 +32,17 @@ import org.apache.aurora.scheduler.cron.SanitizedCronJob;
  */
 final class QuartzTestUtil {
   static final JobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
-  static final JobConfiguration JOB = JobConfiguration.build(
-      new JobConfiguration()
-          .setCronSchedule("* * * * SUN")
-          .setInstanceCount(10)
-          .setOwner(new Identity("role", "user"))
-          .setKey(AURORA_JOB_KEY.newBuilder())
-          .setTaskConfig(TaskTestUtil.makeConfig(AURORA_JOB_KEY)
-              .newBuilder()
-              .setIsService(false)
-              .setContainer(Container.mesos(new MesosContainer()))));
-  static final JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
+  static final JobConfiguration JOB = JobConfiguration.builder()
+      .setCronSchedule("* * * * SUN")
+      .setInstanceCount(10)
+      .setOwner(Identity.create("role", "user"))
+      .setKey(AURORA_JOB_KEY)
+      .setTaskConfig(TaskTestUtil.makeConfig(AURORA_JOB_KEY).toBuilder()
+          .setIsService(false)
+          .setContainer(Container.mesos(MesosContainer.create()))
+          .build())
+      .build();
+  static final org.quartz.JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
 
   private QuartzTestUtil() {
     // Utility class.

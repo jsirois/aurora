@@ -108,7 +108,7 @@ public abstract class AbstractCronJobStoreTest {
     storage.write(storeProvider ->
         storeProvider.getUnsafeTaskStore().mutateTask(
             Tasks.id(instance),
-            task -> ScheduledTask.build(task.newBuilder().setStatus(ScheduleStatus.RUNNING))));
+            task -> task.withStatus(ScheduleStatus.RUNNING)));
   }
 
   @Test

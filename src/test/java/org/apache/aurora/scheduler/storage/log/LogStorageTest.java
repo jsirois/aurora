@@ -533,7 +533,7 @@ public class LogStorageTest extends EasyMockTest {
         storageUtil.expectWrite();
         expect(storageUtil.taskStore.mutateTask(taskId, mutation)).andReturn(mutated);
         streamMatcher.expectTransaction(
-            Op.saveTasks(new SaveTasks(ImmutableSet.of(mutated.get().newBuilder()))))
+            Op.saveTasks(SaveTasks.create(ImmutableSet.of(mutated.get()))))
             .andReturn(null);
       }
 
@@ -584,8 +584,8 @@ public class LogStorageTest extends EasyMockTest {
         storageUtil.taskStore.deleteTasks(tasksToRemove);
 
         streamMatcher.expectTransaction(
-            Op.saveTasks(new SaveTasks(ImmutableSet.of(mutated.get().newBuilder()))),
-            Op.removeTasks(new RemoveTasks(tasksToRemove)))
+            Op.saveTasks(SaveTasks.create(ImmutableSet.of(mutated.get()))),
+            Op.removeTasks(RemoveTasks.create(tasksToRemove)))
             .andReturn(position);
       }
 
@@ -617,7 +617,7 @@ public class LogStorageTest extends EasyMockTest {
 
         // Resulting stream operation.
         streamMatcher.expectTransaction(Op.saveTasks(
-            new SaveTasks(ImmutableSet.of(mutated.get().newBuilder()))))
+            SaveTasks.create(ImmutableSet.of(mutated.get()))))
             .andReturn(null);
       }
 
@@ -649,8 +649,8 @@ public class LogStorageTest extends EasyMockTest {
         streamMatcher.expectTransaction(
             Op.saveTasks(SaveTasks.create(
                 ImmutableSet.<ScheduledTask>builder()
-                    .addAll(ScheduledTask.toBuildersList(saved))
-                    .add(mutated.get().newBuilder())
+                    .addAll(saved)
+                    .add(mutated.get())
                     .build())))
             .andReturn(position);
       }

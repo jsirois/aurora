@@ -43,7 +43,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTrip() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
     assertEquals(original,
         ThriftBinaryCodec.decode(ScheduledTask.class, ThriftBinaryCodec.encode(original)));
   }
@@ -55,7 +55,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTripNonNull() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
     assertEquals(original,
         ThriftBinaryCodec.decodeNonNull(
             ScheduledTask.class,
@@ -132,7 +132,7 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testInflateDeflateRoundTrip() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
 
     byte[] deflated = ThriftBinaryCodec.deflateNonNull(original);
 

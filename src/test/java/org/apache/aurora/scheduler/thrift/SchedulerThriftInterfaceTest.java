@@ -614,7 +614,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
 
     control.replay();
 
-    assertOkResponse(thrift.killTasks(null, null, JOB_KEY.newBuilder(), null));
+    assertOkResponse(thrift.killTasks(null, null, JOB_KEY, null));
   }
 
   @Test
@@ -626,7 +626,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
 
     control.replay();
 
-    assertOkResponse(thrift.killTasks(null, null, JOB_KEY.newBuilder(), ImmutableSet.of(1)));
+    assertOkResponse(thrift.killTasks(null, null, JOB_KEY, ImmutableSet.of(1)));
   }
 
   @Test
@@ -643,7 +643,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
 
     assertResponse(
         LOCK_ERROR,
-        thrift.killTasks(null, LOCK.newBuilder(), JOB_KEY.newBuilder(), null));
+        thrift.killTasks(null, LOCK, JOB_KEY, null));
   }
 
   @Test
@@ -680,7 +680,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
 
     control.replay();
 
-    Response response = thrift.killTasks(null, null, JOB_KEY.newBuilder(), null);
+    Response response = thrift.killTasks(null, null, JOB_KEY, null);
     assertOkResponse(response);
     assertMessageMatches(response, SchedulerThriftInterface.NO_TASKS_TO_KILL_MESSAGE);
   }
@@ -1219,7 +1219,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
   }
 
   private static Set<HostStatus> status(String host, MaintenanceMode mode) {
-    return ImmutableSet.of(HostStatus.build(new HostStatus(host, mode)));
+    return ImmutableSet.of(HostStatus.create(host, mode));
   }
 
   @Test
@@ -1241,26 +1241,22 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
     Hosts hosts = Hosts.create(hostnames);
 
     assertEquals(
-        HostStatus.toBuildersSet(none),
-        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult()
-            .getStatuses());
+        none,
+        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult().getStatuses());
     assertEquals(
-        HostStatus.toBuildersSet(scheduled),
-        thrift.startMaintenance(hosts).getResult().getStartMaintenanceResult()
-            .getStatuses());
+        scheduled,
+        thrift.startMaintenance(hosts).getResult().getStartMaintenanceResult().getStatuses());
     assertEquals(
-        HostStatus.toBuildersSet(draining),
+        draining,
         thrift.drainHosts(hosts).getResult().getDrainHostsResult().getStatuses());
     assertEquals(
-        HostStatus.toBuildersSet(draining),
-        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult()
-            .getStatuses());
+        draining,
+        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult().getStatuses());
     assertEquals(
-        HostStatus.toBuildersSet(drained),
-        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult()
-            .getStatuses());
+        drained,
+        thrift.maintenanceStatus(hosts).getResult().getMaintenanceStatusResult().getStatuses());
     assertEquals(
-        HostStatus.toBuildersSet(none),
+        none,
         thrift.endMaintenance(hosts).getResult().getEndMaintenanceResult().getStatuses());
   }
 

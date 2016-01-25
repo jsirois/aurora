@@ -97,7 +97,7 @@ public final class TaskTestUtil {
   }
 
   public static ScheduledTask makeTask(String id, TaskConfig config) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(ScheduleStatus.ASSIGNED)
         .setTaskEvents(ImmutableList.of(
             TaskEvent.create(100L, ScheduleStatus.PENDING)

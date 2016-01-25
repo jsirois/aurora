@@ -172,14 +172,12 @@ public class StateManagerImpl implements StateManager {
     requireNonNull(assignedPorts);
 
     ScheduledTask mutated = storeProvider.getUnsafeTaskStore().mutateTask(taskId,
-        task -> {
-          ScheduledTask builder = task.newBuilder();
-          builder.getAssignedTask()
+        task -> task.withAssignedTask(at -> at.toBuilder()
               .setAssignedPorts(assignedPorts)
               .setSlaveHost(slaveHost)
-              .setSlaveId(slaveId.getValue());
-          return ScheduledTask.build(builder);
-        }).get();
+              .setSlaveId(slaveId.getValue())
+              .build()))
+        .get();
 
     StateChangeResult changeResult = updateTaskAndExternalState(
         storeProvider.getUnsafeTaskStore(),
@@ -281,8 +279,7 @@ public class StateManagerImpl implements StateManager {
 
       switch (sideEffect.getAction()) {
         case INCREMENT_FAILURES:
-          taskStore.mutateTask(taskId, task1 -> ScheduledTask.build(
-              task1.newBuilder().setFailureCount(task1.getFailureCount() + 1)));
+          taskStore.mutateTask(taskId, task1 -> task1.withFailureCount(fc -> fc++));
           break;
 
         case SAVE_STATE:
@@ -290,16 +287,19 @@ public class StateManagerImpl implements StateManager {
               upToDateTask.isPresent(),
               "Operation expected task " + taskId + " to be present.");
 
-          Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId, task1 -> {
-            ScheduledTask mutableTask = task1.newBuilder();
-            mutableTask.setStatus(targetState.get());
-            mutableTask.addToTaskEvents(new TaskEvent()
-                .setTimestamp(clock.nowMillis())
-                .setStatus(targetState.get())
-                .setMessage(transitionMessage.orNull())
-                .setScheduler(LOCAL_HOST_SUPPLIER.get()));
-            return ScheduledTask.build(mutableTask);
-          });
+          Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId,
+              task1 -> task1.toBuilder()
+                  .setStatus(targetState.get())
+                  .setTaskEvents(ImmutableList.<TaskEvent>builder()
+                      .addAll(task1.getTaskEvents())
+                      .add(TaskEvent.builder()
+                          .setTimestamp(clock.nowMillis())
+                          .setStatus(targetState.get())
+                          .setMessage(transitionMessage.orNull())
+                          .setScheduler(LOCAL_HOST_SUPPLIER.get())
+                          .build())
+                      .build())
+                  .build());
           events.add(TaskStateChange.transition(mutated.get(), stateMachine.getPreviousState()));
           break;
 

@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -130,12 +129,12 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     // AURORA-1592.
     expect(subject.isPermitted(interceptor.makeWildcardPermission("killTasks")))
         .andReturn(true);
-    expect(thrift.killTasks(new TaskQuery(), null, null, null))
+    expect(thrift.killTasks(TaskQuery.builder().build(), null, null, null))
         .andReturn(response);
 
     replayAndInitialize();
 
-    assertSame(response, decoratedThrift.killTasks(new TaskQuery(), null, null, null));
+    assertSame(response, decoratedThrift.killTasks(TaskQuery.builder().build(), null, null, null));
   }
 
   @Test
@@ -149,7 +148,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
 
     assertEquals(
         ResponseCode.AUTH_FAILED,
-        decoratedThrift.killTasks(null, null, JOB_KEY.newBuilder(), null).getResponseCode());
+        decoratedThrift.killTasks(null, null, JOB_KEY, null).getResponseCode());
   }
 
   @Test
@@ -164,7 +163,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
         decoratedThrift.killTasks(
             null,
             null,
-            JOB_KEY.newBuilder().setName(null),
+            JOB_KEY.withName((String) null),
             null).getResponseCode());
   }
 
@@ -213,9 +212,9 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     Function<Object[], Optional<JobKey>> func =
         interceptor.getAuthorizingParamGetters().getUnchecked(Params.class.getMethods()[0]);
 
-    func.apply(new Object[]{new TaskQuery(), null, null});
-    func.apply(new Object[]{null, new JobKey(), null});
-    func.apply(new Object[]{null, null, new JobUpdateRequest()});
+    func.apply(new Object[]{TaskQuery.builder().build(), null, null});
+    func.apply(new Object[]{null, JobKey.builder().build(), null});
+    func.apply(new Object[]{null, null, JobUpdateRequest.builder().build()});
   }
 
   @Test(expected = IllegalStateException.class)
@@ -225,7 +224,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     Function<Object[], Optional<JobKey>> func =
         interceptor.getAuthorizingParamGetters().getUnchecked(Params.class.getMethods()[0]);
 
-    func.apply(new Object[]{new TaskQuery(), new JobKey(), null});
+    func.apply(new Object[]{TaskQuery.builder().build(), JobKey.builder().build(), null});
   }
 
   @Test(expected = UncheckedExecutionException.class)

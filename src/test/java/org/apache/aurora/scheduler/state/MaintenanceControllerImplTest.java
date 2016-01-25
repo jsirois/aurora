@@ -87,18 +87,16 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(String host, String taskId) {
-    ScheduledTask builder = TaskTestUtil.addStateTransition(
+    return TaskTestUtil.addStateTransition(
         TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB),
         RUNNING,
-        1000).newBuilder();
-    builder.getAssignedTask().setSlaveHost(host);
-    return ScheduledTask.build(builder);
+        1000).withAssignedTask(at -> at.withSlaveHost(host));
   }
 
   @Test
   public void testMaintenanceCycle() {
-    IScheduledTask task1 = makeTask(HOST_A, "taskA");
-    IScheduledTask task2 = makeTask(HOST_A, "taskB");
+    ScheduledTask task1 = makeTask(HOST_A, "taskA");
+    ScheduledTask task2 = makeTask(HOST_A, "taskB");
 
     expectMaintenanceModeChange(HOST_A, SCHEDULED);
     expectFetchTasksByHost(HOST_A, ImmutableSet.of(task1, task2));
@@ -123,11 +121,9 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     assertStatus(HOST_A, DRAINING, maintenance.drain(A));
     assertStatus(HOST_A, DRAINING, maintenance.getStatus(A));
     eventSink.post(
-        TaskStateChange.transition(
-            ScheduledTask.build(task1.newBuilder().setStatus(KILLED)), RUNNING));
+        TaskStateChange.transition(task1.withStatus(KILLED), RUNNING));
     eventSink.post(
-        TaskStateChange.transition(
-            ScheduledTask.build(task2.newBuilder().setStatus(KILLED)), RUNNING));
+        TaskStateChange.transition(task2.withStatus(KILLED), RUNNING));
     assertStatus(HOST_A, NONE, maintenance.endMaintenance(A));
   }
 
@@ -171,7 +167,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     // Make sure a later transition on the host does not cause any ill effects that could surface
     // from stale internal state.
     eventSink.post(TaskStateChange.transition(
-        ScheduledTask.build(makeTask(HOST_A, "taskA").newBuilder().setStatus(KILLED)), RUNNING));
+        makeTask(HOST_A, "taskA").withStatus(KILLED), RUNNING));
   }
 
   @Test
@@ -186,7 +182,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     assertEquals(NONE, maintenance.getMode("unknown"));
   }
 
-  private void expectTaskDraining(IScheduledTask task) {
+  private void expectTaskDraining(ScheduledTask task) {
     expect(stateManager.changeState(
         storageUtil.mutableStoreProvider,
         Tasks.id(task),
@@ -210,6 +206,6 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   }
 
   private void assertStatus(String host, MaintenanceMode mode, Set<HostStatus> statuses) {
-    assertEquals(ImmutableSet.of(HostStatus.build(new HostStatus(host, mode))), statuses);
+    assertEquals(ImmutableSet.of(HostStatus.create(host, mode)), statuses);
   }
 }

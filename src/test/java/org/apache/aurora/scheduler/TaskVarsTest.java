@@ -25,6 +25,7 @@ import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -59,8 +60,8 @@ import static org.junit.Assert.assertNotNull;
 
 public class TaskVarsTest extends EasyMockTest {
 
-  private static final IJobKey JOB_A = JobKeys.from("role_a", "test", "job_a");
-  private static final IJobKey JOB_B = JobKeys.from("role_a", "test", "job_b");
+  private static final JobKey JOB_A = JobKeys.from("role_a", "test", "job_a");
+  private static final JobKey JOB_B = JobKeys.from("role_a", "test", "job_b");
 
   private static final String STATIC_COUNTER = VETO_GROUPS_TO_COUNTERS.get(VetoGroup.STATIC);
   private static final String DYNAMIC_COUNTER = VETO_GROUPS_TO_COUNTERS.get(VetoGroup.DYNAMIC);
@@ -126,16 +127,11 @@ public class TaskVarsTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(JobKey job, ScheduleStatus status, String host) {
-    ScheduledTask task = TaskTestUtil.makeTask("task_id", job).newBuilder()
-        .setStatus(status);
+    ScheduledTask task = TaskTestUtil.makeTask("task_id", job).withStatus(status);
     if (Tasks.SLAVE_ASSIGNED_STATES.contains(status) || Tasks.isTerminated(status)) {
-      assignedTask.setSlaveHost(host);
+      return task.withAssignedTask(at -> at.withSlaveHost(host));
     }
-
-    return ScheduledTask.builder()
-        .setStatus(status)
-        .setAssignedTask(assignedTask.build())
-        .build();
+    return task;
   }
 
   private ScheduledTask makeTask(JobKey job, ScheduleStatus status) {

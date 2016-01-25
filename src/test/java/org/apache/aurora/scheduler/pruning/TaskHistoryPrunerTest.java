@@ -24,6 +24,7 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.async.DelayExecutor;
@@ -315,11 +316,9 @@ public class TaskHistoryPrunerTest extends EasyMockTest {
       String taskId,
       ScheduleStatus status) {
 
-    ScheduledTask builder = TaskTestUtil.addStateTransition(
+    return TaskTestUtil.addStateTransition(
         TaskTestUtil.makeTask(taskId, job), status, clock.nowMillis())
-        .newBuilder();
-    builder.getAssignedTask().setSlaveHost(SLAVE_HOST);
-    return ScheduledTask.build(builder);
+        .withAssignedTask(at -> at.withSlaveHost(SLAVE_HOST));
   }
 
   private ScheduledTask makeTask(String taskId, ScheduleStatus status) {

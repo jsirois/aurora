@@ -259,15 +259,17 @@ public class HttpSecurityIT extends AbstractJettyTest {
   }
 
   @Test
-  public void testAuroraSchedulerManager() throws TException, ServletException, IOException {
-    expect(auroraAdmin.killTasks(null, new Lock().setMessage("1"), null, null)).andReturn(OK);
-    expect(auroraAdmin.killTasks(null, new Lock().setMessage("2"), null, null)).andReturn(OK);
+  public void testAuroraSchedulerManager() throws Exception {
+    expect(auroraAdmin.killTasks(null, Lock.builder().setMessage("1").build(), null, null))
+        .andReturn(OK);
+    expect(auroraAdmin.killTasks(null, Lock.builder().setMessage("2").build(), null, null))
+        .andReturn(OK);
 
-    JobKey job = JobKeys.from("role", "env", "name").newBuilder();
-    TaskQuery jobScopedQuery = Query.jobScoped(IJobKey.build(job)).get();
+    JobKey job = JobKeys.from("role", "env", "name");
+    TaskQuery jobScopedQuery = Query.jobScoped(job).get();
     TaskQuery adsScopedQuery = Query.jobScoped(ADS_STAGING_JOB).get();
     expect(auroraAdmin.killTasks(adsScopedQuery, null, null, null)).andReturn(OK);
-    expect(auroraAdmin.killTasks(null, null, ADS_STAGING_JOB.newBuilder(), null)).andReturn(OK);
+    expect(auroraAdmin.killTasks(null, null, ADS_STAGING_JOB, null)).andReturn(OK);
 
     expectShiroAfterAuthFilter().times(24);
 
@@ -275,10 +277,18 @@ public class HttpSecurityIT extends AbstractJettyTest {
 
     assertEquals(
         OK,
-        getAuthenticatedClient(WFARNER).killTasks(null, new Lock().setMessage("1"), null, null));
+        getAuthenticatedClient(WFARNER).killTasks(
+            null,
+            Lock.builder().setMessage("1").build(),
+            null,
+            null));
     assertEquals(
         OK,
-        getAuthenticatedClient(ROOT).killTasks(null, new Lock().setMessage("2"), null, null));
+        getAuthenticatedClient(ROOT).killTasks(
+            null,
+            Lock.builder().setMessage("2").build(),
+            null,
+            null));
 
     assertEquals(
         ResponseCode.INVALID_REQUEST,
@@ -324,7 +334,7 @@ public class HttpSecurityIT extends AbstractJettyTest {
         getAuthenticatedClient(DEPLOY_SERVICE).killTasks(
             null,
             null,
-            ADS_STAGING_JOB.newBuilder(),
+            ADS_STAGING_JOB,
             null));
 
     assertKillTasksFails(getUnauthenticatedClient());

@@ -148,9 +148,7 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String taskId) {
-    ScheduledTask builder = TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB).newBuilder();
-    builder.unsetAncestorId();
-    return ScheduledTask.build(builder);
+    return TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB).withAncestorId((String) null);
   }
 
   private ScheduledTask makeTask(String taskId, ScheduleStatus status) {

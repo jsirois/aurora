@@ -19,7 +19,6 @@ import java.util.Set;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
@@ -27,6 +26,7 @@ import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.LimitConstraint;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.TaskConfig;
@@ -276,7 +276,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     return valueAttribute(DEDICATED_ATTRIBUTE, value, values);
   }
 
-  private String dedicatedFor(IJobKey job) {
+  private String dedicatedFor(JobKey job) {
     return job.getRole() + "/" + job.getName();
   }
 
@@ -494,7 +494,7 @@ public class SchedulingFilterImplTest extends EasyMockTest {
       boolean expected,
       ValueConstraint value) {
 
-    Constraint constraint = new Constraint(constraintName, TaskConstraint.value(value));
+    Constraint constraint = Constraint.create(constraintName, TaskConstraint.value(value));
     TaskConfig task = makeTask(job, constraint);
     assertEquals(
         expected,
@@ -503,8 +503,8 @@ public class SchedulingFilterImplTest extends EasyMockTest {
             new ResourceRequest(task, aggregate))
             .isEmpty());
 
-    Constraint negated = constraint.deepCopy();
-    negated.getConstraint().getValue().setNegated(!value.isNegated());
+    Constraint negated = constraint.withConstraint(
+        tc -> TaskConstraint.value(tc.getValue().withNegated(!value.isNegated())));
     TaskConfig negatedTask = makeTask(job, negated);
     assertEquals(
         !expected,
@@ -576,10 +576,9 @@ public class SchedulingFilterImplTest extends EasyMockTest {
     return Constraint.create(name, TaskConstraint.limit(LimitConstraint.create(value)));
   }
 
-  private TaskConfig makeTask(JobKey job, Constraint... constraint) {
-    return TaskConfig.build(makeTask(job, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
-        .newBuilder()
-        .setConstraints(Sets.newHashSet(constraint)));
+  private TaskConfig makeTask(JobKey job, Constraint... constraints) {
+    return makeTask(job, DEFAULT_CPUS, DEFAULT_RAM, DEFAULT_DISK)
+        .withConstraints(ImmutableSet.copyOf(constraints));
   }
 
   private TaskConfig hostLimitTask(JobKey job, int maxPerHost) {
@@ -595,8 +594,8 @@ public class SchedulingFilterImplTest extends EasyMockTest {
   }
 
   private TaskConfig makeTask(JobKey job, int cpus, long ramMb, long diskMb) {
-    return TaskConfig.build(new TaskConfig()
-        .setJob(job.newBuilder())
+    return TaskConfig.builder()
+        .setJob(job)
         .setNumCpus(cpus)
         .setRamMb(ramMb)
         .setDiskMb(diskMb)

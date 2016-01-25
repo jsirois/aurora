@@ -71,8 +71,7 @@ public class StructDump extends JerseyTemplateServlet {
 
     return dumpEntity(
         "Task " + taskId,
-        storeProvider ->
-            storeProvider.getTaskStore().fetchTask(taskId).transform(ScheduledTask::newBuilder));
+        storeProvider -> storeProvider.getTaskStore().fetchTask(taskId));
   }
 
   /**

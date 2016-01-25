@@ -192,7 +192,7 @@ public interface MaintenanceController {
     private static final Function<HostAttributes, HostStatus> ATTRS_TO_STATUS =
         attributes -> HostStatus.create(attributes.getHost(), attributes.getMode());
 
-    private static final Function<IHostStatus, MaintenanceMode> GET_MODE = IHostStatus::getMode;
+    private static final Function<HostStatus, MaintenanceMode> GET_MODE = HostStatus::getMode;
 
     @Override
     public MaintenanceMode getMode(final String host) {
@@ -203,7 +203,7 @@ public interface MaintenanceController {
     }
 
     @Override
-    public Set<IHostStatus> getStatus(final Set<String> hosts) {
+    public Set<HostStatus> getStatus(final Set<String> hosts) {
       return storage.read(storeProvider -> {
         // Warning - this is filtering _all_ host attributes.  If using this to frequently query
         // for a small set of hosts, a getHostAttributes variant should be added.
@@ -215,25 +215,25 @@ public interface MaintenanceController {
     }
 
     @Override
-    public Set<IHostStatus> endMaintenance(final Set<String> hosts) {
+    public Set<HostStatus> endMaintenance(final Set<String> hosts) {
       return storage.write(
           storeProvider -> setMaintenanceMode(storeProvider, hosts, MaintenanceMode.NONE));
     }
 
-    private Set<IHostStatus> setMaintenanceMode(
+    private Set<HostStatus> setMaintenanceMode(
         MutableStoreProvider storeProvider,
         Set<String> hosts,
         MaintenanceMode mode) {
 
       AttributeStore.Mutable store = storeProvider.getAttributeStore();
-      ImmutableSet.Builder<IHostStatus> statuses = ImmutableSet.builder();
+      ImmutableSet.Builder<HostStatus> statuses = ImmutableSet.builder();
       for (String host : hosts) {
         LOG.info("Setting maintenance mode to {} for host {}", mode, host);
         Optional<HostAttributes> toSave = AttributeStore.Util.mergeMode(store, host, mode);
         if (toSave.isPresent()) {
           store.saveHostAttributes(toSave.get());
           LOG.info("Updated host attributes: " + toSave.get());
-          statuses.add(HostStatus.build(new HostStatus().setHost(host).setMode(mode)));
+          statuses.add(HostStatus.create(host, mode));
         }
       }
       return statuses.build();

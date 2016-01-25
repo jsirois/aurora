@@ -39,7 +39,7 @@ public interface TaskStore {
    * @param taskId ID of the task to fetch.
    * @return The task, if it exists.
    */
-  Optional<IScheduledTask> fetchTask(String taskId);
+  Optional<ScheduledTask> fetchTask(String taskId);
 
   /**
    * Fetches a read-only view of tasks matching a query and filters. Intended for use with a

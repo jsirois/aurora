@@ -114,15 +114,14 @@ public class QuotaManagerImplTest extends EasyMockTest {
     expectTasks(prodTask, nonProdTask);
     expectJobUpdates(taskConfig(1, 1, 1, true), taskConfig(1, 1, 1, true));
 
-    final String pcRole = "pc-role";
-    ScheduledTask ignoredProdTask = prodTask(pcRole, 20, 20, 20).newBuilder();
-    ignoredProdTask.getAssignedTask().getTask()
-        .setJob(new JobKey(pcRole, ENV, pcRole));
+    String pcRole = "pc-role";
+    ScheduledTask ignoredProdTask = prodTask(pcRole, 20, 20, 20)
+        .withAssignedTask(at -> at.withTask(t -> t.withJob(JobKey.create(pcRole, ENV, pcRole))));
 
-    final String npcRole = "npc-role";
-    ScheduledTask ignoredNonProdTask = nonProdTask(npcRole, 20, 20, 20).newBuilder();
-    ignoredNonProdTask.getAssignedTask().getTask()
-        .setJob(new JobKey(npcRole, ENV, npcRole));
+
+    String npcRole = "npc-role";
+    ScheduledTask ignoredNonProdTask = nonProdTask(npcRole, 20, 20, 20)
+        .withAssignedTask(at -> at.withTask(t -> t.withJob(JobKey.create(npcRole, ENV, npcRole))));
 
     expectCronJobs(
         createJob(prodTask("pc", 3, 3, 3), 1),
@@ -962,14 +961,15 @@ public class QuotaManagerImplTest extends EasyMockTest {
       boolean production,
       int instanceId) {
 
-    ScheduledTask builder = TaskTestUtil.makeTask(taskId, JobKeys.from(ROLE, ENV, jobName))
-        .newBuilder();
-    builder.getAssignedTask().setInstanceId(instanceId);
-    builder.getAssignedTask().getTask().setNumCpus(cpus)
-        .setRamMb(ramMb)
-        .setDiskMb(diskMb)
-        .setProduction(production);
-    return ScheduledTask.build(builder);
+    return TaskTestUtil.makeTask(taskId, JobKeys.from(ROLE, ENV, jobName))
+        .withAssignedTask(
+            at -> at.withInstanceId(instanceId)
+                .withTask(t -> t.toBuilder()
+                    .setNumCpus(cpus)
+                    .setRamMb(ramMb)
+                    .setDiskMb(diskMb)
+                    .setProduction(production)
+                    .build()));
   }
 
   private JobConfiguration createJob(ScheduledTask scheduledTask, int instanceCount) {

@@ -80,10 +80,10 @@ class DbTaskStore implements TaskStore.Mutable {
 
   @Timed("db_storage_fetch_task")
   @Override
-  public Optional<IScheduledTask> fetchTask(String taskId) {
+  public Optional<ScheduledTask> fetchTask(String taskId) {
     requireNonNull(taskId);
     return Optional.fromNullable(taskMapper.selectById(taskId))
-        .transform(DbScheduledTask::toImmutable);
+        .transform(DbScheduledTask::toThrift);
   }
 
   @Timed("db_storage_fetch_tasks")

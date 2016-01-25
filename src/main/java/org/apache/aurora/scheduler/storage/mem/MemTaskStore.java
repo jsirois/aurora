@@ -124,7 +124,7 @@ class MemTaskStore implements TaskStore.Mutable {
 
   @Timed("mem_storage_fetch_task")
   @Override
-  public Optional<IScheduledTask> fetchTask(String taskId) {
+  public Optional<ScheduledTask> fetchTask(String taskId) {
     requireNonNull(taskId);
     return Optional.fromNullable(tasks.get(taskId)).transform(t -> t.storedTask);
   }
@@ -256,7 +256,7 @@ class MemTaskStore implements TaskStore.Mutable {
         .toList();
   }
 
-  private FluentIterable<IScheduledTask> matches(Query.Builder query) {
+  private FluentIterable<ScheduledTask> matches(Query.Builder query) {
     // Apply the query against the working set.
     Optional<? extends Iterable<Task>> from = Optional.absent();
     if (query.get().getTaskIds().isEmpty()) {

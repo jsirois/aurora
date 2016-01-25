@@ -19,11 +19,9 @@ import com.google.common.util.concurrent.Service;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.InstanceKey;
-import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.gen.TaskConfig;
-import org.apache.aurora.scheduler.base.JobKeys;
+import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,10 +32,10 @@ import static org.easymock.EasyMock.expectLastCall;
 public class JobUpdateEventSubscriberTest extends EasyMockTest {
 
   private static final ScheduledTask TASK = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
-  private static final InstanceKey INSTANCE_A = InstanceKey.build(
-      new InstanceKey()
-          .setJobKey(TaskTestUtil.JOB.newBuilder())
-          .setInstanceId(TASK.getAssignedTask().getInstanceId()));
+  private static final InstanceKey INSTANCE_A = InstanceKey.builder()
+      .setJobKey(TaskTestUtil.JOB)
+      .setInstanceId(TASK.getAssignedTask().getInstanceId())
+      .build();
 
   private JobUpdateController updater;
   private Service service;

@@ -201,9 +201,7 @@ public class StateManagerImplTest extends EasyMockTest {
             .setTask(NON_SERVICE_CONFIG)
             .build())
         .build();
-    assertEquals(
-        ImmutableSet.of(ScheduledTask.build(expected)),
-        Storage.Util.fetchTask(storage, taskId).asSet());
+    assertEquals(ImmutableSet.of(expected), Storage.Util.fetchTask(storage, taskId).asSet());
   }
 
   @Test

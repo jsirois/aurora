@@ -60,11 +60,9 @@ import static org.junit.Assert.assertTrue;
 
 public class MesosTaskFactoryImplTest extends EasyMockTest {
 
-  private static final TaskConfig TASK_CONFIG = TaskConfig.build(
-      TaskTestUtil.makeConfig(TaskTestUtil.JOB)
-          .newBuilder()
-          .setContainer(Container.mesos(new MesosContainer())));
-  private static final AssignedTask TASK = AssignedTask.build(new AssignedTask()
+  private static final TaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB)
+      .withContainer(Container.mesos(MesosContainer.create()));
+  private static final AssignedTask TASK = AssignedTask.builder()
       .setInstanceId(2)
       .setTaskId("task-id")
       .setAssignedPorts(ImmutableMap.of("http", 80))

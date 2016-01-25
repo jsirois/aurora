@@ -47,7 +47,7 @@ public class LockManagerImplTest extends EasyMockTest {
   private static final String USER = "jim-user";
   private static final String MY_JOB = "myJob";
   private static final JobKey JOB_KEY = JobKeys.from("jim", "devel", MY_JOB);
-  private static final LockKey LOCK_KEY = LockKey.build(LockKey.job(JOB_KEY.newBuilder()));
+  private static final LockKey LOCK_KEY = LockKey.job(JOB_KEY);
   private static final UUID TOKEN = UUID.fromString("79d6d790-3212-11e3-aa6e-0800200c9a66");
 
   private FakeClock clock;

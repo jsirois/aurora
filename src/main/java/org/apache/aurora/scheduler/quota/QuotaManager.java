@@ -29,8 +29,18 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.RangeSet;
 
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.ResourceAggregates;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
@@ -39,18 +49,6 @@ import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.storage.JobUpdateStore;
 import org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.updater.Updates;
 
 import static java.util.Objects.requireNonNull;
@@ -70,13 +68,13 @@ import static org.apache.aurora.scheduler.updater.Updates.getInstanceIds;
  * Allows access to resource quotas, and tracks quota consumption.
  */
 public interface QuotaManager {
-  Predicate<ITaskConfig> PROD = ITaskConfig::isProduction;
-  Predicate<ITaskConfig> DEDICATED =
+  Predicate<TaskConfig> PROD = TaskConfig::isProduction;
+  Predicate<TaskConfig> DEDICATED =
       e -> ConfigurationManager.isDedicated(e.getConstraints());
-  Predicate<ITaskConfig> PROD_SHARED = and(PROD, not(DEDICATED));
-  Predicate<ITaskConfig> PROD_DEDICATED = and(PROD, DEDICATED);
-  Predicate<ITaskConfig> NON_PROD_SHARED = and(not(PROD), not(DEDICATED));
-  Predicate<ITaskConfig> NON_PROD_DEDICATED = and(not(PROD), DEDICATED);
+  Predicate<TaskConfig> PROD_SHARED = and(PROD, not(DEDICATED));
+  Predicate<TaskConfig> PROD_DEDICATED = and(PROD, DEDICATED);
+  Predicate<TaskConfig> NON_PROD_SHARED = and(not(PROD), not(DEDICATED));
+  Predicate<TaskConfig> NON_PROD_DEDICATED = and(not(PROD), DEDICATED);
 
   /**
    * Saves a new quota for the provided role or overrides the existing one.
@@ -88,7 +86,7 @@ public interface QuotaManager {
    */
   void saveQuota(
       String role,
-      IResourceAggregate quota,
+      ResourceAggregate quota,
       MutableStoreProvider storeProvider) throws QuotaException;
 
   /**
@@ -111,7 +109,7 @@ public interface QuotaManager {
    * @return quota check result details.
    */
   QuotaCheckResult checkInstanceAddition(
-      ITaskConfig template,
+      TaskConfig template,
       int instances,
       StoreProvider storeProvider);
 
@@ -123,7 +121,7 @@ public interface QuotaManager {
    * @param storeProvider A store provider to access quota data.
    * @return quota check result details.
    */
-  QuotaCheckResult checkJobUpdate(IJobUpdate jobUpdate, StoreProvider storeProvider);
+  QuotaCheckResult checkJobUpdate(JobUpdate jobUpdate, StoreProvider storeProvider);
 
   /**
    * Check if there is enough resource quota available for creating or updating a cron job
@@ -133,7 +131,7 @@ public interface QuotaManager {
    * @param storeProvider A store provider to access quota data.
    * @return quota check result details.
    */
-  QuotaCheckResult checkCronUpdate(IJobConfiguration cronConfig, StoreProvider storeProvider);
+  QuotaCheckResult checkCronUpdate(JobConfiguration cronConfig, StoreProvider storeProvider);
 
   /**
    * Thrown when quota related operation failed.
@@ -148,12 +146,12 @@ public interface QuotaManager {
    * Quota provider that stores quotas in the canonical store.
    */
   class QuotaManagerImpl implements QuotaManager {
-    private static final Predicate<ITaskConfig> NO_QUOTA_CHECK = or(PROD_DEDICATED, not(PROD));
+    private static final Predicate<TaskConfig> NO_QUOTA_CHECK = or(PROD_DEDICATED, not(PROD));
 
     @Override
     public void saveQuota(
         final String ownerRole,
-        final IResourceAggregate quota,
+        final ResourceAggregate quota,
         MutableStoreProvider storeProvider) throws QuotaException {
 
       if (quota.getNumCpus() < 0.0 || quota.getRamMb() < 0 || quota.getDiskMb() < 0) {
@@ -161,7 +159,7 @@ public interface QuotaManager {
       }
 
       QuotaInfo info = getQuotaInfo(ownerRole, Optional.absent(), storeProvider);
-      IResourceAggregate prodConsumption = info.getProdSharedConsumption();
+      ResourceAggregate prodConsumption = info.getProdSharedConsumption();
       if (quota.getNumCpus() < prodConsumption.getNumCpus()
           || quota.getRamMb() < prodConsumption.getRamMb()
           || quota.getDiskMb() < prodConsumption.getDiskMb()) {
@@ -181,7 +179,7 @@ public interface QuotaManager {
 
     @Override
     public QuotaCheckResult checkInstanceAddition(
-        ITaskConfig template,
+        TaskConfig template,
         int instances,
         StoreProvider storeProvider) {
 
@@ -191,14 +189,14 @@ public interface QuotaManager {
       }
 
       QuotaInfo quotaInfo = getQuotaInfo(template.getJob().getRole(), storeProvider);
-      IResourceAggregate requestedTotal =
+      ResourceAggregate requestedTotal =
           add(quotaInfo.getProdSharedConsumption(), scale(template, instances));
 
       return QuotaCheckResult.greaterOrEqual(quotaInfo.getQuota(), requestedTotal);
     }
 
     @Override
-    public QuotaCheckResult checkJobUpdate(IJobUpdate jobUpdate, StoreProvider storeProvider) {
+    public QuotaCheckResult checkJobUpdate(JobUpdate jobUpdate, StoreProvider storeProvider) {
       requireNonNull(jobUpdate);
       if (!jobUpdate.getInstructions().isSetDesiredState()
           || NO_QUOTA_CHECK.apply(jobUpdate.getInstructions().getDesiredState().getTask())) {
@@ -218,7 +216,7 @@ public interface QuotaManager {
 
     @Override
     public QuotaCheckResult checkCronUpdate(
-        IJobConfiguration cronConfig,
+        JobConfiguration cronConfig,
         StoreProvider storeProvider) {
 
       if (!cronConfig.getTaskConfig().isProduction()) {
@@ -228,14 +226,14 @@ public interface QuotaManager {
       QuotaInfo quotaInfo =
           getQuotaInfo(cronConfig.getKey().getRole(), Optional.absent(), storeProvider);
 
-      Optional<IJobConfiguration> oldCron =
+      Optional<JobConfiguration> oldCron =
           storeProvider.getCronJobStore().fetchJob(cronConfig.getKey());
 
-      IResourceAggregate oldResource = oldCron.isPresent() ? scale(oldCron.get()) : EMPTY;
+      ResourceAggregate oldResource = oldCron.isPresent() ? scale(oldCron.get()) : EMPTY;
 
       // Calculate requested total as a sum of current prod consumption and a delta between
       // new and old cron templates.
-      IResourceAggregate requestedTotal = add(
+      ResourceAggregate requestedTotal = add(
           quotaInfo.getProdSharedConsumption(),
           subtract(scale(cronConfig), oldResource));
 
@@ -249,20 +247,20 @@ public interface QuotaManager {
      * includes an estimated resources share of that update as if it was already in progress.
      *
      * @param role Role to get quota info for.
-     * @param requestedUpdate An optional {@code IJobUpdate} to forecast the consumption.
+     * @param requestedUpdate An optional {@code JobUpdate} to forecast the consumption.
      * @param storeProvider A store provider to access quota data.
      * @return {@code QuotaInfo} with quota and consumption details.
      */
     private QuotaInfo getQuotaInfo(
         String role,
-        Optional<IJobUpdate> requestedUpdate,
+        Optional<JobUpdate> requestedUpdate,
         StoreProvider storeProvider) {
 
-      FluentIterable<IAssignedTask> tasks = FluentIterable
+      FluentIterable<AssignedTask> tasks = FluentIterable
           .from(storeProvider.getTaskStore().fetchTasks(Query.roleScoped(role).active()))
-          .transform(IScheduledTask::getAssignedTask);
+          .transform(ScheduledTask::getAssignedTask);
 
-      Map<IJobKey, IJobUpdateInstructions> updates = Maps.newHashMap(
+      Map<JobKey, JobUpdateInstructions> updates = Maps.newHashMap(
           fetchActiveJobUpdates(storeProvider.getJobUpdateStore(), role));
 
       // Mix in a requested job update (if present) to correctly calculate consumption.
@@ -274,10 +272,10 @@ public interface QuotaManager {
             requestedUpdate.get().getInstructions());
       }
 
-      Map<IJobKey, IJobConfiguration> cronTemplates =
+      Map<JobKey, JobConfiguration> cronTemplates =
           FluentIterable.from(storeProvider.getCronJobStore().fetchJobs())
               .filter(compose(equalTo(role), JobKeys::getRole))
-              .uniqueIndex(IJobConfiguration::getKey);
+              .uniqueIndex(JobConfiguration::getKey);
 
       return new QuotaInfo(
           storeProvider.getQuotaStore().fetchQuota(role).or(EMPTY),
@@ -287,37 +285,37 @@ public interface QuotaManager {
           getConsumption(tasks, updates, cronTemplates, NON_PROD_DEDICATED));
     }
 
-    private IResourceAggregate getConsumption(
-        FluentIterable<IAssignedTask> tasks,
-        Map<IJobKey, IJobUpdateInstructions> updatesByKey,
-        Map<IJobKey, IJobConfiguration> cronTemplatesByKey,
-        Predicate<ITaskConfig> filter) {
+    private ResourceAggregate getConsumption(
+        FluentIterable<AssignedTask> tasks,
+        Map<JobKey, JobUpdateInstructions> updatesByKey,
+        Map<JobKey, JobConfiguration> cronTemplatesByKey,
+        Predicate<TaskConfig> filter) {
 
-      FluentIterable<IAssignedTask> filteredTasks =
-          tasks.filter(compose(filter, IAssignedTask::getTask));
+      FluentIterable<AssignedTask> filteredTasks =
+          tasks.filter(compose(filter, AssignedTask::getTask));
 
-      Predicate<IAssignedTask> excludeCron = compose(
+      Predicate<AssignedTask> excludeCron = compose(
           not(in(cronTemplatesByKey.keySet())),
           Tasks::getJob);
 
-      IResourceAggregate nonCronConsumption = getNonCronConsumption(
+      ResourceAggregate nonCronConsumption = getNonCronConsumption(
           updatesByKey,
           filteredTasks.filter(excludeCron),
           filter);
 
-      IResourceAggregate cronConsumption = getCronConsumption(
+      ResourceAggregate cronConsumption = getCronConsumption(
           Iterables.filter(
               cronTemplatesByKey.values(),
-              compose(filter, IJobConfiguration::getTaskConfig)),
-          filteredTasks.transform(IAssignedTask::getTask));
+              compose(filter, JobConfiguration::getTaskConfig)),
+          filteredTasks.transform(AssignedTask::getTask));
 
       return add(nonCronConsumption, cronConsumption);
     }
 
-    private static IResourceAggregate getNonCronConsumption(
-        Map<IJobKey, IJobUpdateInstructions> updatesByKey,
-        FluentIterable<IAssignedTask> tasks,
-        final Predicate<ITaskConfig> configFilter) {
+    private static ResourceAggregate getNonCronConsumption(
+        Map<JobKey, JobUpdateInstructions> updatesByKey,
+        FluentIterable<AssignedTask> tasks,
+        final Predicate<TaskConfig> configFilter) {
 
       // 1. Get all active tasks that belong to jobs without active updates OR unaffected by an
       //    active update working set. An example of the latter would be instances not updated by
@@ -330,22 +328,22 @@ public interface QuotaManager {
       //
       // 3. Add up the two to yield total consumption.
 
-      IResourceAggregate nonUpdateConsumption = fromTasks(tasks
+      ResourceAggregate nonUpdateConsumption = fromTasks(tasks
           .filter(buildNonUpdatingTasksFilter(updatesByKey))
-          .transform(IAssignedTask::getTask));
+          .transform(AssignedTask::getTask));
 
-      final Predicate<IInstanceTaskConfig> instanceFilter =
-          compose(configFilter, IInstanceTaskConfig::getTask);
+      final Predicate<InstanceTaskConfig> instanceFilter =
+          compose(configFilter, InstanceTaskConfig::getTask);
 
-      IResourceAggregate updateConsumption =
+      ResourceAggregate updateConsumption =
           addAll(Iterables.transform(updatesByKey.values(), updateResources(instanceFilter)));
 
       return add(nonUpdateConsumption, updateConsumption);
     }
 
-    private static IResourceAggregate getCronConsumption(
-        Iterable<IJobConfiguration> cronTemplates,
-        FluentIterable<ITaskConfig> tasks) {
+    private static ResourceAggregate getCronConsumption(
+        Iterable<JobConfiguration> cronTemplates,
+        FluentIterable<TaskConfig> tasks) {
 
       // Calculate the overall cron consumption as MAX between cron template resources and active
       // cron tasks. This is required to account for a case when a running cron task has higher
@@ -355,7 +353,7 @@ public interface QuotaManager {
       // cron scheduling, it's the simplest approach possible given the system constraints (e.g.:
       // lack of enforcement on a cron job run duration).
 
-      final Multimap<IJobKey, ITaskConfig> taskConfigsByKey = tasks.index(ITaskConfig::getJob);
+      final Multimap<JobKey, TaskConfig> taskConfigsByKey = tasks.index(TaskConfig::getJob);
       return addAll(Iterables.transform(
           cronTemplates,
           config -> max(
@@ -363,15 +361,15 @@ public interface QuotaManager {
               fromTasks(taskConfigsByKey.get(config.getKey())))));
     }
 
-    private static Predicate<IAssignedTask> buildNonUpdatingTasksFilter(
-        final Map<IJobKey, IJobUpdateInstructions> roleJobUpdates) {
+    private static Predicate<AssignedTask> buildNonUpdatingTasksFilter(
+        final Map<JobKey, JobUpdateInstructions> roleJobUpdates) {
 
       return task -> {
-        Optional<IJobUpdateInstructions> update = Optional.fromNullable(
+        Optional<JobUpdateInstructions> update = Optional.fromNullable(
             roleJobUpdates.get(task.getTask().getJob()));
 
         if (update.isPresent()) {
-          IJobUpdateInstructions instructions = update.get();
+          JobUpdateInstructions instructions = update.get();
           RangeSet<Integer> initialInstances = getInstanceIds(instructions.getInitialState());
           RangeSet<Integer> desiredInstances = getInstanceIds(instructions.isSetDesiredState()
               ? ImmutableSet.of(instructions.getDesiredState())
@@ -384,38 +382,40 @@ public interface QuotaManager {
       };
     }
 
-    private static Map<IJobKey, IJobUpdateInstructions> fetchActiveJobUpdates(
+    private static Map<JobKey, JobUpdateInstructions> fetchActiveJobUpdates(
         final JobUpdateStore jobUpdateStore,
         String role) {
 
-      Function<IJobUpdateSummary, IJobUpdate> fetchUpdate =
+      Function<JobUpdateSummary, JobUpdate> fetchUpdate =
           summary -> jobUpdateStore.fetchJobUpdate(summary.getKey()).get();
 
       return Maps.transformValues(
           FluentIterable.from(jobUpdateStore.fetchJobUpdateSummaries(updateQuery(role)))
               .transform(fetchUpdate)
               .uniqueIndex(UPDATE_TO_JOB_KEY),
-          IJobUpdate::getInstructions);
+          JobUpdate::getInstructions);
     }
 
     @VisibleForTesting
-    static IJobUpdateQuery updateQuery(String role) {
-      return IJobUpdateQuery.build(new JobUpdateQuery()
+    static JobUpdateQuery updateQuery(String role) {
+      return JobUpdateQuery.builder()
           .setRole(role)
-          .setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES));
+          .setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES)
+          .build();
     }
 
-    private static final Function<ITaskConfig, IResourceAggregate> CONFIG_RESOURCES =
-        config -> IResourceAggregate.build(new ResourceAggregate()
+    private static final Function<TaskConfig, ResourceAggregate> CONFIG_RESOURCES =
+        config -> ResourceAggregate.builder()
             .setNumCpus(config.getNumCpus())
             .setRamMb(config.getRamMb())
-            .setDiskMb(config.getDiskMb()));
+            .setDiskMb(config.getDiskMb())
+            .build();
 
-    private static final Function<IInstanceTaskConfig, IResourceAggregate> INSTANCE_RESOURCES =
+    private static final Function<InstanceTaskConfig, ResourceAggregate> INSTANCE_RESOURCES =
         config -> scale(config.getTask(), getUpdateInstanceCount(config.getInstances()));
 
-    private static IResourceAggregate instructionsToResources(
-        Iterable<IInstanceTaskConfig> instructions) {
+    private static ResourceAggregate instructionsToResources(
+        Iterable<InstanceTaskConfig> instructions) {
 
       return addAll(FluentIterable.from(instructions).transform(INSTANCE_RESOURCES));
     }
@@ -433,13 +433,13 @@ public interface QuotaManager {
      *       prod -> non-prod AND {@code prodSharedConsumption=True}: only the initial state
      *       is accounted.
      */
-    private static Function<IJobUpdateInstructions, IResourceAggregate> updateResources(
-        final Predicate<IInstanceTaskConfig> instanceFilter) {
+    private static Function<JobUpdateInstructions, ResourceAggregate> updateResources(
+        final Predicate<InstanceTaskConfig> instanceFilter) {
 
       return instructions -> {
-        Iterable<IInstanceTaskConfig> initialState =
+        Iterable<InstanceTaskConfig> initialState =
             Iterables.filter(instructions.getInitialState(), instanceFilter);
-        Iterable<IInstanceTaskConfig> desiredState = Iterables.filter(
+        Iterable<InstanceTaskConfig> desiredState = Iterables.filter(
             Optional.fromNullable(instructions.getDesiredState()).asSet(),
             instanceFilter);
 
@@ -450,53 +450,56 @@ public interface QuotaManager {
       };
     }
 
-    private static IResourceAggregate add(IResourceAggregate a, IResourceAggregate b) {
+    private static ResourceAggregate add(ResourceAggregate a, ResourceAggregate b) {
       return addAll(Arrays.asList(a, b));
     }
 
-    private static IResourceAggregate addAll(Iterable<IResourceAggregate> aggregates) {
-      IResourceAggregate total = EMPTY;
-      for (IResourceAggregate aggregate : aggregates) {
-        total = IResourceAggregate.build(new ResourceAggregate()
+    private static ResourceAggregate addAll(Iterable<ResourceAggregate> aggregates) {
+      ResourceAggregate total = EMPTY;
+      for (ResourceAggregate aggregate : aggregates) {
+        total = ResourceAggregate.builder()
             .setNumCpus(total.getNumCpus() + aggregate.getNumCpus())
             .setRamMb(total.getRamMb() + aggregate.getRamMb())
-            .setDiskMb(total.getDiskMb() + aggregate.getDiskMb()));
+            .setDiskMb(total.getDiskMb() + aggregate.getDiskMb())
+            .build();
       }
       return total;
     }
 
-    private static IResourceAggregate subtract(IResourceAggregate a, IResourceAggregate b) {
-      return IResourceAggregate.build(new ResourceAggregate()
+    private static ResourceAggregate subtract(ResourceAggregate a, ResourceAggregate b) {
+      return ResourceAggregate.builder()
           .setNumCpus(a.getNumCpus() - b.getNumCpus())
           .setRamMb(a.getRamMb() - b.getRamMb())
-          .setDiskMb(a.getDiskMb() - b.getDiskMb()));
+          .setDiskMb(a.getDiskMb() - b.getDiskMb())
+          .build();
     }
 
-    private static IResourceAggregate max(IResourceAggregate a, IResourceAggregate b) {
-      return IResourceAggregate.build(new ResourceAggregate()
+    private static ResourceAggregate max(ResourceAggregate a, ResourceAggregate b) {
+      return ResourceAggregate.builder()
           .setNumCpus(Math.max(a.getNumCpus(), b.getNumCpus()))
           .setRamMb(Math.max(a.getRamMb(), b.getRamMb()))
-          .setDiskMb(Math.max(a.getDiskMb(), b.getDiskMb())));
+          .setDiskMb(Math.max(a.getDiskMb(), b.getDiskMb()))
+          .build();
     }
 
-    private static IResourceAggregate scale(ITaskConfig taskConfig, int instanceCount) {
+    private static ResourceAggregate scale(TaskConfig taskConfig, int instanceCount) {
       return ResourceAggregates.scale(CONFIG_RESOURCES.apply(taskConfig), instanceCount);
     }
 
-    private static IResourceAggregate scale(IJobConfiguration jobConfiguration) {
+    private static ResourceAggregate scale(JobConfiguration jobConfiguration) {
       return scale(jobConfiguration.getTaskConfig(), jobConfiguration.getInstanceCount());
     }
 
-    private static IResourceAggregate fromTasks(Iterable<ITaskConfig> tasks) {
+    private static ResourceAggregate fromTasks(Iterable<TaskConfig> tasks) {
       return addAll(Iterables.transform(tasks, CONFIG_RESOURCES));
     }
 
-    private static final Function<IJobUpdate, IJobKey> UPDATE_TO_JOB_KEY =
+    private static final Function<JobUpdate, JobKey> UPDATE_TO_JOB_KEY =
         input -> input.getSummary().getKey().getJob();
 
-    private static int getUpdateInstanceCount(Set<IRange> ranges) {
+    private static int getUpdateInstanceCount(Set<Range> ranges) {
       int instanceCount = 0;
-      for (IRange range : ranges) {
+      for (Range range : ranges) {
         instanceCount += range.getLast() - range.getFirst() + 1;
       }
 

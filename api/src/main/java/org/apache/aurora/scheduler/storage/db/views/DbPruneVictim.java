@@ -13,21 +13,24 @@
  */
 package org.apache.aurora.scheduler.storage.db.views;
 
-import java.util.List;
+import javax.annotation.Nullable;
 
-import org.apache.aurora.gen.JobInstanceUpdateEvent;
-import org.apache.aurora.gen.JobUpdateDetails;
-import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.peer.MutableJobUpdateKey;
 
-public final class DbJobUpdateDetails {
-  private DbJobUpdate update;
-  private List<JobUpdateEvent> updateEvents;
-  private List<JobInstanceUpdateEvent> instanceEvents;
+/**
+ * A job update that should be pruned.
+ */
+public class DbPruneVictim {
+  private long rowId;
+  private MutableJobUpdateKey update;
 
-  public JobUpdateDetails toThrift() {
-    return new JobUpdateDetails()
-        .setUpdate(update.toThrift())
-        .setUpdateEvents(updateEvents)
-        .setInstanceEvents(instanceEvents);
+  public long getRowId() {
+    return rowId;
+  }
+
+  @Nullable
+  public JobUpdateKey getUpdate() {
+    return update == null ? null : update.toThrift();
   }
 }

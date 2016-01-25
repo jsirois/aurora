@@ -19,32 +19,30 @@ import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.quartz.JobKey;
 
 /**
  * Fixtures used across quartz tests.
  */
 final class QuartzTestUtil {
-  static final IJobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
-  static final IJobConfiguration JOB = IJobConfiguration.build(
-      new JobConfiguration()
-          .setCronSchedule("* * * * SUN")
-          .setInstanceCount(10)
-          .setOwner(new Identity("role", "user"))
-          .setKey(AURORA_JOB_KEY.newBuilder())
-          .setTaskConfig(TaskTestUtil.makeConfig(AURORA_JOB_KEY)
-              .newBuilder()
-              .setIsService(false)
-              .setContainer(Container.mesos(new MesosContainer()))));
-  static final JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
+  static final JobKey AURORA_JOB_KEY = JobKeys.from("role", "env", "job");
+  static final JobConfiguration JOB = JobConfiguration.builder()
+      .setCronSchedule("* * * * SUN")
+      .setInstanceCount(10)
+      .setOwner(Identity.create("role", "user"))
+      .setKey(AURORA_JOB_KEY)
+      .setTaskConfig(TaskTestUtil.makeConfig(AURORA_JOB_KEY).toBuilder()
+          .setIsService(false)
+          .setContainer(Container.mesos(MesosContainer.create()))
+          .build())
+      .build();
+  static final org.quartz.JobKey QUARTZ_JOB_KEY = Quartz.jobKey(AURORA_JOB_KEY);
 
   private QuartzTestUtil() {
     // Utility class.
@@ -54,7 +52,7 @@ final class QuartzTestUtil {
     try {
       return SanitizedCronJob.fromUnsanitized(
           TaskTestUtil.CONFIGURATION_MANAGER,
-          IJobConfiguration.build(JOB.newBuilder().setCronCollisionPolicy(collisionPolicy)));
+          JOB.withCronCollisionPolicy(collisionPolicy));
     } catch (CronException | ConfigurationManager.TaskDescriptionException e) {
       throw Throwables.propagate(e);
     }
@@ -67,6 +65,6 @@ final class QuartzTestUtil {
   static SanitizedCronJob makeUpdatedJob() throws Exception {
     return SanitizedCronJob.fromUnsanitized(
         TaskTestUtil.CONFIGURATION_MANAGER,
-        IJobConfiguration.build(JOB.newBuilder().setCronSchedule("* * 1 * *")));
+        JOB.withCronSchedule("* * 1 * *"));
   }
 }

@@ -13,6 +13,7 @@
  */
 package org.apache.aurora.build
 
+import org.apache.aurora.thrift.build.gradle.ThriftGenTask
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -30,29 +31,34 @@ class ThriftPlugin implements Plugin<Project> {
       configurations.create('thriftCompile')
       afterEvaluate {
         dependencies {
+          thriftCompile project.project(':buildSrc:thriftGen')
           thriftCompile "org.apache.thrift:libthrift:${thrift.version}"
+          // TODO(John Sirois): Use the ${thrift.version} pattern to get the versions below from the
+          // consuming project(s).
+          thriftCompile "com.facebook.swift:swift-annotations:0.16.0"
+          thriftCompile "com.facebook.swift:swift-codec:0.16.0"
+          thriftCompile "com.google.auto.value:auto-value:1.1"
+          thriftCompile "com.google.guava:guava:18.0"
+          thriftCompile "org.immutables:value:2.1.0"
         }
       }
 
-      task('generateThriftJava') {
-        inputs.files {thrift.inputFiles}
-        outputs.dir {thrift.genJavaDir}
-        doLast {
-          thrift.genJavaDir.exists() || thrift.genJavaDir.mkdirs()
-          thrift.inputFiles.each { File file ->
-            exec {
-              commandLine thrift.wrapperPath, thrift.version,
-                  '--gen', 'java:hashcode,private-members',
-                  '-out', thrift.genJavaDir.path,
-                  file.path
-            }
-          }
+      task(type: ThriftGenTask, 'generateThriftJava') {
+        inputs.files {
+          thrift.inputFiles
+        }
+        outputs.dir {
+          thrift.genJavaDir
         }
       }
 
       task('generateThriftResources') {
-        inputs.files {thrift.inputFiles}
-        outputs.dir {thrift.genResourcesDir}
+        inputs.files {
+          thrift.inputFiles
+        }
+        outputs.dir {
+          thrift.genResourcesDir
+        }
         doLast {
           def dest = file("${thrift.genResourcesDir}/${thrift.resourcePrefix}")
           dest.exists() || dest.mkdirs()
@@ -68,23 +74,34 @@ class ThriftPlugin implements Plugin<Project> {
       }
 
       task('classesThrift', type: JavaCompile) {
-        source files(generateThriftJava)
-        classpath = configurations.thriftCompile
-        destinationDir = file(thrift.genClassesDir)
-        options.warnings = false
-        // Capture method parameter names in classfiles.
-        options.compilerArgs << '-parameters'
+        afterEvaluate {
+          source = files(generateThriftJava)
+          if (thrift.peerSources) {
+            source += files(thrift.peerSources)
+          }
+          classpath = configurations.thriftCompile
+          destinationDir = file(thrift.genClassesDir)
+          options.warnings = false
+          // Capture method parameter names in classfiles.
+          options.compilerArgs << '-parameters'
+        }
       }
 
       configurations.create('thriftRuntime')
       configurations.thriftRuntime.extendsFrom(configurations.thriftCompile)
       configurations.compile.extendsFrom(configurations.thriftRuntime)
+
+      def peerClasses = file("${projectDir}/dist/classes/main")
+      peerClasses.exists() || peerClasses.mkdirs()
+
       dependencies {
         thriftRuntime files(classesThrift)
+        thriftRuntime files(peerClasses)
       }
 
       sourceSets.main {
         output.dir(classesThrift)
+        output.dir(peerClasses)
         output.dir(generateThriftResources)
       }
     }
@@ -117,6 +134,9 @@ class ThriftPluginExtension {
       return resourcePrefix
     }
   }
+
+  /* Optional source set that contains hand-coded peers. */
+  File peerSources
 
   ThriftPluginExtension(Project project) {
     wrapperPath = "${project.rootDir}/build-support/thrift/thriftw"

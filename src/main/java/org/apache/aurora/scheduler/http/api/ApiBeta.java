@@ -41,10 +41,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
 
-import org.apache.aurora.gen.AuroraAdmin.Iface;
-import org.apache.aurora.scheduler.storage.entities.AuroraAdminMetadata;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,10 +58,10 @@ public class ApiBeta {
 
   private static final Logger LOG = LoggerFactory.getLogger(ApiBeta.class);
 
-  private final Iface api;
+  private final AuroraAdmin.Sync api;
 
   @Inject
-  ApiBeta(AnnotatedAuroraAdmin api) {
+  ApiBeta(AuroraAdmin.Sync api) {
     this.api = Objects.requireNonNull(api);
   }
 
@@ -96,24 +94,16 @@ public class ApiBeta {
       throws WebApplicationException {
 
     List<Object> params = Lists.newArrayList();
-    for (Parameter param : method.getParameters()) {
+    for (Parameter parameter : method.getParameters()) {
       try {
-        params.add(GSON.fromJson(getJsonMember(json, param.getName()), param.getType()));
+        params.add(GSON.fromJson(getJsonMember(json, parameter.getName()), parameter.getType()));
       } catch (JsonParseException e) {
         throw new WebApplicationException(
             e,
-            badRequest("Failed to parse parameter " + param + ": " + e.getMessage()));
+            badRequest("Failed to parse parameter " + parameter.getName() + ": " + e.getMessage()));
       }
     }
     return params.toArray();
-  }
-
-  private Method getApiMethod(String name, Class<?>[] parameterTypes) {
-    try {
-      return Iface.class.getMethod(name, parameterTypes);
-    } catch (NoSuchMethodException e) {
-      throw Throwables.propagate(e);
-    }
   }
 
   @POST
@@ -123,8 +113,10 @@ public class ApiBeta {
     LOG.debug("Call to {} with data: {}", methodName, postData);
 
     // First, verify that this is a valid method on the interface.
-    Class<?>[] methodParameterTypes = AuroraAdminMetadata.METHODS.get(methodName);
-    if (methodParameterTypes == null) {
+    Method method;
+    try {
+      method = AuroraAdmin.Sync.getThriftMethod(methodName);
+    } catch (NoSuchMethodException e) {
       return errorResponse(Status.NOT_FOUND, "Method " + methodName + " does not exist.");
     }
 
@@ -142,7 +134,6 @@ public class ApiBeta {
       throw new WebApplicationException(e, badRequest("Request must be valid JSON"));
     }
 
-    final Method method = getApiMethod(methodName, methodParameterTypes);
     final Object[] params = readParams(parameters, method);
     return Response.ok((StreamingOutput) output -> {
       try {

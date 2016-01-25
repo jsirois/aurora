@@ -22,10 +22,10 @@ import javax.inject.Qualifier;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query.Builder;
 import org.apache.aurora.scheduler.base.SchedulerException;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 
 /**
  * Manages scheduler storage operations providing an interface to perform atomic changes.
@@ -293,15 +293,15 @@ public interface Storage {
      * @param query Builder of the query to perform.
      * @return Tasks returned from the query.
      */
-    public static Iterable<IScheduledTask> fetchTasks(Storage storage, Builder query) {
+    public static Iterable<ScheduledTask> fetchTasks(Storage storage, Builder query) {
       return storage.read(storeProvider -> storeProvider.getTaskStore().fetchTasks(query));
     }
 
-    public static Optional<IScheduledTask> fetchTask(Storage storage, String taskId) {
+    public static Optional<ScheduledTask> fetchTask(Storage storage, String taskId) {
       return storage.read(storeProvider -> storeProvider.getTaskStore().fetchTask(taskId));
     }
 
-    public static Iterable<IJobConfiguration> fetchCronJobs(Storage storage) {
+    public static Iterable<JobConfiguration> fetchCronJobs(Storage storage) {
       return storage.read(storeProvider -> storeProvider.getCronJobStore().fetchJobs());
     }
   }

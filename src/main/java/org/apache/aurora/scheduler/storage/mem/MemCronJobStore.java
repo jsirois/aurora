@@ -19,25 +19,25 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.CronJobStore;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
 
 /**
  * An in-memory cron job store.
  */
 class MemCronJobStore implements CronJobStore.Mutable {
-  private final Map<IJobKey, IJobConfiguration> jobs = Maps.newConcurrentMap();
+  private final Map<JobKey, JobConfiguration> jobs = Maps.newConcurrentMap();
 
   @Override
-  public void saveAcceptedJob(IJobConfiguration jobConfig) {
-    IJobKey key = JobKeys.assertValid(jobConfig.getKey());
+  public void saveAcceptedJob(JobConfiguration jobConfig) {
+    JobKey key = JobKeys.assertValid(jobConfig.getKey());
     jobs.put(key, jobConfig);
   }
 
   @Override
-  public void removeJob(IJobKey jobKey) {
+  public void removeJob(JobKey jobKey) {
     jobs.remove(jobKey);
   }
 
@@ -47,12 +47,12 @@ class MemCronJobStore implements CronJobStore.Mutable {
   }
 
   @Override
-  public Iterable<IJobConfiguration> fetchJobs() {
+  public Iterable<JobConfiguration> fetchJobs() {
     return ImmutableSet.copyOf(jobs.values());
   }
 
   @Override
-  public Optional<IJobConfiguration> fetchJob(IJobKey jobKey) {
+  public Optional<JobConfiguration> fetchJob(JobKey jobKey) {
     return Optional.fromNullable(jobs.get(jobKey));
   }
 }

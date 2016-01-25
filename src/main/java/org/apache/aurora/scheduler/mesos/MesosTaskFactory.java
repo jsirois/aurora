@@ -24,6 +24,10 @@ import com.google.protobuf.ByteString;
 
 import org.apache.aurora.Protobufs;
 import org.apache.aurora.codec.ThriftBinaryCodec;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.DockerContainer;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.AcceptedOffer;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.Resources;
@@ -32,10 +36,6 @@ import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.SchedulerException;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorSettings;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IDockerContainer;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.ContainerInfo;
 import org.apache.mesos.Protos.ExecutorID;
@@ -63,7 +63,7 @@ public interface MesosTaskFactory {
    * @return A new task.
    * @throws SchedulerException If the task could not be encoded.
    */
-  TaskInfo createFrom(IAssignedTask task, Offer offer) throws SchedulerException;
+  TaskInfo createFrom(AssignedTask task, Offer offer) throws SchedulerException;
 
   // TODO(wfarner): Move this class to its own file to reduce visibility to package private.
   class MesosTaskFactoryImpl implements MesosTaskFactory {
@@ -84,21 +84,21 @@ public interface MesosTaskFactory {
       return ExecutorID.newBuilder().setValue(EXECUTOR_PREFIX + taskId).build();
     }
 
-    private static String getJobSourceName(IJobKey jobkey) {
+    private static String getJobSourceName(JobKey jobkey) {
       return String.format("%s.%s.%s", jobkey.getRole(), jobkey.getEnvironment(), jobkey.getName());
     }
 
-    private static String getJobSourceName(ITaskConfig task) {
+    private static String getJobSourceName(TaskConfig task) {
       return getJobSourceName(task.getJob());
     }
 
     @VisibleForTesting
-    static String getInstanceSourceName(ITaskConfig task, int instanceId) {
+    static String getInstanceSourceName(TaskConfig task, int instanceId) {
       return String.format("%s.%s", getJobSourceName(task), instanceId);
     }
 
     @Override
-    public TaskInfo createFrom(IAssignedTask task, Offer offer) throws SchedulerException {
+    public TaskInfo createFrom(AssignedTask task, Offer offer) throws SchedulerException {
       requireNonNull(task);
       requireNonNull(offer);
 
@@ -106,24 +106,21 @@ public interface MesosTaskFactory {
 
       byte[] taskInBytes;
       try {
-        taskInBytes = ThriftBinaryCodec.encode(task.newBuilder());
+        taskInBytes = ThriftBinaryCodec.encode(task);
       } catch (ThriftBinaryCodec.CodingException e) {
         LOG.error("Unable to serialize task.", e);
         throw new SchedulerException("Internal error.", e);
       }
 
-      ITaskConfig config = task.getTask();
+      TaskConfig config = task.getTask();
       AcceptedOffer acceptedOffer;
-      // TODO(wfarner): Re-evaluate if/why we need to continue handling unset assignedPorts field.
       try {
         acceptedOffer = AcceptedOffer.create(
             offer,
             ResourceSlot.from(config),
             executorSettings.getExecutorOverhead(),
-            task.isSetAssignedPorts()
-                ? ImmutableSet.copyOf(task.getAssignedPorts().values())
-                : ImmutableSet.of(),
-            tierManager.getTier(task.getTask()));
+            ImmutableSet.copyOf(task.getAssignedPorts().values()),
+            tierManager.getTier(config));
       } catch (Resources.InsufficientResourcesException e) {
         throw new SchedulerException(e);
       }
@@ -152,8 +149,8 @@ public interface MesosTaskFactory {
     }
 
     private void configureTaskForNoContainer(
-        IAssignedTask task,
-        ITaskConfig config,
+        AssignedTask task,
+        TaskConfig config,
         TaskInfo.Builder taskBuilder,
         AcceptedOffer acceptedOffer) {
 
@@ -161,12 +158,12 @@ public interface MesosTaskFactory {
     }
 
     private void configureTaskForDockerContainer(
-        IAssignedTask task,
-        ITaskConfig taskConfig,
+        AssignedTask task,
+        TaskConfig taskConfig,
         TaskInfo.Builder taskBuilder,
         AcceptedOffer acceptedOffer) {
 
-      IDockerContainer config = taskConfig.getContainer().getDocker();
+      DockerContainer config = taskConfig.getContainer().getDocker();
       Iterable<Protos.Parameter> parameters = Iterables.transform(config.getParameters(),
           item -> Protos.Parameter.newBuilder().setKey(item.getName())
             .setValue(item.getValue()).build());
@@ -186,8 +183,8 @@ public interface MesosTaskFactory {
     }
 
     private ExecutorInfo.Builder configureTaskForExecutor(
-        IAssignedTask task,
-        ITaskConfig config,
+        AssignedTask task,
+        TaskConfig config,
         AcceptedOffer acceptedOffer) {
 
       ExecutorInfo.Builder builder = executorSettings.getExecutorConfig().getExecutor().toBuilder()

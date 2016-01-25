@@ -29,6 +29,7 @@ import com.google.common.base.Preconditions;
 import org.apache.aurora.GuiceUtils.AllowUnchecked;
 import org.apache.aurora.common.application.Lifecycle;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.TaskStatusHandler;
 import org.apache.aurora.scheduler.base.SchedulerException;
@@ -41,7 +42,6 @@ import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.mesos.Protos.ExecutorID;
 import org.apache.mesos.Protos.FrameworkID;
 import org.apache.mesos.Protos.MasterInfo;
@@ -180,7 +180,7 @@ public class MesosSchedulerImpl implements Scheduler {
       //                offers when the host attributes cannot be found. (AURORA-137)
       storage.write((NoResult.Quiet) storeProvider -> {
         for (Offer offer : offers) {
-          IHostAttributes attributes =
+          HostAttributes attributes =
               AttributeStore.Util.mergeOffer(storeProvider.getAttributeStore(), offer);
           storeProvider.getAttributeStore().saveHostAttributes(attributes);
           log.debug("Received offer: {}", offer);

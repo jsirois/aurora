@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
@@ -35,10 +36,6 @@ import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,10 +78,10 @@ public class ResourceCounterTest {
         ZERO,
         resourceCounter.computeQuotaAllocationTotals());
 
-    Map<IJobKey, Metric> aggregates = resourceCounter.computeAggregates(
+    Map<JobKey, Metric> aggregates = resourceCounter.computeAggregates(
         Query.unscoped(),
         Predicates.alwaysTrue(),
-        ITaskConfig::getJob);
+        TaskConfig::getJob);
     assertEquals(ImmutableMap.of(), aggregates);
 
     for (Metric metric : resourceCounter.computeConsumptionTotals()) {
@@ -120,9 +117,9 @@ public class ResourceCounterTest {
   public void testComputeQuotaAllocationTotals() {
     storage.write((NoResult.Quiet) storeProvider -> {
       storeProvider.getQuotaStore()
-          .saveQuota("a", IResourceAggregate.build(new ResourceAggregate(1, 1, 1)));
+          .saveQuota("a", ResourceAggregate.create(1, 1, 1));
       storeProvider.getQuotaStore()
-          .saveQuota("b", IResourceAggregate.build(new ResourceAggregate(2, 3, 4)));
+          .saveQuota("b", ResourceAggregate.create(2, 3, 4));
     });
 
     assertEquals(new Metric(3, 4, 5), resourceCounter.computeQuotaAllocationTotals());
@@ -148,12 +145,12 @@ public class ResourceCounterTest {
         ),
         resourceCounter.computeAggregates(
             Query.roleScoped("bob"),
-            ITaskConfig::isProduction,
-            ITaskConfig::getJob)
+            TaskConfig::isProduction,
+            TaskConfig::getJob)
     );
   }
 
-  private static IScheduledTask task(
+  private static ScheduledTask task(
       String role,
       String job,
       String id,
@@ -164,24 +161,26 @@ public class ResourceCounterTest {
       ScheduleStatus status,
       Optional<String> dedicated) {
 
-    ScheduledTask task = TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job)).newBuilder();
-    TaskConfig config = task.getAssignedTask().getTask()
-        .setNumCpus(numCpus)
-        .setRamMb(ramMb)
-        .setDiskMb(diskMb)
-        .setProduction(production);
-
-    if (dedicated.isPresent()) {
-      config.addToConstraints(new Constraint(
-          ConfigurationManager.DEDICATED_ATTRIBUTE,
-          TaskConstraint.value(new ValueConstraint(false, ImmutableSet.of(dedicated.get())))));
-    }
-
-    task.setStatus(status);
-    return IScheduledTask.build(task);
+    return TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job))
+        .withStatus(status)
+        .withAssignedTask(
+            at -> at.withTask(
+                tc -> tc.toBuilder()
+                    .setNumCpus(numCpus)
+                    .setRamMb(ramMb)
+                    .setDiskMb(diskMb)
+                    .setProduction(production)
+                    .setConstraints(dedicated
+                        .transform(d -> Constraint.create(
+                            ConfigurationManager.DEDICATED_ATTRIBUTE,
+                            TaskConstraint.value(
+                                ValueConstraint.create(false, ImmutableSet.of(d)))))
+                        .asSet())
+                    .build()
+            ));
   }
 
-  private void insertTasks(final IScheduledTask... tasks) {
+  private void insertTasks(final ScheduledTask... tasks) {
     storage.write((NoResult.Quiet)
         storeProvider -> storeProvider.getUnsafeTaskStore().saveTasks(ImmutableSet.copyOf(tasks)));
   }

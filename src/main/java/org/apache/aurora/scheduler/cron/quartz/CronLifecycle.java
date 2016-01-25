@@ -21,11 +21,11 @@ import javax.inject.Inject;
 import com.google.common.util.concurrent.AbstractIdleService;
 
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
@@ -67,7 +67,7 @@ class CronLifecycle extends AbstractIdleService {
     scheduler.start();
     RUNNING_FLAG.set(1);
 
-    for (IJobConfiguration job : Storage.Util.fetchCronJobs(storage)) {
+    for (JobConfiguration job : Storage.Util.fetchCronJobs(storage)) {
       try {
         SanitizedCronJob cronJob = SanitizedCronJob.fromUnsanitized(configurationManager, job);
         cronJobManager.scheduleJob(
@@ -80,7 +80,7 @@ class CronLifecycle extends AbstractIdleService {
     LOADED_FLAG.set(1);
   }
 
-  private void logLaunchFailure(IJobConfiguration job, Exception e) {
+  private void logLaunchFailure(JobConfiguration job, Exception e) {
     LAUNCH_FAILURES.incrementAndGet();
     LOG.error("Scheduling failed for recovered job " + job, e);
   }

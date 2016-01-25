@@ -26,6 +26,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.Resources;
@@ -37,8 +39,6 @@ import org.apache.aurora.scheduler.filter.SchedulingFilter.ResourceRequest;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.UnusedResource;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -54,7 +54,7 @@ import static org.apache.aurora.scheduler.ResourceSlot.sum;
  *    the candidate.
  *  </li>
  *  <li>Both candidate and victim are owned by the same user and the
- *    {@link ITaskConfig#getPriority} of a victim is lower OR a victim is non-production and the
+ *    {@link TaskConfig#getPriority} of a victim is lower OR a victim is non-production and the
  *    candidate is production.
  *  </li>
  * </ol>
@@ -71,7 +71,7 @@ public interface PreemptionVictimFilter {
    * @return A set of {@code PreemptionVictim} instances to preempt for a given task.
    */
   Optional<ImmutableSet<PreemptionVictim>> filterPreemptionVictims(
-      ITaskConfig pendingTask,
+      TaskConfig pendingTask,
       Iterable<PreemptionVictim> victims,
       AttributeAggregate attributeAggregate,
       Optional<HostOffer> offer,
@@ -126,7 +126,7 @@ public interface PreemptionVictimFilter {
 
     @Override
     public Optional<ImmutableSet<PreemptionVictim>> filterPreemptionVictims(
-        ITaskConfig pendingTask,
+        TaskConfig pendingTask,
         Iterable<PreemptionVictim> possibleVictims,
         AttributeAggregate jobState,
         Optional<HostOffer> offer,
@@ -152,7 +152,7 @@ public interface PreemptionVictimFilter {
       Iterable<PreemptionVictim> sortedVictims =
           resourceOrder.immutableSortedCopy(preemptableTasks);
 
-      Optional<IHostAttributes> attributes =
+      Optional<HostAttributes> attributes =
           storeProvider.getAttributeStore().getHostAttributes(Iterables.getOnlyElement(hosts));
 
       if (!attributes.isPresent()) {
@@ -184,7 +184,7 @@ public interface PreemptionVictimFilter {
      * @return A filter that will compare the priorities and resources required by other tasks
      *     with {@code preemptableTask}.
      */
-    private static Predicate<PreemptionVictim> preemptionFilter(final ITaskConfig pendingTask) {
+    private static Predicate<PreemptionVictim> preemptionFilter(final TaskConfig pendingTask) {
       return possibleVictim -> {
         boolean pendingIsProduction = pendingTask.isProduction();
         boolean victimIsProduction = possibleVictim.isProduction();

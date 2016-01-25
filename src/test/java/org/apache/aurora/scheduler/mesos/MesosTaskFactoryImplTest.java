@@ -34,8 +34,6 @@ import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorConfig;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorSettings;
 import org.apache.aurora.scheduler.mesos.MesosTaskFactory.MesosTaskFactoryImpl;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Protos.ExecutorInfo;
@@ -62,26 +60,24 @@ import static org.junit.Assert.assertTrue;
 
 public class MesosTaskFactoryImplTest extends EasyMockTest {
 
-  private static final ITaskConfig TASK_CONFIG = ITaskConfig.build(
-      TaskTestUtil.makeConfig(TaskTestUtil.JOB)
-          .newBuilder()
-          .setContainer(Container.mesos(new MesosContainer())));
-  private static final IAssignedTask TASK = IAssignedTask.build(new AssignedTask()
+  private static final TaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB)
+      .withContainer(Container.mesos(MesosContainer.create()));
+  private static final AssignedTask TASK = AssignedTask.builder()
       .setInstanceId(2)
       .setTaskId("task-id")
       .setAssignedPorts(ImmutableMap.of("http", 80))
-      .setTask(TASK_CONFIG.newBuilder()));
-  private static final IAssignedTask TASK_WITH_DOCKER = IAssignedTask.build(TASK.newBuilder()
-      .setTask(
-          new TaskConfig(TASK.getTask().newBuilder())
-              .setContainer(Container.docker(
-                  new DockerContainer("testimage")))));
-  private static final IAssignedTask TASK_WITH_DOCKER_PARAMS = IAssignedTask.build(TASK.newBuilder()
-      .setTask(
-          new TaskConfig(TASK.getTask().newBuilder())
-              .setContainer(Container.docker(
-                  new DockerContainer("testimage").setParameters(
-                      ImmutableList.of(new DockerParameter("label", "testparameter")))))));
+      .setTask(TASK_CONFIG)
+      .build();
+  private static final AssignedTask TASK_WITH_DOCKER =
+      TASK.withTask(tc -> tc.withContainer(Container.docker(DockerContainer.create("testimage"))));
+  private static final AssignedTask TASK_WITH_DOCKER_PARAMS =
+      TASK.withTask(
+          tc -> tc.withContainer(
+              Container.docker(
+                  DockerContainer.builder()
+                      .setImage("testimage")
+                      .setParameters(DockerParameter.create("label", "testparameter"))
+                      .build())));
 
   private static final SlaveID SLAVE = SlaveID.newBuilder().setValue("slave-id").build();
   private static final Offer OFFER_THERMOS_EXECUTOR = Protos.Offer.newBuilder()
@@ -114,7 +110,7 @@ public class MesosTaskFactoryImplTest extends EasyMockTest {
     tierManager = createMock(TierManager.class);
   }
 
-  private static ExecutorInfo populateDynamicFields(ExecutorInfo executor, IAssignedTask task) {
+  private static ExecutorInfo populateDynamicFields(ExecutorInfo executor, AssignedTask task) {
     return executor.toBuilder()
         .setExecutorId(MesosTaskFactoryImpl.getExecutorId(task.getTaskId()))
         .setSource(
@@ -169,17 +165,17 @@ public class MesosTaskFactoryImplTest extends EasyMockTest {
 
   @Test
   public void testCreateFromPortsUnset() {
-    AssignedTask builder = TASK.newBuilder();
-    builder.getTask().unsetRequestedPorts();
-    builder.unsetAssignedPorts();
-    IAssignedTask assignedTask = IAssignedTask.build(builder);
+    AssignedTask assignedTask =
+        TASK.withTask(tc -> tc.withRequestedPorts(ImmutableSet.of()))
+            .withAssignedPorts(ImmutableMap.of());
+
     expect(tierManager.getTier(assignedTask.getTask())).andReturn(DEFAULT);
     taskFactory = new MesosTaskFactoryImpl(config, tierManager);
 
     control.replay();
 
-    TaskInfo task = taskFactory.createFrom(IAssignedTask.build(builder), OFFER_THERMOS_EXECUTOR);
-    checkTaskResources(ITaskConfig.build(builder.getTask()), task);
+    TaskInfo task = taskFactory.createFrom(assignedTask, OFFER_THERMOS_EXECUTOR);
+    checkTaskResources(assignedTask.getTask(), task);
   }
 
   @Test
@@ -199,11 +195,11 @@ public class MesosTaskFactoryImplTest extends EasyMockTest {
         task.getExecutor());
 
     // Simulate the upsizing needed for the task to meet the minimum thermos requirements.
-    TaskConfig dummyTask = TASK.getTask().newBuilder();
-    checkTaskResources(ITaskConfig.build(dummyTask), task);
+    TaskConfig dummyTask = TASK.getTask();
+    checkTaskResources(dummyTask, task);
   }
 
-  private void checkTaskResources(ITaskConfig task, TaskInfo taskInfo) {
+  private void checkTaskResources(TaskConfig task, TaskInfo taskInfo) {
     assertEquals(
         ResourceSlot.from(task).add(config.getExecutorOverhead()),
         getTotalTaskResources(taskInfo));
@@ -213,7 +209,7 @@ public class MesosTaskFactoryImplTest extends EasyMockTest {
     return getDockerTaskInfo(TASK_WITH_DOCKER);
   }
 
-  private TaskInfo getDockerTaskInfo(IAssignedTask task) {
+  private TaskInfo getDockerTaskInfo(AssignedTask task) {
     config = SOME_OVERHEAD_EXECUTOR;
 
     expect(tierManager.getTier(task.getTask())).andReturn(DEFAULT);

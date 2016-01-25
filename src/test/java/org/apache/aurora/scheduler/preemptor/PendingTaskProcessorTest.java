@@ -28,6 +28,7 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeClock;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
@@ -39,10 +40,6 @@ import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.filter.AttributeAggregate;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.stats.CachedCounters;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos;
@@ -64,10 +61,10 @@ public class PendingTaskProcessorTest extends EasyMockTest {
   private static final String CACHE_STAT = "cache_size";
   private static final String SLAVE_ID_1 = "slave_id_1";
   private static final String SLAVE_ID_2 = "slave_id_2";
-  private static final IJobKey JOB_A = JobKeys.from("role_a", "env", "job_a");
-  private static final IJobKey JOB_B = JobKeys.from("role_b", "env", "job_b");
-  private static final IScheduledTask TASK_A = makeTask(JOB_A, SLAVE_ID_1, "id1");
-  private static final IScheduledTask TASK_B = makeTask(JOB_B, SLAVE_ID_2, "id2");
+  private static final JobKey JOB_A = JobKeys.from("role_a", "env", "job_a");
+  private static final JobKey JOB_B = JobKeys.from("role_b", "env", "job_b");
+  private static final ScheduledTask TASK_A = makeTask(JOB_A, SLAVE_ID_1, "id1");
+  private static final ScheduledTask TASK_B = makeTask(JOB_B, SLAVE_ID_2, "id2");
   private static final PreemptionProposal SLOT_A = createPreemptionProposal(TASK_A, SLAVE_ID_1);
   private static final Amount<Long, Time> PREEMPTION_DELAY = Amount.of(30L, Time.SECONDS);
   private static final Amount<Long, Time> EXPIRATION = Amount.of(10L, Time.MINUTES);
@@ -168,11 +165,11 @@ public class PendingTaskProcessorTest extends EasyMockTest {
 
   @Test
   public void testMultipleTaskGroups() throws Exception {
-    IScheduledTask task1 = makeTask(JOB_A, "1");
-    IScheduledTask task2 = makeTask(JOB_A, "2");
-    IScheduledTask task3 = makeTask(JOB_A, "3");
-    IScheduledTask task4 = makeTask(JOB_B, "4");
-    IScheduledTask task5 = makeTask(JOB_B, "5");
+    ScheduledTask task1 = makeTask(JOB_A, "1");
+    ScheduledTask task2 = makeTask(JOB_A, "2");
+    ScheduledTask task3 = makeTask(JOB_A, "3");
+    ScheduledTask task4 = makeTask(JOB_B, "4");
+    ScheduledTask task5 = makeTask(JOB_B, "5");
 
     expectGetPendingTasks(task1, task4, task2, task5, task3);
     expectGetClusterState(TASK_A, TASK_B);
@@ -218,7 +215,7 @@ public class PendingTaskProcessorTest extends EasyMockTest {
     assertEquals(0L, statsProvider.getLongValue(slotSearchStatName(false, true)));
   }
 
-  private Multimap<String, PreemptionVictim> getVictims(IScheduledTask... tasks) {
+  private Multimap<String, PreemptionVictim> getVictims(ScheduledTask... tasks) {
     return Multimaps.transformValues(
         Multimaps.index(Arrays.asList(tasks), task -> task.getAssignedTask().getSlaveId()),
         task -> PreemptionVictim.fromTask(task.getAssignedTask())
@@ -233,18 +230,18 @@ public class PendingTaskProcessorTest extends EasyMockTest {
     builder.setHostname(slaveId);
     return new HostOffer(
         builder.build(),
-        IHostAttributes.build(new HostAttributes().setMode(MaintenanceMode.NONE)));
+        HostAttributes.builder().setMode(MaintenanceMode.NONE).build());
   }
 
   private void expectOffers(HostOffer... offers) {
     expect(offerManager.getOffers()).andReturn(ImmutableSet.copyOf(offers));
   }
 
-  private void expectGetClusterState(IScheduledTask... returnedTasks) {
+  private void expectGetClusterState(ScheduledTask... returnedTasks) {
     expect(clusterState.getSlavesToActiveTasks()).andReturn(getVictims(returnedTasks));
   }
 
-  private void expectSlotSearch(ITaskConfig config, IScheduledTask... victims) {
+  private void expectSlotSearch(TaskConfig config, ScheduledTask... victims) {
     expect(preemptionVictimFilter.filterPreemptionVictims(
         eq(config),
         anyObject(),
@@ -258,34 +255,36 @@ public class PendingTaskProcessorTest extends EasyMockTest {
         .anyTimes();
   }
 
-  private static PreemptionProposal createPreemptionProposal(IScheduledTask task, String slaveId) {
+  private static PreemptionProposal createPreemptionProposal(ScheduledTask task, String slaveId) {
     return new PreemptionProposal(
         ImmutableSet.of(PreemptionVictim.fromTask(task.getAssignedTask())),
         slaveId);
   }
 
-  private static IScheduledTask makeTask(IJobKey key, String taskId) {
+  private static ScheduledTask makeTask(JobKey key, String taskId) {
     return makeTask(key, null, taskId);
   }
 
-  private static TaskGroupKey group(IScheduledTask task) {
+  private static TaskGroupKey group(ScheduledTask task) {
     return TaskGroupKey.from(task.getAssignedTask().getTask());
   }
 
-  private static IScheduledTask makeTask(IJobKey key, @Nullable String slaveId, String taskId) {
-    ScheduledTask task = new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
+  private static ScheduledTask makeTask(JobKey key, @Nullable String slaveId, String taskId) {
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
             .setSlaveId(slaveId)
             .setTaskId(taskId)
-            .setTask(new TaskConfig()
+            .setTask(TaskConfig.builder()
                 .setPriority(1)
                 .setProduction(true)
-                .setJob(key.newBuilder())));
-    task.addToTaskEvents(new TaskEvent(0, PENDING));
-    return IScheduledTask.build(task);
+                .setJob(key)
+                .build())
+            .build())
+        .setTaskEvents(TaskEvent.create(0, PENDING))
+        .build();
   }
 
-  private void expectGetPendingTasks(IScheduledTask... returnedTasks) {
+  private void expectGetPendingTasks(ScheduledTask... returnedTasks) {
     storageUtil.expectTaskFetch(Query.statusScoped(PENDING), ImmutableSet.copyOf(returnedTasks));
   }
 }

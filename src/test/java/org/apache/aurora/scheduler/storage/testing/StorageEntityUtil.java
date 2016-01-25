@@ -14,21 +14,21 @@
 package org.apache.aurora.scheduler.storage.testing;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Defaults;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.internal.Primitives;
 
-import org.apache.thrift.TUnion;
+import org.apache.aurora.thrift.ThriftFields;
+import org.apache.aurora.thrift.ThriftStruct;
+import org.apache.aurora.thrift.ThriftUnion;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Utility for validating objects used in storage testing.
@@ -39,7 +39,11 @@ public final class StorageEntityUtil {
     // Utility class.
   }
 
-  private static void assertFullyPopulated(String name, Object object, Set<Field> ignoredFields) {
+  private static void assertFullyPopulated(
+      String name,
+      Object object,
+      Set<ThriftFields> ignoredFields) {
+
     if (object instanceof Collection) {
       Object[] values = ((Collection<?>) object).toArray();
       assertFalse("Collection is empty: " + name, values.length == 0);
@@ -53,50 +57,47 @@ public final class StorageEntityUtil {
         assertFullyPopulated(name + " key", entry.getKey(), ignoredFields);
         assertFullyPopulated(name + "[" + entry.getKey() + "]", entry.getValue(), ignoredFields);
       }
-    } else if (object instanceof TUnion) {
-      TUnion<?, ?> union = (TUnion<?, ?>) object;
+    } else if (object instanceof ThriftUnion) {
+      @SuppressWarnings("unchecked") // Trivially safe under erasure.
+      ThriftUnion<ThriftFields> union = (ThriftUnion<ThriftFields>) object;
       assertFullyPopulated(
           name + "." + union.getSetField().getFieldName(),
           union.getFieldValue(),
           ignoredFields);
-    } else if (!(object instanceof String) && !(object instanceof Enum)) {
-      for (Field field : object.getClass().getDeclaredFields()) {
-        if (!Modifier.isStatic(field.getModifiers())) {
-          validateField(name, object, field, ignoredFields);
-        }
-      }
+    } else if (object instanceof ThriftStruct) {
+      @SuppressWarnings("unchecked") // Trivially safe under erasure.
+      ThriftStruct<ThriftFields> struct = (ThriftStruct<ThriftFields>) object;
+      assertStructFullyPopulated(name, ignoredFields, struct);
     }
   }
 
-  private static void validateField(
+  private static void assertStructFullyPopulated(
       String name,
-      Object object,
-      Field field,
-      Set<Field> ignoredFields) {
+      Set<ThriftFields> ignoredFields,
+      ThriftStruct<ThriftFields> struct) {
 
-    try {
-      field.setAccessible(true);
-      String fullName = name + "." + field.getName();
-      Object fieldValue = field.get(object);
-      boolean mustBeSet = !ignoredFields.contains(field);
-      if (mustBeSet) {
-        assertNotNull(fullName + " is null", fieldValue);
-      }
-      if (fieldValue != null) {
-        if (Primitives.isWrapperType(fieldValue.getClass())) {
-          // Special-case the mutable hash code field.
-          if (mustBeSet && !fullName.endsWith("cachedHashCode")) {
-            assertNotEquals(
-                "Primitive value must not be default: " + fullName,
-                Defaults.defaultValue(Primitives.unwrap(fieldValue.getClass())),
-                fieldValue);
+    for (ThriftFields field : struct.getFields()) {
+      if (!ignoredFields.contains(field)) {
+        String fullName = name + "." + field.getFieldName();
+        boolean mustBeSet = !ignoredFields.contains(field);
+        boolean isSet = struct.isSet(field);
+        if (mustBeSet) {
+          assertTrue(fullName + " is not set", isSet);
+        }
+        if (isSet) {
+          Object fieldValue = struct.getFieldValue(field);
+          if (Primitives.isWrapperType(field.getFieldType())) {
+            if (mustBeSet) {
+              assertNotEquals(
+                  "Primitive value must not be default: " + fullName,
+                  Defaults.defaultValue(Primitives.unwrap(fieldValue.getClass())),
+                  fieldValue);
+            }
+          } else {
+            assertFullyPopulated(fullName, fieldValue, ignoredFields);
           }
-        } else {
-          assertFullyPopulated(fullName, fieldValue, ignoredFields);
         }
       }
-    } catch (IllegalAccessException e) {
-      throw Throwables.propagate(e);
     }
   }
 
@@ -109,7 +110,10 @@ public final class StorageEntityUtil {
    * @param <T> Object type.
    * @return The original {@code object}.
    */
-  public static <T> T assertFullyPopulated(T object, Field... ignoredFields) {
+  public static <T extends ThriftStruct<?>> T assertFullyPopulated(
+      T object,
+      ThriftFields... ignoredFields) {
+
     assertFullyPopulated(
         object.getClass().getSimpleName(),
         object,
@@ -119,7 +123,7 @@ public final class StorageEntityUtil {
 
   /**
    * Convenience method to get a field by name from a class, to pass as an ignored field to
-   * {@link #assertFullyPopulated(Object, Field...)}.
+   * {@link #assertFullyPopulated(String, Object, Set)}.
    *
    * @param clazz Class to get a field from.
    * @param field Field name.

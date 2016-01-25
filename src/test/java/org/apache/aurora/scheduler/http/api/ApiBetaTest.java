@@ -28,6 +28,7 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 
 import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
@@ -41,13 +42,11 @@ import org.apache.aurora.gen.RoleSummary;
 import org.apache.aurora.gen.RoleSummaryResult;
 import org.apache.aurora.gen.ScheduleStatusResult;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IResponse;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
+import org.apache.aurora.scheduler.thrift.Responses;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,11 +58,11 @@ import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 
 public class ApiBetaTest extends AbstractJettyTest {
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
 
   @Before
   public void setUp() {
-    thrift = createMock(AnnotatedAuroraAdmin.class);
+    thrift = createMock(AuroraAdmin.Sync.class);
   }
 
   @Override
@@ -73,49 +72,50 @@ public class ApiBetaTest extends AbstractJettyTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(AnnotatedAuroraAdmin.class).toInstance(thrift);
+            bind(AuroraAdmin.Sync.class).toInstance(thrift);
           }
         }
     );
   }
 
-  private static final ITaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB);
-  private static final IJobConfiguration JOB_CONFIG = IJobConfiguration.build(
-      new JobConfiguration()
-          .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
-          .setKey(new JobKey("role", "env", "name"))
-          .setTaskConfig(TASK_CONFIG.newBuilder()));
+  private static final TaskConfig TASK_CONFIG = TaskTestUtil.makeConfig(TaskTestUtil.JOB);
+  private static final JobConfiguration JOB_CONFIG = JobConfiguration.builder()
+      .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
+      .setKey(JobKey.create("role", "env", "name"))
+      .setTaskConfig(TASK_CONFIG)
+      .build();
 
   @Test
   public void testCreateJob() throws Exception {
-    Lock lock = new Lock()
-        .setKey(LockKey.job(new JobKey("role", "env", "name")))
-        .setToken("token");
-    Response response = new Response()
-        .setResponseCode(OK);
+    Lock lock = Lock.builder()
+        .setKey(LockKey.job(JobKey.create("role", "env", "name")))
+        .setToken("token")
+        .build();
+    Response response = Responses.ok();
 
-    JobConfiguration job = JOB_CONFIG.newBuilder();
     expect(thrift.createJob(anyObject(), eq(lock))).andReturn(response);
 
     replayAndStart();
 
     Response actualResponse = getRequestBuilder("/apibeta/createJob")
         .entity(
-            ImmutableMap.of("description", job, "lock", lock),
+            ImmutableMap.of("description", JOB_CONFIG, "lock", lock),
             MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test
   public void testGetRoleSummary() throws Exception {
-    Response response = new Response()
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.roleSummaryResult(new RoleSummaryResult()
-            .setSummaries(ImmutableSet.of(new RoleSummary()
+        .setResult(Result.roleSummaryResult(RoleSummaryResult.create(
+            ImmutableSet.of(RoleSummary.builder()
                 .setCronJobCount(1)
                 .setJobCount(2)
-                .setRole("role")))));
+                .setRole("role")
+                .build()))))
+        .build();
 
     expect(thrift.getRoleSummary()).andReturn(response);
 
@@ -128,11 +128,13 @@ public class ApiBetaTest extends AbstractJettyTest {
 
   @Test
   public void testGetJobSummary() throws Exception {
-    Response response = new Response()
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.jobSummaryResult(new JobSummaryResult()
-            .setSummaries(ImmutableSet.of(new JobSummary()
-                .setJob(JOB_CONFIG.newBuilder())))));
+        .setResult(Result.jobSummaryResult(JobSummaryResult.create(
+            ImmutableSet.of(JobSummary.builder()
+                .setJob(JOB_CONFIG)
+                .build()))))
+        .build();
 
     expect(thrift.getJobSummary("roleA")).andReturn(response);
 
@@ -141,24 +143,28 @@ public class ApiBetaTest extends AbstractJettyTest {
     Response actualResponse = getRequestBuilder("/apibeta/getJobSummary")
         .entity(ImmutableMap.of("role", "roleA"), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test
   public void testGetTasks() throws Exception {
-    ScheduledTask task = new ScheduledTask()
+    ScheduledTask task = ScheduledTask.builder()
         .setStatus(RUNNING)
         .setAssignedTask(
-            new AssignedTask()
-                .setTask(TASK_CONFIG.newBuilder()));
-    Response response = new Response()
+            AssignedTask.builder()
+                .setTask(TASK_CONFIG)
+                .build())
+        .build();
+    Response response = Response.builder()
         .setResponseCode(OK)
-        .setResult(Result.scheduleStatusResult(new ScheduleStatusResult()
-            .setTasks(ImmutableList.of(task))));
+        .setResult(Result.scheduleStatusResult(ScheduleStatusResult.create(
+            ImmutableList.of(task))))
+        .build();
 
-    TaskQuery query = new TaskQuery()
+    TaskQuery query = TaskQuery.builder()
         .setStatuses(ImmutableSet.of(RUNNING))
-        .setTaskIds(ImmutableSet.of("a"));
+        .setTaskIds(ImmutableSet.of("a"))
+        .build();
 
     expect(thrift.getTasksStatus(query)).andReturn(response);
 
@@ -167,7 +173,7 @@ public class ApiBetaTest extends AbstractJettyTest {
     Response actualResponse = getRequestBuilder("/apibeta/getTasksStatus")
         .entity(ImmutableMap.of("query", query), MediaType.APPLICATION_JSON)
         .post(Response.class);
-    assertEquals(IResponse.build(response), IResponse.build(actualResponse));
+    assertEquals(response, actualResponse);
   }
 
   @Test

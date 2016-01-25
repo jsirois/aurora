@@ -29,7 +29,7 @@
     )
   </insert>
 
-  <select id="selectAll" resultType="org.apache.aurora.gen.JobKey">
+  <select id="selectAll" resultType="org.apache.aurora.gen.peer.MutableJobKey">
     SELECT * FROM job_keys
   </select>
 
@@ -41,7 +41,7 @@
     DELETE FROM job_keys WHERE id = #{rowId}
   </delete>
 
-  <resultMap id="jobKeyMap" type="org.apache.aurora.gen.JobKey">
+  <resultMap id="jobKeyMap" type="org.apache.aurora.gen.peer.MutableJobKey">
     <id column="id" />
   </resultMap>
 </mapper>

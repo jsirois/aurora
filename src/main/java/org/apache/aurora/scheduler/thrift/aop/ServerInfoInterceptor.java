@@ -18,17 +18,16 @@ import javax.inject.Inject;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.aurora.gen.Response;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
+import org.apache.aurora.gen.ServerInfo;
 
 class ServerInfoInterceptor implements MethodInterceptor {
 
   @Inject
-  private IServerInfo serverInfo;
+  private ServerInfo serverInfo;
 
   @Override
   public Object invoke(MethodInvocation invocation) throws Throwable {
     Response resp = (Response) invocation.proceed();
-    resp.setServerInfo(serverInfo.newBuilder());
-    return resp;
+    return resp.withServerInfo(serverInfo);
   }
 }

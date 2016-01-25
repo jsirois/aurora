@@ -16,13 +16,12 @@ package org.apache.aurora.scheduler.updater;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableRangeSet;
-import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 
+import org.apache.aurora.gen.Constants;
+import org.apache.aurora.gen.InstanceTaskConfig;
 import org.apache.aurora.gen.JobUpdateStatus;
-import org.apache.aurora.gen.apiConstants;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IRange;
+import org.apache.aurora.gen.Range;
 
 /**
  * Utility functions for job updates.
@@ -36,7 +35,7 @@ public final class Updates {
    * Different states that an active job update may be in.
    */
   public static final Set<JobUpdateStatus> ACTIVE_JOB_UPDATE_STATES =
-      Sets.immutableEnumSet(apiConstants.ACTIVE_JOB_UPDATE_STATES);
+      Sets.immutableEnumSet(Constants.ACTIVE_JOB_UPDATE_STATES);
 
   /**
    * Creates a range set representing all instance IDs represented by a set of instance
@@ -45,11 +44,11 @@ public final class Updates {
    * @param configs Job update components.
    * @return A range set representing the instance IDs mentioned in instance groupings.
    */
-  public static ImmutableRangeSet<Integer> getInstanceIds(Set<IInstanceTaskConfig> configs) {
+  public static ImmutableRangeSet<Integer> getInstanceIds(Set<InstanceTaskConfig> configs) {
     ImmutableRangeSet.Builder<Integer> builder = ImmutableRangeSet.builder();
-    for (IInstanceTaskConfig config : configs) {
-      for (IRange range : config.getInstances()) {
-        builder.add(Range.closed(range.getFirst(), range.getLast()));
+    for (InstanceTaskConfig config : configs) {
+      for (Range range : config.getInstances()) {
+        builder.add(com.google.common.collect.Range.closed(range.getFirst(), range.getLast()));
       }
     }
 

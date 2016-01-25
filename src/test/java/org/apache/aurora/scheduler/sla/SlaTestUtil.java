@@ -13,9 +13,9 @@
  */
 package org.apache.aurora.scheduler.sla;
 
-import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
@@ -23,8 +23,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
 
 final class SlaTestUtil {
 
@@ -32,26 +30,22 @@ final class SlaTestUtil {
     // Utility class.
   }
 
-  static IScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
+  static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId) {
     return makeTask(events, instanceId, true);
   }
 
-  static IScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId, boolean isProd) {
-    List<ITaskEvent> taskEvents = makeEvents(events);
-    ScheduledTask builder = TaskTestUtil.makeTask("task_id", TaskTestUtil.JOB).newBuilder()
-        .setStatus(Iterables.getLast(taskEvents).getStatus())
-        .setTaskEvents(ITaskEvent.toBuildersList(taskEvents));
-    builder.getAssignedTask().setInstanceId(instanceId);
-    builder.getAssignedTask().getTask().setProduction(isProd);
-    return IScheduledTask.build(builder);
+  static ScheduledTask makeTask(Map<Long, ScheduleStatus> events, int instanceId, boolean isProd) {
+    ImmutableList<TaskEvent> taskEvents = makeEvents(events);
+    return TaskTestUtil.makeTask("task_id", TaskTestUtil.JOB)
+        .withStatus(Iterables.getLast(taskEvents).getStatus())
+        .withTaskEvents(taskEvents)
+        .withAssignedTask(
+            at -> at.withInstanceId(instanceId).withTask(t -> t.withProduction(isProd)));
   }
 
-  private static List<ITaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
-    ImmutableList.Builder<ITaskEvent> taskEvents = ImmutableList.builder();
-    for (Map.Entry<Long, ScheduleStatus> entry : events.entrySet()) {
-      taskEvents.add(ITaskEvent.build(new TaskEvent(entry.getKey(), entry.getValue())));
-    }
-
-    return taskEvents.build();
+  private static ImmutableList<TaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
+    return FluentIterable.from(events.entrySet())
+        .transform(e -> TaskEvent.create(e.getKey(), e.getValue()))
+        .toList();
   }
 }

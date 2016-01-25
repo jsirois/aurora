@@ -32,6 +32,7 @@ import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.ReadOnlyScheduler;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.async.AsyncModule;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
@@ -40,7 +41,6 @@ import org.apache.aurora.scheduler.quota.QuotaManager;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.db.DbModule;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.thrift.ThriftModule;
 import org.apache.thrift.TException;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -64,7 +64,7 @@ public class ThriftApiBenchmarks {
   @Fork(1)
   @State(Scope.Thread)
   public static class GetRoleSummaryBenchmark {
-    private ReadOnlyScheduler.Iface api;
+    private ReadOnlyScheduler.Sync api;
 
     @Param({
         "{\"roles\": 1}",
@@ -100,7 +100,7 @@ public class ThriftApiBenchmarks {
   @Fork(1)
   @State(Scope.Thread)
   public static class GetAllTasksBenchmark {
-    private ReadOnlyScheduler.Iface api;
+    private ReadOnlyScheduler.Sync api;
 
     @Param({
         "{\"roles\": 1}",
@@ -125,15 +125,15 @@ public class ThriftApiBenchmarks {
 
     @Benchmark
     public Response run() throws TException {
-      return api.getTasksStatus(new TaskQuery());
+      return api.getTasksStatus(TaskQuery.builder().build());
     }
   }
 
-  private static ReadOnlyScheduler.Iface createPopulatedApi(String testConfiguration) {
+  private static ReadOnlyScheduler.Sync createPopulatedApi(String testConfiguration) {
     TestConfiguration config = new Gson().fromJson(testConfiguration, TestConfiguration.class);
 
     Injector injector = createStorageInjector();
-    ReadOnlyScheduler.Iface api = injector.getInstance(ReadOnlyScheduler.Iface.class);
+    ReadOnlyScheduler.Sync api = injector.getInstance(ReadOnlyScheduler.Sync.class);
 
     Storage storage = injector.getInstance(Storage.class);
     storage.prepare();
@@ -154,7 +154,7 @@ public class ThriftApiBenchmarks {
             bind(StatsProvider.class).toInstance(new FakeStatsProvider());
             bind(ConfigurationManager.class).toInstance(
                 new ConfigurationManager(
-                    ImmutableSet.of(Container._Fields.MESOS),
+                    ImmutableSet.of(Container.Fields.MESOS),
                     /* allowDockerParameters */ false,
                     /* defaultDockerParameters */ ImmutableMultimap.of()));
           }
@@ -174,7 +174,7 @@ public class ThriftApiBenchmarks {
           String env = "env" + envId;
           for (int jobId = 0; jobId < config.jobs; jobId++) {
             String job = "job" + jobId;
-            ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
+            ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
             tasks.addAll(new Tasks.Builder()
                 .setRole(role)
                 .setEnv(env)

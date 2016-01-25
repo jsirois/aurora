@@ -29,8 +29,6 @@ import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
 import org.apache.aurora.scheduler.events.PubsubEvent.TasksDeleted;
 import org.apache.aurora.scheduler.events.PubsubEvent.Vetoed;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,7 +48,7 @@ public class NearestFitTest {
   private static final Veto SEVERITY_4_PORTS =
       Veto.insufficientResources("ports", RESOURCE_MAX_SCORE);
 
-  private static final ITaskConfig TASK = ITaskConfig.build(new TaskConfig().setNumCpus(1.0));
+  private static final TaskConfig TASK = TaskConfig.builder().setNumCpus(1.0).build();
   private static final TaskGroupKey GROUP_KEY = TaskGroupKey.from(TASK);
 
   private FakeTicker ticker;
@@ -86,9 +84,10 @@ public class NearestFitTest {
     assertNearest();
   }
 
-  private IScheduledTask makeTask() {
-    return IScheduledTask.build(
-        new ScheduledTask().setAssignedTask(new AssignedTask().setTask(TASK.newBuilder())));
+  private ScheduledTask makeTask() {
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder().setTask(TASK).build())
+        .build();
   }
 
   @Test
@@ -104,9 +103,7 @@ public class NearestFitTest {
   public void testStateChanged() {
     vetoed(SEVERITY_2);
     assertNearest(SEVERITY_2);
-    IScheduledTask task = IScheduledTask.build(new ScheduledTask()
-        .setStatus(ScheduleStatus.ASSIGNED)
-        .setAssignedTask(new AssignedTask().setTask(TASK.newBuilder())));
+    ScheduledTask task = makeTask().withStatus(ScheduleStatus.ASSIGNED);
     nearest.stateChanged(TaskStateChange.transition(task, ScheduleStatus.PENDING));
     assertNearest();
   }

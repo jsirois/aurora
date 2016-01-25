@@ -22,10 +22,10 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +45,10 @@ import static org.apache.aurora.scheduler.updater.StateEvaluator.Result.SUCCEEDE
  * deciding how to effect an update from a possibly-absent old configuration to a possibly-absent
  * new configuration, and detecting whether a replaced instance becomes unstable.
  */
-class InstanceUpdater implements StateEvaluator<Optional<IScheduledTask>> {
+class InstanceUpdater implements StateEvaluator<Optional<ScheduledTask>> {
   private static final Logger LOG = LoggerFactory.getLogger(InstanceUpdater.class);
 
-  private final Optional<ITaskConfig> desiredState;
+  private final Optional<TaskConfig> desiredState;
   private final int toleratedFailures;
   private final Amount<Long, Time> minRunningTime;
   private final Clock clock;
@@ -56,7 +56,7 @@ class InstanceUpdater implements StateEvaluator<Optional<IScheduledTask>> {
   private int observedFailures = 0;
 
   InstanceUpdater(
-      Optional<ITaskConfig> desiredState,
+      Optional<TaskConfig> desiredState,
       int toleratedFailures,
       Amount<Long, Time> minRunningTime,
       Clock clock) {
@@ -67,16 +67,16 @@ class InstanceUpdater implements StateEvaluator<Optional<IScheduledTask>> {
     this.clock = requireNonNull(clock);
   }
 
-  private boolean appearsStable(IScheduledTask task) {
+  private boolean appearsStable(ScheduledTask task) {
     return (clock.nowMillis() - Tasks.getLatestEvent(task).getTimestamp())
         >= minRunningTime.as(Time.MILLISECONDS);
   }
 
-  private static boolean isPermanentlyKilled(IScheduledTask task) {
+  private static boolean isPermanentlyKilled(ScheduledTask task) {
     boolean wasKilling =
         Iterables.any(
             task.getTaskEvents(),
-            Predicates.compose(Predicates.equalTo(KILLING), ITaskEvent::getStatus));
+            Predicates.compose(Predicates.equalTo(KILLING), TaskEvent::getStatus));
     return task.getStatus() != KILLING && wasKilling;
   }
 
@@ -84,12 +84,12 @@ class InstanceUpdater implements StateEvaluator<Optional<IScheduledTask>> {
     return Tasks.isActive(status) && status != KILLING;
   }
 
-  private static boolean isTaskPresent(Optional<IScheduledTask> task) {
+  private static boolean isTaskPresent(Optional<ScheduledTask> task) {
     return task.isPresent() && !isPermanentlyKilled(task.get());
   }
 
   @Override
-  public synchronized StateEvaluator.Result evaluate(Optional<IScheduledTask> actualState) {
+  public synchronized StateEvaluator.Result evaluate(Optional<ScheduledTask> actualState) {
     boolean desiredPresent = desiredState.isPresent();
     boolean actualPresent = isTaskPresent(actualState);
 
@@ -116,7 +116,7 @@ class InstanceUpdater implements StateEvaluator<Optional<IScheduledTask>> {
     return observedFailures > toleratedFailures;
   }
 
-  private StateEvaluator.Result handleActualAndDesiredPresent(IScheduledTask actualState) {
+  private StateEvaluator.Result handleActualAndDesiredPresent(ScheduledTask actualState) {
     Preconditions.checkState(desiredState.isPresent());
     Preconditions.checkArgument(!actualState.getTaskEvents().isEmpty());
 

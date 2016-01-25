@@ -32,6 +32,7 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -41,9 +42,11 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 
 import org.apache.aurora.common.base.MorePreconditions;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ConfigGroup;
 import org.apache.aurora.gen.ConfigSummary;
 import org.apache.aurora.gen.ConfigSummaryResult;
+import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.GetJobUpdateDetailsResult;
 import org.apache.aurora.gen.GetJobUpdateDiffResult;
 import org.apache.aurora.gen.GetJobUpdateSummariesResult;
@@ -55,6 +58,7 @@ import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.JobSummary;
 import org.apache.aurora.gen.JobSummaryResult;
+import org.apache.aurora.gen.JobUpdateDetails;
 import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateRequest;
@@ -86,20 +90,7 @@ import org.apache.aurora.scheduler.quota.QuotaInfo;
 import org.apache.aurora.scheduler.quota.QuotaManager;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateQuery;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateRequest;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateSummary;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.updater.JobDiff;
-import org.apache.thrift.TException;
 
 import static java.util.Objects.requireNonNull;
 
@@ -110,11 +101,12 @@ import static org.apache.aurora.scheduler.thrift.Responses.error;
 import static org.apache.aurora.scheduler.thrift.Responses.invalidRequest;
 import static org.apache.aurora.scheduler.thrift.Responses.ok;
 
-class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
-  private static final Function<Entry<ITaskConfig, Collection<Integer>>, ConfigGroup> TO_GROUP =
-      input -> new ConfigGroup()
-          .setConfig(input.getKey().newBuilder())
-          .setInstances(IRange.toBuildersSet(convertRanges(toRanges(input.getValue()))));
+class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Sync {
+  private static final Function<Entry<TaskConfig, Collection<Integer>>, ConfigGroup> TO_GROUP =
+      input -> ConfigGroup.builder()
+          .setConfig(input.getKey())
+          .setInstances(convertRanges(toRanges(input.getValue())))
+          .build();
 
   private final ConfigurationManager configurationManager;
   private final Storage storage;
@@ -145,11 +137,10 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
     requireNonNull(description);
 
     try {
-      ITaskConfig populatedTaskConfig = SanitizedConfiguration.fromUnsanitized(
+      TaskConfig populatedTaskConfig = SanitizedConfiguration.fromUnsanitized(
           configurationManager,
-          IJobConfiguration.build(description)).getJobConfig().getTaskConfig();
-      return ok(Result.populateJobResult(
-          new PopulateJobResult().setTaskConfig(populatedTaskConfig.newBuilder())));
+          description).getJobConfig().getTaskConfig();
+      return ok(Result.populateJobResult(PopulateJobResult.create(populatedTaskConfig)));
     } catch (TaskDescriptionException e) {
       return invalidRequest("Invalid configuration: " + e.getMessage());
     }
@@ -158,105 +149,100 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
   // TODO(William Farner): Provide status information about cron jobs here.
   @Override
   public Response getTasksStatus(TaskQuery query) {
-    return ok(Result.scheduleStatusResult(
-        new ScheduleStatusResult().setTasks(getTasks(query))));
+    return ok(Result.scheduleStatusResult(ScheduleStatusResult.create(getTasks(query))));
   }
 
   @Override
   public Response getTasksWithoutConfigs(TaskQuery query) {
     List<ScheduledTask> tasks = Lists.transform(
         getTasks(query),
-        task -> {
-          task.getAssignedTask().getTask().unsetExecutorConfig();
-          return task;
-        });
+        task -> task.withAssignedTask(
+            at -> at.withTask(
+                tc -> tc.withExecutorConfig((ExecutorConfig) null))));
 
-    return ok(Result.scheduleStatusResult(new ScheduleStatusResult().setTasks(tasks)));
+    return ok(Result.scheduleStatusResult(ScheduleStatusResult.create(tasks)));
   }
 
   @Override
-  public Response getPendingReason(TaskQuery query) throws TException {
+  public Response getPendingReason(TaskQuery query) {
     requireNonNull(query);
 
-    if (query.isSetSlaveHosts() || query.isSetStatuses()) {
+    if (!query.getSlaveHosts().isEmpty() || !query.getStatuses().isEmpty()) {
       return invalidRequest(
           "Statuses or slaveHosts are not supported in " + query.toString());
     }
 
     // Only PENDING tasks should be considered.
-    query.setStatuses(ImmutableSet.of(ScheduleStatus.PENDING));
+    TaskQuery pendingQuery = query.withStatuses(ImmutableSet.of(ScheduleStatus.PENDING));
 
-    Set<PendingReason> reasons = FluentIterable.from(getTasks(query))
+    Set<PendingReason> pendingReasons = FluentIterable.from(getTasks(pendingQuery))
         .transform(scheduledTask -> {
-          TaskGroupKey groupKey = TaskGroupKey.from(
-              ITaskConfig.build(scheduledTask.getAssignedTask().getTask()));
+          TaskGroupKey groupKey = TaskGroupKey.from(scheduledTask.getAssignedTask().getTask());
 
           String reason = Joiner.on(',').join(Iterables.transform(
               nearestFit.getNearestFit(groupKey),
               Veto::getReason));
 
-          return new PendingReason()
+          return PendingReason.builder()
               .setTaskId(scheduledTask.getAssignedTask().getTaskId())
-              .setReason(reason);
+              .setReason(reason)
+              .build();
         }).toSet();
 
-    return ok(Result.getPendingReasonResult(new GetPendingReasonResult(reasons)));
+    return ok(Result.getPendingReasonResult(GetPendingReasonResult.create(pendingReasons)));
   }
 
   @Override
-  public Response getConfigSummary(JobKey job) throws TException {
-    IJobKey jobKey = JobKeys.assertValid(IJobKey.build(job));
+  public Response getConfigSummary(JobKey jobKey) {
+    JobKeys.assertValid(jobKey);
 
-    Iterable<IAssignedTask> assignedTasks = Iterables.transform(
+    Iterable<AssignedTask> assignedTasks = Iterables.transform(
         Storage.Util.fetchTasks(storage, Query.jobScoped(jobKey).active()),
-        IScheduledTask::getAssignedTask);
-    Map<Integer, ITaskConfig> tasksByInstance = Maps.transformValues(
-        Maps.uniqueIndex(assignedTasks, IAssignedTask::getInstanceId),
-        IAssignedTask::getTask);
+        ScheduledTask::getAssignedTask);
+    Map<Integer, TaskConfig> tasksByInstance = Maps.transformValues(
+        Maps.uniqueIndex(assignedTasks, AssignedTask::getInstanceId),
+        AssignedTask::getTask);
     Set<ConfigGroup> groups = instancesToConfigGroups(tasksByInstance);
 
     return ok(Result.configSummaryResult(
-        new ConfigSummaryResult().setSummary(new ConfigSummary(job, groups))));
+        ConfigSummaryResult.create(ConfigSummary.create(jobKey, groups))));
   }
 
   @Override
   public Response getRoleSummary() {
-    Multimap<String, IJobKey> jobsByRole = storage.read(
+    Multimap<String, JobKey> jobsByRole = storage.read(
         storeProvider ->
-            Multimaps.index(storeProvider.getTaskStore().getJobKeys(), IJobKey::getRole));
+            Multimaps.index(storeProvider.getTaskStore().getJobKeys(), JobKey::getRole));
 
-    Multimap<String, IJobKey> cronJobsByRole = Multimaps.index(
-        Iterables.transform(Storage.Util.fetchCronJobs(storage), IJobConfiguration::getKey),
-        IJobKey::getRole);
+    Multimap<String, JobKey> cronJobsByRole = Multimaps.index(
+        Iterables.transform(Storage.Util.fetchCronJobs(storage), JobConfiguration::getKey),
+        JobKey::getRole);
 
     Set<RoleSummary> summaries = FluentIterable.from(
         Sets.union(jobsByRole.keySet(), cronJobsByRole.keySet()))
-        .transform(role -> new RoleSummary(
+        .transform(role -> RoleSummary.create(
             role,
             jobsByRole.get(role).size(),
             cronJobsByRole.get(role).size()))
         .toSet();
 
-    return ok(Result.roleSummaryResult(new RoleSummaryResult(summaries)));
+    return ok(Result.roleSummaryResult(RoleSummaryResult.create(summaries)));
   }
 
   @Override
   public Response getJobSummary(@Nullable String maybeNullRole) {
     Optional<String> ownerRole = Optional.fromNullable(maybeNullRole);
 
-    Multimap<IJobKey, IScheduledTask> tasks = getTasks(maybeRoleScoped(ownerRole));
-    Map<IJobKey, IJobConfiguration> jobs = getJobs(ownerRole, tasks);
+    Multimap<JobKey, ScheduledTask> tasks = getTasks(maybeRoleScoped(ownerRole));
+    Map<JobKey, JobConfiguration> jobs = getJobs(ownerRole, tasks);
 
-    Function<IJobKey, JobSummary> makeJobSummary = jobKey -> {
-      IJobConfiguration job = jobs.get(jobKey);
-      JobSummary summary = new JobSummary()
-          .setJob(job.newBuilder())
-          .setStats(Jobs.getJobStats(tasks.get(jobKey)).newBuilder());
-
+    Function<JobKey, JobSummary> makeJobSummary = jobKey -> {
+      JobConfiguration job = jobs.get(jobKey);
+      JobSummary summary = JobSummary.create(job, Jobs.getJobStats(tasks.get(jobKey)));
       if (job.isSetCronSchedule()) {
         CrontabEntry crontabEntry = CrontabEntry.parse(job.getCronSchedule());
         Optional<Date> nextRun = cronPredictor.predictNextRun(crontabEntry);
-        return nextRun.transform(date -> summary.setNextCronRunMs(date.getTime())).or(summary);
+        return nextRun.transform(date -> summary.withNextCronRunMs(date.getTime())).or(summary);
       } else {
         return summary;
       }
@@ -265,7 +251,7 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
     ImmutableSet<JobSummary> jobSummaries =
         FluentIterable.from(jobs.keySet()).transform(makeJobSummary).toSet();
 
-    return ok(Result.jobSummaryResult(new JobSummaryResult().setSummaries(jobSummaries)));
+    return ok(Result.jobSummaryResult(JobSummaryResult.create(jobSummaries)));
   }
 
   @Override
@@ -273,8 +259,8 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
     Optional<String> ownerRole = Optional.fromNullable(maybeNullRole);
 
     return ok(Result.getJobsResult(
-        new GetJobsResult()
-            .setConfigs(IJobConfiguration.toBuildersSet(
+        GetJobsResult.create(
+            ImmutableSet.copyOf(
                 getJobs(ownerRole, getTasks(maybeRoleScoped(ownerRole).active())).values()))));
   }
 
@@ -283,12 +269,13 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
     MorePreconditions.checkNotBlank(ownerRole);
     return storage.read(storeProvider -> {
       QuotaInfo quotaInfo = quotaManager.getQuotaInfo(ownerRole, storeProvider);
-      GetQuotaResult result = new GetQuotaResult(quotaInfo.getQuota().newBuilder())
-          .setProdSharedConsumption(quotaInfo.getProdSharedConsumption().newBuilder())
-          .setProdDedicatedConsumption(quotaInfo.getProdDedicatedConsumption().newBuilder())
-          .setNonProdSharedConsumption(quotaInfo.getNonProdSharedConsumption().newBuilder())
-          .setNonProdDedicatedConsumption(
-              quotaInfo.getNonProdDedicatedConsumption().newBuilder());
+      GetQuotaResult result = GetQuotaResult.builder()
+          .setQuota(quotaInfo.getQuota())
+          .setProdSharedConsumption(quotaInfo.getProdSharedConsumption())
+          .setProdDedicatedConsumption(quotaInfo.getProdDedicatedConsumption())
+          .setNonProdSharedConsumption(quotaInfo.getNonProdSharedConsumption())
+          .setNonProdDedicatedConsumption(quotaInfo.getNonProdDedicatedConsumption())
+          .build();
 
       return ok(Result.getQuotaResult(result));
     });
@@ -297,45 +284,42 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
   @Override
   public Response getLocks() {
     return ok(Result.getLocksResult(
-        new GetLocksResult().setLocks(ILock.toBuildersSet(lockManager.getLocks()))));
+        GetLocksResult.create(ImmutableSet.copyOf(lockManager.getLocks()))));
   }
 
   @Override
-  public Response getJobUpdateSummaries(JobUpdateQuery mutableQuery) {
-    IJobUpdateQuery query = IJobUpdateQuery.build(requireNonNull(mutableQuery));
+  public Response getJobUpdateSummaries(JobUpdateQuery query) {
+    requireNonNull(query);
     return ok(Result.getJobUpdateSummariesResult(
-        new GetJobUpdateSummariesResult()
-            .setUpdateSummaries(IJobUpdateSummary.toBuildersList(storage.read(
+        GetJobUpdateSummariesResult.create(
+            storage.read(
                 storeProvider ->
-                    storeProvider.getJobUpdateStore().fetchJobUpdateSummaries(query))))));
+                    storeProvider.getJobUpdateStore().fetchJobUpdateSummaries(query)))));
   }
 
   @Override
-  public Response getJobUpdateDetails(JobUpdateKey mutableKey) {
-    IJobUpdateKey key = IJobUpdateKey.build(mutableKey);
-    Optional<IJobUpdateDetails> details =
+  public Response getJobUpdateDetails(JobUpdateKey key) {
+    Optional<JobUpdateDetails> details =
         storage.read(storeProvider -> storeProvider.getJobUpdateStore().fetchJobUpdateDetails(key));
 
     if (details.isPresent()) {
-      return ok(Result.getJobUpdateDetailsResult(
-          new GetJobUpdateDetailsResult().setDetails(details.get().newBuilder())));
+      return ok(Result.getJobUpdateDetailsResult(GetJobUpdateDetailsResult.create(details.get())));
     } else {
       return invalidRequest("Invalid update: " + key);
     }
   }
 
   @Override
-  public Response getJobUpdateDiff(JobUpdateRequest mutableRequest) {
-    IJobUpdateRequest request;
+  public Response getJobUpdateDiff(JobUpdateRequest request) {
+    JobUpdateRequest validatedRequest;
     try {
-      request = IJobUpdateRequest.build(new JobUpdateRequest(mutableRequest).setTaskConfig(
-          configurationManager.validateAndPopulate(
-              ITaskConfig.build(mutableRequest.getTaskConfig())).newBuilder()));
+      validatedRequest = request.withTaskConfig(
+          configurationManager.validateAndPopulate(request.getTaskConfig()));
     } catch (TaskDescriptionException e) {
       return error(INVALID_REQUEST, e);
     }
 
-    IJobKey job = request.getTaskConfig().getJob();
+    JobKey job = validatedRequest.getTaskConfig().getJob();
 
     return storage.read(storeProvider -> {
       if (storeProvider.getCronJobStore().fetchJob(job).isPresent()) {
@@ -345,34 +329,35 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
       JobDiff diff = JobDiff.compute(
           storeProvider.getTaskStore(),
           job,
-          JobDiff.asMap(request.getTaskConfig(), request.getInstanceCount()),
-          request.getSettings().getUpdateOnlyTheseInstances());
+          JobDiff.asMap(validatedRequest.getTaskConfig(), validatedRequest.getInstanceCount()),
+          validatedRequest.getSettings().getUpdateOnlyTheseInstances());
 
-      Map<Integer, ITaskConfig> replaced = diff.getReplacedInstances();
-      Map<Integer, ITaskConfig> replacements = Maps.asMap(
+      Map<Integer, TaskConfig> replaced = diff.getReplacedInstances();
+      Map<Integer, TaskConfig> replacements = Maps.asMap(
           diff.getReplacementInstances(),
-          Functions.constant(request.getTaskConfig()));
+          Functions.constant(validatedRequest.getTaskConfig()));
 
-      Map<Integer, ITaskConfig> add = Maps.filterKeys(
+      Map<Integer, TaskConfig> add = Maps.filterKeys(
           replacements,
           Predicates.in(Sets.difference(replacements.keySet(), replaced.keySet())));
-      Map<Integer, ITaskConfig> remove = Maps.filterKeys(
+      Map<Integer, TaskConfig> remove = Maps.filterKeys(
           replaced,
           Predicates.in(Sets.difference(replaced.keySet(), replacements.keySet())));
-      Map<Integer, ITaskConfig> update = Maps.filterKeys(
+      Map<Integer, TaskConfig> update = Maps.filterKeys(
           replaced,
           Predicates.in(Sets.intersection(replaced.keySet(), replacements.keySet())));
 
-      return ok(Result.getJobUpdateDiffResult(new GetJobUpdateDiffResult()
+      return ok(Result.getJobUpdateDiffResult(GetJobUpdateDiffResult.builder()
           .setAdd(instancesToConfigGroups(add))
           .setRemove(instancesToConfigGroups(remove))
           .setUpdate(instancesToConfigGroups(update))
-          .setUnchanged(instancesToConfigGroups(diff.getUnchangedInstances()))));
+          .setUnchanged(instancesToConfigGroups(diff.getUnchangedInstances()))
+          .build()));
     });
   }
 
-  private static Set<ConfigGroup> instancesToConfigGroups(Map<Integer, ITaskConfig> tasks) {
-    Multimap<ITaskConfig, Integer> instancesByDetails = Multimaps.invertFrom(
+  private static Set<ConfigGroup> instancesToConfigGroups(Map<Integer, TaskConfig> tasks) {
+    Multimap<TaskConfig, Integer> instancesByDetails = Multimaps.invertFrom(
         Multimaps.forMap(tasks),
         HashMultimap.create());
     return ImmutableSet.copyOf(
@@ -382,15 +367,15 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
   private List<ScheduledTask> getTasks(TaskQuery query) {
     requireNonNull(query);
 
-    Iterable<IScheduledTask> tasks = Storage.Util.fetchTasks(storage, Query.arbitrary(query));
-    if (query.isSetOffset()) {
+    Iterable<ScheduledTask> tasks = Storage.Util.fetchTasks(storage, Query.arbitrary(query));
+    if (query.getOffset() > 0) {
       tasks = Iterables.skip(tasks, query.getOffset());
     }
-    if (query.isSetLimit()) {
+    if (query.getLimit() > 0) {
       tasks = Iterables.limit(tasks, query.getLimit());
     }
 
-    return IScheduledTask.toBuildersList(tasks);
+    return ImmutableList.copyOf(tasks);
   }
 
   private Query.Builder maybeRoleScoped(Optional<String> ownerRole) {
@@ -399,14 +384,14 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
         : Query.unscoped();
   }
 
-  private Map<IJobKey, IJobConfiguration> getJobs(
+  private Map<JobKey, JobConfiguration> getJobs(
       Optional<String> ownerRole,
-      Multimap<IJobKey, IScheduledTask> tasks) {
+      Multimap<JobKey, ScheduledTask> tasks) {
 
     // We need to synthesize the JobConfiguration from the the current tasks because the
     // ImmediateJobManager doesn't store jobs directly and ImmediateJobManager#getJobs always
     // returns an empty Collection.
-    Map<IJobKey, IJobConfiguration> jobs = Maps.newHashMap();
+    Map<JobKey, JobConfiguration> jobs = Maps.newHashMap();
 
     jobs.putAll(Maps.transformEntries(tasks.asMap(),
         (jobKey, tasks1) -> {
@@ -414,29 +399,30 @@ class ReadOnlySchedulerImpl implements ReadOnlyScheduler.Iface {
           // Pick the latest transitioned task for each immediate job since the job can be in the
           // middle of an update or some shards have been selectively created.
           TaskConfig mostRecentTaskConfig =
-              Tasks.getLatestActiveTask(tasks1).getAssignedTask().getTask().newBuilder();
+              Tasks.getLatestActiveTask(tasks1).getAssignedTask().getTask();
 
-          return IJobConfiguration.build(new JobConfiguration()
-              .setKey(jobKey.newBuilder())
+          return JobConfiguration.builder()
+              .setKey(jobKey)
               .setOwner(mostRecentTaskConfig.getOwner())
               .setTaskConfig(mostRecentTaskConfig)
-              .setInstanceCount(tasks1.size()));
+              .setInstanceCount(tasks1.size())
+              .build();
         }));
 
     // Get cron jobs directly from the manager. Do this after querying the task store so the real
     // template JobConfiguration for a cron job will overwrite the synthesized one that could have
     // been created above.
-    Predicate<IJobConfiguration> configFilter = ownerRole.isPresent()
+    Predicate<JobConfiguration> configFilter = ownerRole.isPresent()
         ? Predicates.compose(Predicates.equalTo(ownerRole.get()), JobKeys::getRole)
         : Predicates.alwaysTrue();
     jobs.putAll(Maps.uniqueIndex(
         FluentIterable.from(Storage.Util.fetchCronJobs(storage)).filter(configFilter),
-        IJobConfiguration::getKey));
+        JobConfiguration::getKey));
 
     return jobs;
   }
 
-  private Multimap<IJobKey, IScheduledTask> getTasks(Query.Builder query) {
+  private Multimap<JobKey, ScheduledTask> getTasks(Query.Builder query) {
     return Tasks.byJobKey(Storage.Util.fetchTasks(storage, query));
   }
 

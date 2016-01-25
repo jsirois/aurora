@@ -13,19 +13,37 @@
  */
 package org.apache.aurora.codec;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import com.facebook.swift.codec.ThriftCodec;
+import com.google.common.collect.ImmutableSet;
+
+import org.apache.aurora.codec.ThriftBinaryCodec.ByteBufferInputStream;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
+import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.storage.Op;
+import org.apache.aurora.gen.storage.RemoveJob;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
+import org.apache.aurora.thrift.ThriftEntity;
+import org.apache.aurora.thrift.ThriftFields.NoFields;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTrip() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
     assertEquals(original,
         ThriftBinaryCodec.decode(ScheduledTask.class, ThriftBinaryCodec.encode(original)));
   }
@@ -37,11 +55,18 @@ public class ThriftBinaryCodecTest {
 
   @Test
   public void testRoundTripNonNull() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
     assertEquals(original,
         ThriftBinaryCodec.decodeNonNull(
             ScheduledTask.class,
             ThriftBinaryCodec.encodeNonNull(original)));
+  }
+
+  @Test
+  public void testRoundTripUnionNonNull() throws CodingException {
+    Op original = Op.removeJob(RemoveJob.create(JobKey.create("role", "env", "name")));
+    assertEquals(original,
+        ThriftBinaryCodec.decodeNonNull(Op.class, ThriftBinaryCodec.encodeNonNull(original)));
   }
 
   @Test(expected = NullPointerException.class)
@@ -55,13 +80,97 @@ public class ThriftBinaryCodecTest {
   }
 
   @Test
+  public void testCodecForThrift() {
+    ThriftCodec<Identity> identityCodec = ThriftBinaryCodec.codecForType(Identity.class);
+    assertNotNull(identityCodec);
+
+    assertSame(identityCodec, ThriftBinaryCodec.codecForType(Identity.class));
+
+    ThriftCodec<LockKey> lockKeyCodec = ThriftBinaryCodec.codecForType(LockKey.class);
+    assertNotNull(identityCodec);
+    assertNotSame(identityCodec, lockKeyCodec);
+  }
+
+  static class MyThriftEntity implements ThriftEntity<NoFields> {
+    @Override public boolean isSet(NoFields field) {
+      throw new IllegalStateException("Not implemented");
+    }
+
+    @Override public Object getFieldValue(NoFields field) {
+      throw new IllegalStateException("Not implemented");
+    }
+
+    @Override public ImmutableSet<NoFields> getFields() {
+      throw new IllegalStateException("Not implemented");
+    }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCodecForUnregisteredThrift() {
+    ThriftBinaryCodec.codecForType(MyThriftEntity.class);
+  }
+
+  @Test(expected = CodingException.class)
+  public void testDecodeUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.decodeNonNull(MyThriftEntity.class, new byte[0]);
+  }
+
+  @Test(expected = CodingException.class)
+  public void testEncodeUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.encodeNonNull(new MyThriftEntity());
+  }
+
+  @Test(expected = CodingException.class)
+  public void testDeflateUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.deflateNonNull(new MyThriftEntity());
+  }
+
+  @Test(expected = CodingException.class)
+  public void testInflateUnregisteredThrift() throws CodingException {
+    ThriftBinaryCodec.inflateNonNull(MyThriftEntity.class, new byte[0]);
+  }
+
+  @Test
   public void testInflateDeflateRoundTrip() throws CodingException {
-    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB).newBuilder();
+    ScheduledTask original = TaskTestUtil.makeTask("id", TaskTestUtil.JOB);
 
     byte[] deflated = ThriftBinaryCodec.deflateNonNull(original);
 
     ScheduledTask inflated = ThriftBinaryCodec.inflateNonNull(ScheduledTask.class, deflated);
 
     assertEquals(original, inflated);
+  }
+
+  @Test
+  public void testByteBufferInputStreamRead() throws IOException {
+    ByteBuffer buffer = ByteBuffer.wrap(new byte[] {0x0, 0x1});
+    try (ByteBufferInputStream stream = new ByteBufferInputStream(buffer)) {
+      assertEquals(0x0, stream.read());
+      assertEquals(0x1, stream.read());
+      assertEquals(-1, stream.read());
+      assertEquals(-1, stream.read());
+    }
+  }
+
+  @Test
+  public void testByteBufferInputStreamReadArray() throws IOException {
+    ByteBuffer buffer = ByteBuffer.wrap(new byte[] {0xC, 0xA, 0xF, 0xE, 0xB, 0xA, 0xB, 0xE, 0x9});
+    try (ByteBufferInputStream stream = new ByteBufferInputStream(buffer)) {
+      byte[] copyBuf = new byte[4];
+      assertEquals(2, stream.read(copyBuf, 0, 2));
+      assertArrayEquals(new byte[] {0xC, 0xA, 0x0, 0x0}, copyBuf);
+
+      assertEquals(2, stream.read(copyBuf, 2, 2));
+      assertArrayEquals(new byte[] {0xC, 0xA, 0xF, 0xE}, copyBuf);
+
+      assertEquals(4, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0xB, 0xA, 0xB, 0xE}, copyBuf);
+
+      assertEquals(1, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0x9, 0xA, 0xB, 0xE}, copyBuf);
+
+      assertEquals(-1, stream.read(copyBuf, 0, 4));
+      assertArrayEquals(new byte[] {0x9, 0xA, 0xB, 0xE}, copyBuf);
+    }
   }
 }

@@ -37,6 +37,7 @@ import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.async.AsyncModule.AsyncExecutor;
@@ -45,7 +46,6 @@ import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.events.PubsubEvent.DriverDisconnected;
 import org.apache.aurora.scheduler.events.PubsubEvent.EventSubscriber;
 import org.apache.aurora.scheduler.mesos.Driver;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.SlaveID;
@@ -312,7 +312,7 @@ public interface OfferManager extends EventSubscriber {
         return removed != null;
       }
 
-      synchronized void updateHostAttributes(IHostAttributes attributes) {
+      synchronized void updateHostAttributes(HostAttributes attributes) {
         HostOffer offer = offersByHost.remove(attributes.getHost());
         if (offer != null) {
           // Remove and re-add a host's offer to re-sort based on its new hostStatus

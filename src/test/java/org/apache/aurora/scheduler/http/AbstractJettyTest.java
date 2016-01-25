@@ -60,7 +60,6 @@ import org.apache.aurora.scheduler.scheduling.TaskScheduler;
 import org.apache.aurora.scheduler.state.LockManager;
 import org.apache.aurora.scheduler.stats.StatsModule;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.easymock.Capture;
@@ -114,9 +113,10 @@ public abstract class AbstractJettyTest extends EasyMockTest {
           protected void configure() {
             bind(StatsProvider.class).toInstance(new FakeStatsProvider());
             bind(Storage.class).toInstance(storage.storage);
-            bind(IServerInfo.class).toInstance(IServerInfo.build(new ServerInfo()
+            bind(ServerInfo.class).toInstance(ServerInfo.builder()
                 .setClusterName("unittest")
-                .setStatsUrlPrefix("none")));
+                .setStatsUrlPrefix("none")
+                .build());
             bind(TaskGroupsSettings.class).toInstance(
                 new TaskGroupsSettings(
                     Amount.of(1L, Time.MILLISECONDS),
@@ -142,7 +142,8 @@ public abstract class AbstractJettyTest extends EasyMockTest {
 
   protected void setLeadingScheduler(String host, int port) {
     schedulerWatcher.getValue().onChange(
-        ImmutableSet.of(new ServiceInstance().setServiceEndpoint(new Endpoint(host, port))));
+        ImmutableSet.of(
+            ServiceInstance.builder().setServiceEndpoint(Endpoint.create(host, port)).build()));
   }
 
   protected void unsetLeadingSchduler() {

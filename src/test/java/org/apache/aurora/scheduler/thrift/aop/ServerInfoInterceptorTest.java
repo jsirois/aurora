@@ -20,11 +20,11 @@ import com.google.inject.Injector;
 import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.GetJobsResult;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.Result;
 import org.apache.aurora.gen.ServerInfo;
-import org.apache.aurora.scheduler.storage.entities.IServerInfo;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,51 +37,52 @@ public class ServerInfoInterceptorTest extends EasyMockTest {
 
   private static final String ROLE = "bob";
 
-  private AnnotatedAuroraAdmin realThrift;
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync realThrift;
+  private AuroraAdmin.Sync decoratedThrift;
 
-  private static final IServerInfo SERVER_INFO = IServerInfo.build(
-      new ServerInfo()
-          .setClusterName("test")
-          .setStatsUrlPrefix("fake_url"));
+  private static final ServerInfo SERVER_INFO = ServerInfo.builder()
+      .setClusterName("test")
+      .setStatsUrlPrefix("fake_url")
+      .build();
 
   private ServerInfoInterceptor interceptor;
 
   @Before
   public void setUp() {
     interceptor = new ServerInfoInterceptor();
-    realThrift = createMock(AnnotatedAuroraAdmin.class);
+    realThrift = createMock(AuroraAdmin.Sync.class);
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override
       protected void configure() {
         MockDecoratedThrift.bindForwardedMock(binder(), realThrift);
-        bind(IServerInfo.class).toInstance(SERVER_INFO);
+        bind(ServerInfo.class).toInstance(SERVER_INFO);
         AopModule.bindThriftDecorator(
             binder(),
             Matchers.annotatedWith(DecoratedThrift.class),
             interceptor);
       }
     });
-    decoratedThrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    decoratedThrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test
   public void testServerInfoIsSet() throws Exception {
-    ServerInfo previousServerInfo = new ServerInfo().setClusterName("FAKECLUSTER");
+    ServerInfo previousServerInfo = ServerInfo.builder().setClusterName("FAKECLUSTER").build();
     Response response = okResponse(
-        Result.getJobsResult(new GetJobsResult().setConfigs(ImmutableSet.of())))
-        .setServerInfo(previousServerInfo);
+        Result.getJobsResult(GetJobsResult.create(ImmutableSet.of())))
+        .withServerInfo(previousServerInfo);
 
     expect(realThrift.getJobs(ROLE)).andReturn(response);
 
     control.replay();
 
-    assertEquals(SERVER_INFO.newBuilder(), decoratedThrift.getJobs(ROLE).getServerInfo());
+    assertEquals(SERVER_INFO, decoratedThrift.getJobs(ROLE).getServerInfo());
   }
 
   private static Response okResponse(Result result) {
-    return new Response()
+    return Response.builder()
         .setResponseCode(OK)
-        .setResult(result);
+        .setResult(result)
+        .build();
   }
 }

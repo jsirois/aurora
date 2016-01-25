@@ -36,13 +36,13 @@ import com.google.common.collect.Range;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.sla.SlaAlgorithm.AlgorithmType;
 import org.apache.aurora.scheduler.sla.SlaGroup.GroupType;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -102,8 +102,8 @@ class MetricCalculator implements Runnable {
     }
   }
 
-  private static final Predicate<ITaskConfig> IS_SERVICE =
-      ITaskConfig::isIsService;
+  private static final Predicate<TaskConfig> IS_SERVICE =
+      TaskConfig::isIsService;
 
   private final LoadingCache<String, Counter> metricCache;
   private final Storage storage;
@@ -177,15 +177,15 @@ class MetricCalculator implements Runnable {
   @Timed("sla_stats_computation")
   @Override
   public void run() {
-    FluentIterable<IScheduledTask> tasks =
+    FluentIterable<ScheduledTask> tasks =
         FluentIterable.from(Storage.Util.fetchTasks(storage, Query.unscoped()));
 
-    List<IScheduledTask> prodTasks = tasks.filter(Predicates.compose(
-        Predicates.and(ITaskConfig::isProduction, IS_SERVICE),
+    List<ScheduledTask> prodTasks = tasks.filter(Predicates.compose(
+        Predicates.and(TaskConfig::isProduction, IS_SERVICE),
         Tasks::getConfig)).toList();
 
-    List<IScheduledTask> nonProdTasks = tasks.filter(Predicates.compose(
-        Predicates.and(Predicates.not(ITaskConfig::isProduction), IS_SERVICE),
+    List<ScheduledTask> nonProdTasks = tasks.filter(Predicates.compose(
+        Predicates.and(Predicates.not(TaskConfig::isProduction), IS_SERVICE),
         Tasks::getConfig)).toList();
 
     long nowMs = clock.nowMillis();
@@ -196,14 +196,14 @@ class MetricCalculator implements Runnable {
   }
 
   private void runAlgorithms(
-      List<IScheduledTask> tasks,
+      List<ScheduledTask> tasks,
       Set<MetricCategory> categories,
       Range<Long> timeRange,
       String nameQualifier) {
 
     for (MetricCategory category : categories) {
       for (Entry<AlgorithmType, GroupType> slaMetric : category.getMetrics().entries()) {
-        for (Entry<String, Collection<IScheduledTask>> namedGroup
+        for (Entry<String, Collection<ScheduledTask>> namedGroup
             : slaMetric.getValue().getSlaGroup().createNamedGroups(tasks).asMap().entrySet()) {
 
           AlgorithmType algoType = slaMetric.getKey();

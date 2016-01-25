@@ -19,11 +19,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.JobUpdatePulseStatus;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
+import org.apache.aurora.gen.ScheduledTask;
 
 import static java.util.Objects.requireNonNull;
 
@@ -84,18 +84,18 @@ public interface JobUpdateController {
    *                              are invalid, or if there is already an in-progress update for the
    *                              job.
    */
-  void start(IJobUpdate update, AuditData auditData) throws UpdateStateException;
+  void start(JobUpdate update, AuditData auditData) throws UpdateStateException;
 
   /**
    * Pauses an in-progress update.
    * <p>
-   * A paused update may be resumed by invoking {@link #resume(IJobUpdateKey, AuditData)}.
+   * A paused update may be resumed by invoking {@link #resume(JobUpdateKey, AuditData)}.
    *
    * @param key Update to pause.
    * @param auditData Details about the origin of this state change.
    * @throws UpdateStateException If the job update is not in a state that may be paused.
    */
-  void pause(IJobUpdateKey key, AuditData auditData) throws UpdateStateException;
+  void pause(JobUpdateKey key, AuditData auditData) throws UpdateStateException;
 
   /**
    * Resumes a paused in-progress update.
@@ -108,7 +108,7 @@ public interface JobUpdateController {
    * @param auditData Details about the origin of this state change.
    * @throws UpdateStateException If the job update is not in a state that may be resumed.
    */
-  void resume(IJobUpdateKey key, AuditData auditData) throws UpdateStateException;
+  void resume(JobUpdateKey key, AuditData auditData) throws UpdateStateException;
 
   /**
    * Aborts an in-progress update.
@@ -120,7 +120,7 @@ public interface JobUpdateController {
    * @param auditData Details about the origin of this state change.
    * @throws UpdateStateException If there is no active update for the job.
    */
-  void abort(IJobUpdateKey key, AuditData auditData) throws UpdateStateException;
+  void abort(JobUpdateKey key, AuditData auditData) throws UpdateStateException;
 
   /**
    * Notifies the updater that the state of an instance has changed. A state change could also mean
@@ -128,18 +128,18 @@ public interface JobUpdateController {
    *
    * @param updatedTask The latest state for the task that changed.
    */
-  void instanceChangedState(IScheduledTask updatedTask);
+  void instanceChangedState(ScheduledTask updatedTask);
 
   /**
    * Notifies the updater that an instance was deleted.
    *
    * @param instance Identifier of the deleted instance.
    */
-  void instanceDeleted(IInstanceKey instance);
+  void instanceDeleted(InstanceKey instance);
 
   /**
    * Restores active updates that have been halted due to the scheduler restarting.
-   * This is distinct from {@link #resume(IJobUpdateKey, AuditData)} in that it does not change the
+   * This is distinct from {@link #resume(JobUpdateKey, AuditData)} in that it does not change the
    * state of updates, but resumes after a restart of the scheduler process.
    */
   void systemResume();
@@ -153,5 +153,5 @@ public interface JobUpdateController {
    * @return Job update pulse status.
    * @throws UpdateStateException If there is no update found or update is not coordinated.
    */
-  JobUpdatePulseStatus pulse(IJobUpdateKey key) throws UpdateStateException;
+  JobUpdatePulseStatus pulse(JobUpdateKey key) throws UpdateStateException;
 }

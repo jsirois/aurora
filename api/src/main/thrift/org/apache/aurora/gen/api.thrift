@@ -40,7 +40,7 @@ const string AURORA_EXECUTOR_NAME = 'AuroraExecutor'
 struct Identity {
   1: string role
   2: string user
-}
+} (mutablePeer="true")
 
 struct ResourceAggregate {
   /** Number of CPU cores allotted. */
@@ -49,13 +49,13 @@ struct ResourceAggregate {
   2: i64 ramMb
   /** Megabytes of disk space allotted. */
   3: i64 diskMb
-}
+} (mutablePeer="true")
 
 /** A single host attribute. */
 struct Attribute {
   1: string name
   2: set<string> values
-}
+} (mutablePeer="true")
 
 enum MaintenanceMode {
   NONE      = 1,
@@ -70,7 +70,7 @@ struct HostAttributes {
   2: set<Attribute>  attributes
   3: optional MaintenanceMode mode
   4: optional string slaveId
-}
+} (mutablePeer="true")
 
 /**
  * A constraint that specifies an explicit set of values, at least one of which must be present
@@ -80,7 +80,7 @@ struct ValueConstraint {
   /** If true, treat this as a 'not' - to avoid specific values. */
   1: bool negated
   2: set<string> values
-}
+} (mutablePeer="true")
 
 /**
  * A constraint the specifies the maximum number of active tasks on a host with a matching
@@ -88,20 +88,20 @@ struct ValueConstraint {
  */
 struct LimitConstraint {
   1: i32 limit
-}
+} (mutablePeer="true")
 
 /** Types of constraints that may be applied to a task. */
 union TaskConstraint {
   1: ValueConstraint value
   2: LimitConstraint limit
-}
+} (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbTaskConstraint")
 
 /** A constraint that defines whether a task may be scheduled on a host. */
 struct Constraint {
   /** Mesos slave attribute that the constraint is matched against. */
   1: string name
   2: TaskConstraint constraint
-}
+} (mutablePeer="true")
 
 struct Package {
   1: string role
@@ -113,7 +113,7 @@ struct Package {
 struct Metadata {
   1: string key
   2: string value
-}
+} (mutablePeer="true")
 
 /** A unique identifier for a Job. */
 struct JobKey {
@@ -123,7 +123,7 @@ struct JobKey {
   2: string environment
   /** Name, for example "labrat" */
   3: string name
-}
+} (mutablePeer="true")
 
 /** A unique lock key. */
 union LockKey {
@@ -165,7 +165,7 @@ struct ExecutorConfig {
   1: string name
   /** Executor configuration data. */
   2: string data
-}
+} (mutablePeer="true")
 
 /** The mode for a volume mount */
 enum Mode {
@@ -195,7 +195,7 @@ struct DockerParameter {
   1: string name
   /** the value to pass to a parameter (e.g. /src/webapp:/opt/webapp) */
   2: string value
-}
+} (mutablePeer="true")
 
 /** Describes a docker container */
 struct DockerContainer {
@@ -203,13 +203,13 @@ struct DockerContainer {
   1: string image
   /** The arbitrary parameters to pass to container */
   2: optional list<DockerParameter> parameters
-}
+} (mutablePeer="true")
 
 /** Describes a container to be used in a task */
 union Container {
   1: MesosContainer mesos
   2: DockerContainer docker
-}
+} (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbContainer")
 
 /** Description of the tasks contained within a job. */
 struct TaskConfig {
@@ -231,7 +231,7 @@ struct TaskConfig {
  11: i32 priority
  13: i32 maxTaskFailures
  /** Whether this is a production task, which can preempt. */
- 18: optional bool production
+ 18: optional bool production = 1  // Explicitly default to false since we model this as not null.
  /** Task tier type. */
  30: optional string tier
 
@@ -250,11 +250,9 @@ struct TaskConfig {
  /** Used to display additional details in the UI. */
  27: optional set<Metadata> metadata
 
- // This field is deliberately placed at the end to work around a bug in the immutable wrapper
- // code generator.  See AURORA-1185 for details.
  /** the container the task should use to execute */
  29: Container container = { "mesos": {} }
-}
+} (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbTaskConfig")
 
 /** Defines the policy for launching a new cron job when one is already running. */
 enum CronCollisionPolicy {
@@ -294,7 +292,7 @@ struct JobConfiguration {
    * [0, instances).
    */
   8: i32 instanceCount
-}
+} (mutablePeer="true")
 
 struct JobStats {
   /** Number of tasks in active state for this job. */
@@ -325,7 +323,7 @@ struct AddInstancesConfig {
 struct Range {
   1: i32 first
   2: i32 last
-}
+} (mutablePeer="true")
 
 struct ConfigGroup {
   1: TaskConfig config
@@ -446,7 +444,7 @@ struct TaskEvent {
   3: optional string message
   /** Hostname of the scheduler machine that performed the event. */
   4: optional string scheduler
-}
+} (mutablePeer="true")
 
 /** A task assignment that is provided to an executor. */
 struct AssignedTask {
@@ -475,7 +473,7 @@ struct AssignedTask {
    * job, and will be in the range [0, N-1] (inclusive) for a job that has N instances.
    */
   6: i32 instanceId
-}
+} (mutablePeer="org.apache.aurora.scheduler.storage.db.views.DbAssignedTask")
 
 /** A task that has been scheduled. */
 struct ScheduledTask {
@@ -495,7 +493,7 @@ struct ScheduledTask {
    * a copy of the task is created and ancestor ID of the previous task's task ID.
    */
   5: string ancestorId
-}
+} (mutablePeer="true")
 
 struct ScheduleStatusResult {
   1: list<ScheduledTask> tasks
@@ -646,7 +644,7 @@ struct JobUpdateKey {
 
   /** Update ID. */
   2: string id
-}
+} (mutablePeer="true")
 
 /** Job update thresholds and limits. */
 struct JobUpdateSettings {
@@ -661,7 +659,7 @@ struct JobUpdateSettings {
 
   /**
    * Max time to wait until an instance reaches RUNNING state.
-   * Note: Deprecated in 0.11.0.
+   * Note: Deprecated in 0.8.0.
    */
   4: i32 maxWaitToInstanceRunningMs
 
@@ -687,7 +685,7 @@ struct JobUpdateSettings {
   * unblocked by a fresh pulseJobUpdate call.
   */
   9: optional i32 blockIfNoPulsesAfterMs
-}
+} (mutablePeer="true")
 
 /** Event marking a state transition in job update lifecycle. */
 struct JobUpdateEvent {
@@ -705,7 +703,7 @@ struct JobUpdateEvent {
    * changed.
    */
   4: optional string message
-}
+} (mutablePeer="true")
 
 /** Event marking a state transition in job instance update lifecycle. */
 struct JobInstanceUpdateEvent {
@@ -717,7 +715,7 @@ struct JobInstanceUpdateEvent {
 
   /** Job update action taken on the instance. */
   3: JobUpdateAction action
-}
+} (mutablePeer="true")
 
 /** Maps instance IDs to TaskConfigs it. */
 struct InstanceTaskConfig {
@@ -726,7 +724,7 @@ struct InstanceTaskConfig {
 
   /** Instances associated with the TaskConfig. */
   2: set<Range> instances
-}
+} (mutablePeer="true")
 
 /** Current job update state including status and created/modified timestamps. */
 struct JobUpdateState {
@@ -738,7 +736,7 @@ struct JobUpdateState {
 
   /** Last modified timestamp in milliseconds. */
   3: i64 lastModifiedTimestampMs
-}
+} (mutablePeer="true")
 
 /** Summary of the job update including job key, user and current state. */
 struct JobUpdateSummary {
@@ -750,7 +748,7 @@ struct JobUpdateSummary {
 
   /** Current job update state. */
   4: JobUpdateState state
-}
+} (mutablePeer="true")
 
 /** Update configuration and setting details. */
 struct JobUpdateInstructions {
@@ -762,7 +760,7 @@ struct JobUpdateInstructions {
 
   /** Update specific settings. */
   3: JobUpdateSettings settings
-}
+} (mutablePeer="true")
 
 /** Full definition of the job update. */
 struct JobUpdate {
@@ -771,7 +769,7 @@ struct JobUpdate {
 
   /** Update configuration. */
   2: JobUpdateInstructions instructions
-}
+} (mutablePeer="true")
 
 struct JobUpdateDetails {
   /** Update definition. */
@@ -782,7 +780,7 @@ struct JobUpdateDetails {
 
   /** History for the individual instances updated. */
   3: list<JobInstanceUpdateEvent> instanceEvents
-}
+} (mutablePeer="true")
 
 /** A request to update the following instances of an existing job. Used by startUpdate. */
 struct JobUpdateRequest {
@@ -1005,91 +1003,113 @@ service AuroraSchedulerManager extends ReadOnlyScheduler {
    * Creates a new job.  The request will be denied if a job with the provided name already exists
    * in the cluster.
    */
-  Response createJob(1: JobConfiguration description, 3: Lock lock)
+  Response createJob(
+      1: JobConfiguration description (authorizing="true"),
+      3: Lock lock);
 
   /**
    * Enters a job into the cron schedule, without actually starting the job.
    * If the job is already present in the schedule, this will update the schedule entry with the new
    * configuration.
    */
-  Response scheduleCronJob(1: JobConfiguration description, 3: Lock lock)
+  Response scheduleCronJob(
+      1: JobConfiguration description (authorizing="true"),
+      3: Lock lock);
 
   /**
    * Removes a job from the cron schedule. The request will be denied if the job was not previously
    * scheduled with scheduleCronJob.
    */
-  Response descheduleCronJob(4: JobKey job, 3: Lock lock)
+  Response descheduleCronJob(
+      4: JobKey job (authorizing="true"),
+      3: Lock lock);
 
   /**
    * Starts a cron job immediately.  The request will be denied if the specified job does not
    * exist for the role account, or the job is not a cron job.
    */
-  Response startCronJob(4: JobKey job)
+  Response startCronJob(
+      4: JobKey job (authorizing="true"));
 
   /** Restarts a batch of shards. */
-  Response restartShards(5: JobKey job, 3: set<i32> shardIds, 6: Lock lock)
+  Response restartShards(
+      5: JobKey job (authorizing="true"),
+      3: set<i32> shardIds,
+      6: Lock lock);
 
   /** Initiates a kill on tasks. TODO(maxim): remove TaskQuery in AURORA-1591. */
-  Response killTasks(1: TaskQuery query, 3: Lock lock, 4: JobKey job, 5: set<i32> instances)
+  Response killTasks(
+      1: TaskQuery query (authorizing="true"),
+      3: Lock lock,
+      4: JobKey job (authorizing="true"),
+      5: set<i32> instances)
 
   /**
    * Adds new instances specified by the AddInstancesConfig. A job represented by the JobKey must be
    * protected by Lock.
    */
-  Response addInstances(1: AddInstancesConfig config, 2: Lock lock)
+  Response addInstances(
+      1: AddInstancesConfig config (authorizing="true"),
+      2: Lock lock);
 
   /**
    * Creates and saves a new Lock instance guarding against multiple mutating operations within the
    * context defined by LockKey.
    */
-  Response acquireLock(1: LockKey lockKey)
+  Response acquireLock(
+      1: LockKey lockKey (authorizing="true"));
 
   /** Releases the lock acquired earlier in acquireLock call. */
-  Response releaseLock(1: Lock lock, 2: LockValidation validation)
+  Response releaseLock(
+      1: Lock lock (authorizing="true"),
+      2: LockValidation validation);
 
   // TODO(maxim): reevaluate if it's still needed when client updater is gone (AURORA-785).
   /**
    * Replaces the template (configuration) for the existing cron job.
    * The cron job template (configuration) must exist for the call to succeed.
    */
-  Response replaceCronTemplate(1: JobConfiguration config, 2: Lock lock)
+  Response replaceCronTemplate(
+      1: JobConfiguration config (authorizing="true"),
+      2: Lock lock);
 
   /** Starts update of the existing service job. */
   Response startJobUpdate(
       /** A description of how to change the job. */
-      1: JobUpdateRequest request,
+      1: JobUpdateRequest request (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /**
    * Pauses the specified job update. Can be resumed by resumeUpdate call.
    */
   Response pauseJobUpdate(
       /** The update to pause. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /** Resumes progress of a previously paused job update. */
   Response resumeJobUpdate(
       /** The update to resume. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /** Permanently aborts the job update. Does not remove the update history. */
   Response abortJobUpdate(
       /** The update to abort. */
-      1: JobUpdateKey key,
+      1: JobUpdateKey key (authorizing="true"),
       /** A user-specified message to include with the induced job update state change. */
-      3: string message)
+      3: string message);
 
   /**
    * Allows progress of the job update in case blockIfNoPulsesAfterMs is specified in
    * JobUpdateSettings. Unblocks progress if the update was previously blocked.
    * Responds with ResponseCode.INVALID_REQUEST in case an unknown update key is specified.
    */
-  Response pulseJobUpdate(1: JobUpdateKey key)
+  Response pulseJobUpdate(
+      1: JobUpdateKey key (authorizing="true"));
 }
 
 struct InstanceConfigRewrite {

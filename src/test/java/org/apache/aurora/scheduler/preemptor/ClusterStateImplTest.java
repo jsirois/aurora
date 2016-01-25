@@ -22,8 +22,6 @@ import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.events.PubsubEvent.TaskStateChange;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,7 +51,7 @@ public class ClusterStateImplTest {
 
   @Test
   public void testTaskLifecycle() {
-    IAssignedTask a = makeTask("a", "s1");
+    AssignedTask a = makeTask("a", "s1");
 
     assertVictims();
     changeState(a, THROTTLED);
@@ -74,8 +72,8 @@ public class ClusterStateImplTest {
   public void testTaskChangesSlaves() {
     // We do not intend to handle the case of an external failure leading to the same task ID
     // on a different slave.
-    IAssignedTask a = makeTask("a", "s1");
-    IAssignedTask a1 = makeTask("a", "s2");
+    AssignedTask a = makeTask("a", "s1");
+    AssignedTask a1 = makeTask("a", "s2");
     changeState(a, RUNNING);
     changeState(a1, RUNNING);
     assertVictims(a, a1);
@@ -83,12 +81,12 @@ public class ClusterStateImplTest {
 
   @Test
   public void testMultipleTasks() {
-    IAssignedTask a = makeTask("a", "s1");
-    IAssignedTask b = makeTask("b", "s1");
-    IAssignedTask c = makeTask("c", "s2");
-    IAssignedTask d = makeTask("d", "s3");
-    IAssignedTask e = makeTask("e", "s3");
-    IAssignedTask f = makeTask("f", "s1");
+    AssignedTask a = makeTask("a", "s1");
+    AssignedTask b = makeTask("b", "s1");
+    AssignedTask c = makeTask("c", "s2");
+    AssignedTask d = makeTask("d", "s3");
+    AssignedTask e = makeTask("e", "s3");
+    AssignedTask f = makeTask("f", "s1");
     changeState(a, RUNNING);
     assertVictims(a);
     changeState(b, RUNNING);
@@ -108,26 +106,28 @@ public class ClusterStateImplTest {
     assertVictims(b, d, f);
   }
 
-  private void assertVictims(IAssignedTask... tasks) {
+  private void assertVictims(AssignedTask... tasks) {
     ImmutableMultimap.Builder<String, PreemptionVictim> victims = ImmutableSetMultimap.builder();
-    for (IAssignedTask task : tasks) {
+    for (AssignedTask task : tasks) {
       victims.put(task.getSlaveId(), PreemptionVictim.fromTask(task));
     }
     assertEquals(victims.build(), state.getSlavesToActiveTasks());
   }
 
-  private IAssignedTask makeTask(String taskId, String slaveId) {
-    return IAssignedTask.build(new AssignedTask()
+  private AssignedTask makeTask(String taskId, String slaveId) {
+    return AssignedTask.builder()
         .setTaskId(taskId)
         .setSlaveId(slaveId)
         .setSlaveHost(slaveId + "host")
-        .setTask(new TaskConfig().setJob(new JobKey("role", "env", "job"))));
+        .setTask(TaskConfig.builder().setJob(JobKey.create("role", "env", "job")).build())
+        .build();
   }
 
-  private void changeState(IAssignedTask assignedTask, ScheduleStatus status) {
-    IScheduledTask task = IScheduledTask.build(new ScheduledTask()
+  private void changeState(AssignedTask assignedTask, ScheduleStatus status) {
+    ScheduledTask task = ScheduledTask.builder()
         .setStatus(status)
-        .setAssignedTask(assignedTask.newBuilder()));
+        .setAssignedTask(assignedTask)
+        .build();
     state.taskChangedState(TaskStateChange.transition(task, ScheduleStatus.INIT));
   }
 }

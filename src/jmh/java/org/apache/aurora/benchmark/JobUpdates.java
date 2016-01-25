@@ -35,8 +35,6 @@ import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
 
 /**
  * Job update factory.
@@ -58,51 +56,61 @@ final class JobUpdates {
       return this;
     }
 
-    Set<IJobUpdateDetails> build(int count) {
-      ImmutableSet.Builder<IJobUpdateDetails> result = ImmutableSet.builder();
+    Set<JobUpdateDetails> build(int count) {
+      ImmutableSet.Builder<JobUpdateDetails> result = ImmutableSet.builder();
       for (int i = 0; i < count; i++) {
-        JobKey job = new JobKey("role", "env", UUID.randomUUID().toString());
-        JobUpdateKey key = new JobUpdateKey().setJob(job).setId(UUID.randomUUID().toString());
+        JobKey job = JobKey.create("role", "env", UUID.randomUUID().toString());
+        JobUpdateKey key = JobUpdateKey.create(job, UUID.randomUUID().toString());
 
-        TaskConfig task = TaskTestUtil.makeConfig(IJobKey.build(job)).newBuilder();
-        task.getExecutorConfig().setData(string(10000));
+        TaskConfig task =
+            TaskTestUtil.makeConfig(job).withExecutorConfig(ec -> ec.withData(string(10000)));
 
-        JobUpdate update = new JobUpdate()
-            .setSummary(new JobUpdateSummary()
+        JobUpdate update = JobUpdate.builder()
+            .setSummary(JobUpdateSummary.builder()
                 .setKey(key)
-                .setUser(USER))
-            .setInstructions(new JobUpdateInstructions()
-                .setSettings(new JobUpdateSettings()
+                .setUser(USER)
+                .build())
+            .setInstructions(JobUpdateInstructions.builder()
+                .setSettings(JobUpdateSettings.builder()
                     .setUpdateGroupSize(100)
                     .setMaxFailedInstances(1)
                     .setMaxPerInstanceFailures(1)
                     .setMaxWaitToInstanceRunningMs(1)
                     .setMinWaitInInstanceRunningMs(1)
                     .setRollbackOnFailure(true)
-                    .setWaitForBatchCompletion(false))
-                .setInitialState(ImmutableSet.of(new InstanceTaskConfig()
+                    .setWaitForBatchCompletion(false)
+                    .build())
+                .setInitialState(InstanceTaskConfig.builder()
                     .setTask(task)
-                    .setInstances(ImmutableSet.of(new Range(0, 10)))))
-                .setDesiredState(new InstanceTaskConfig()
+                    .setInstances(Range.create(0, 10))
+                    .build())
+                .setDesiredState(InstanceTaskConfig.builder()
                     .setTask(task)
-                    .setInstances(ImmutableSet.of(new Range(0, numInstanceEvents)))));
+                    .setInstances(Range.create(0, numInstanceEvents))
+                    .build())
+                .build())
+            .build();
 
         ImmutableList.Builder<JobUpdateEvent> events = ImmutableList.builder();
         for (int j = 0; j < numEvents; j++) {
-          events.add(new JobUpdateEvent(JobUpdateStatus.ROLLING_FORWARD, j)
+          events.add(JobUpdateEvent.builder()
+              .setStatus(JobUpdateStatus.ROLLING_FORWARD)
+              .setTimestampMs(j)
               .setUser(USER)
-              .setMessage("message"));
+              .setMessage("message")
+              .build());
         }
 
         ImmutableList.Builder<JobInstanceUpdateEvent> instances = ImmutableList.builder();
         for (int k = 0; k < numInstanceEvents; k++) {
-          instances.add(new JobInstanceUpdateEvent(k, 0L, JobUpdateAction.INSTANCE_UPDATING));
+          instances.add(JobInstanceUpdateEvent.create(k, 0L, JobUpdateAction.INSTANCE_UPDATING));
         }
 
-        result.add(IJobUpdateDetails.build(new JobUpdateDetails()
+        result.add(JobUpdateDetails.builder()
             .setUpdate(update)
             .setUpdateEvents(events.build())
-            .setInstanceEvents(instances.build())));
+            .setInstanceEvents(instances.build())
+            .build());
       }
 
       return result.build();

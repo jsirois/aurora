@@ -26,6 +26,7 @@ import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -38,8 +39,6 @@ import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
 import org.junit.Before;
 import org.junit.Test;
 import org.quartz.JobExecutionContext;
@@ -56,18 +55,19 @@ import static org.junit.Assert.assertTrue;
 public class CronIT extends EasyMockTest {
   public static final CrontabEntry CRONTAB_ENTRY = CrontabEntry.parse("* * * * *");
 
-  private static final IJobKey JOB_KEY = JobKeys.from("roll", "b", "c");
-  private static final Identity IDENTITY = new Identity()
+  private static final JobKey JOB_KEY = JobKeys.from("roll", "b", "c");
+  private static final Identity IDENTITY = Identity.builder()
       .setRole(JOB_KEY.getRole())
-      .setUser("user");
+      .setUser("user")
+      .build();
 
-  private static final IJobConfiguration CRON_JOB = IJobConfiguration.build(
-      new JobConfiguration()
-          .setCronSchedule(CRONTAB_ENTRY.toString())
-          .setKey(JOB_KEY.newBuilder())
-          .setInstanceCount(2)
-          .setOwner(IDENTITY)
-          .setTaskConfig(makeTaskConfig()));
+  private static final JobConfiguration CRON_JOB = JobConfiguration.builder()
+      .setCronSchedule(CRONTAB_ENTRY.toString())
+      .setKey(JOB_KEY)
+      .setInstanceCount(2)
+      .setOwner(IDENTITY)
+      .setTaskConfig(makeTaskConfig())
+      .build();
 
   private Injector injector;
   private StateManager stateManager;
@@ -100,12 +100,12 @@ public class CronIT extends EasyMockTest {
   }
 
   private static TaskConfig makeTaskConfig() {
-    TaskConfig config = TaskTestUtil.makeConfig(JOB_KEY).newBuilder();
+    TaskConfig.Builder config = TaskTestUtil.makeConfig(JOB_KEY).toBuilder();
     config.setIsService(false);
     // Bypassing a command-line argument in ConfigurationManager that by default disallows the
     // docker container type.
-    config.setContainer(Container.mesos(new MesosContainer()));
-    return config;
+    config.setContainer(Container.mesos(MesosContainer.create()));
+    return config.build();
   }
 
   private Service boot() {

@@ -35,10 +35,6 @@ import org.apache.aurora.scheduler.state.StateChangeResult;
 import org.apache.aurora.scheduler.state.StateManager;
 import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
 import org.apache.mesos.Protos;
 import org.junit.Before;
@@ -55,15 +51,15 @@ import static org.junit.Assert.assertEquals;
 
 public class PreemptorImplTest extends EasyMockTest {
   private static final String SLAVE_ID = "slave_id";
-  private static final IScheduledTask TASK = IScheduledTask.build(makeTask());
+  private static final ScheduledTask TASK = makeTask();
   private static final PreemptionProposal PROPOSAL = createPreemptionProposal(TASK);
   private static final TaskGroupKey GROUP_KEY =
-      TaskGroupKey.from(ITaskConfig.build(makeTask().getAssignedTask().getTask()));
+      TaskGroupKey.from(makeTask().getAssignedTask().getTask());
 
   private static final Set<PreemptionProposal> NO_SLOTS = ImmutableSet.of();
   private static final Optional<String> EMPTY_RESULT = Optional.absent();
   private static final HostOffer OFFER =
-      new HostOffer(Protos.Offer.getDefaultInstance(), IHostAttributes.build(new HostAttributes()));
+      new HostOffer(Protos.Offer.getDefaultInstance(), HostAttributes.builder().build());
 
   private StateManager stateManager;
   private FakeStatsProvider statsProvider;
@@ -148,7 +144,7 @@ public class PreemptorImplTest extends EasyMockTest {
         storeProvider)).andReturn(victims);
   }
 
-  private void expectPreempted(IScheduledTask preempted) throws Exception {
+  private void expectPreempted(ScheduledTask preempted) throws Exception {
     expect(stateManager.changeState(
         anyObject(Storage.MutableStoreProvider.class),
         eq(Tasks.id(preempted)),
@@ -158,19 +154,21 @@ public class PreemptorImplTest extends EasyMockTest {
         .andReturn(StateChangeResult.SUCCESS);
   }
 
-  private static PreemptionProposal createPreemptionProposal(IScheduledTask task) {
-    IAssignedTask assigned = task.getAssignedTask();
+  private static PreemptionProposal createPreemptionProposal(ScheduledTask task) {
+    AssignedTask assigned = task.getAssignedTask();
     return new PreemptionProposal(ImmutableSet.of(PreemptionVictim.fromTask(assigned)), SLAVE_ID);
   }
 
   private static ScheduledTask makeTask() {
-    ScheduledTask task = new ScheduledTask()
-        .setAssignedTask(new AssignedTask()
-            .setTask(new TaskConfig()
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder()
+            .setTask(TaskConfig.builder()
                 .setPriority(1)
                 .setProduction(true)
-                .setJob(new JobKey("role", "env", "name"))));
-    task.addToTaskEvents(new TaskEvent(0, PENDING));
-    return task;
+                .setJob(JobKey.create("role", "env", "name"))
+                .build())
+            .build())
+        .setTaskEvents(TaskEvent.create(0, PENDING))
+        .build();
   }
 }

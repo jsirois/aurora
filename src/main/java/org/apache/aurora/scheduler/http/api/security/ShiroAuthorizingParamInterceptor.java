@@ -55,8 +55,9 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.AbstractFieldGe
 import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGetter;
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
 import org.apache.aurora.scheduler.thrift.Responses;
+import org.apache.aurora.thrift.ImmutableThriftAnnotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
 
@@ -66,15 +67,17 @@ import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Interceptor that extracts and validates job keys from parameters annotated with
- * {@link org.apache.aurora.scheduler.http.api.security.AuthorizingParam} and performs permission
- * checks scoped to it.
+ * {@literal @Annotation(@Parameter(name = "authorizing", value = "authorizing"))} and performs
+ * permission checks scoped to it.
  *
  * <p>
  * For example, if intercepting a class that implements {@code A}:
  *
  * <pre>
  * public interface A {
- *   Response setInstances(@AuthorizingParam JobKey jobKey, int instances);
+ *   Response setInstances(
+ *       @Annotation(@Parameter(name = "authorizing", value = "true")) JobKey jobKey,
+ *       int instances);
  * }
  * </pre>
  *
@@ -89,13 +92,12 @@ import static com.google.common.base.Preconditions.checkState;
 class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   @VisibleForTesting
   static final FieldGetter<TaskQuery, JobKey> QUERY_TO_JOB_KEY =
-      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class, JobKey.class) {
+      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class) {
         @Override
         public Optional<JobKey> apply(TaskQuery input) {
-          Optional<Set<IJobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));
+          Optional<Set<JobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));
           if (targetJobs.isPresent() && targetJobs.get().size() == 1) {
-            return Optional.of(Iterables.getOnlyElement(targetJobs.get()))
-                .transform(IJobKey::newBuilder);
+            return Optional.of(Iterables.getOnlyElement(targetJobs.get()));
           } else {
             return Optional.absent();
           }
@@ -115,28 +117,28 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   private static final FieldGetter<JobUpdateRequest, TaskConfig> UPDATE_REQUEST_GETTER =
       new ThriftFieldGetter<>(
           JobUpdateRequest.class,
-          JobUpdateRequest._Fields.TASK_CONFIG,
+          JobUpdateRequest.Fields.TASK_CONFIG,
           TaskConfig.class);
 
   private static final FieldGetter<TaskConfig, JobKey> TASK_CONFIG_GETTER =
-      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobConfiguration, JobKey> JOB_CONFIGURATION_GETTER =
-      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration._Fields.KEY, JobKey.class);
+      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration.Fields.KEY, JobKey.class);
 
   private static final FieldGetter<Lock, LockKey> LOCK_GETTER =
-      new ThriftFieldGetter<>(Lock.class, Lock._Fields.KEY, LockKey.class);
+      new ThriftFieldGetter<>(Lock.class, Lock.Fields.KEY, LockKey.class);
 
   private static final FieldGetter<LockKey, JobKey> LOCK_KEY_GETTER =
-      new ThriftFieldGetter<>(LockKey.class, LockKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(LockKey.class, LockKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobUpdateKey, JobKey> JOB_UPDATE_KEY_GETTER =
-      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<AddInstancesConfig, JobKey> ADD_INSTANCES_CONFIG_GETTER =
       new ThriftFieldGetter<>(
           AddInstancesConfig.class,
-          AddInstancesConfig._Fields.KEY,
+          AddInstancesConfig.Fields.KEY,
           JobKey.class);
 
   @SuppressWarnings("unchecked")
@@ -154,10 +156,11 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
   private static final Map<Class<?>, Function<?, Optional<JobKey>>> FIELD_GETTERS_BY_TYPE =
       ImmutableMap.<Class<?>, Function<?, Optional<JobKey>>>builder()
-          .putAll(Maps.uniqueIndex(
-              FIELD_GETTERS,
-              (Function<FieldGetter<?, JobKey>, Class<?>>) FieldGetter::getStructClass))
+          .putAll(Maps.uniqueIndex(FIELD_GETTERS, FieldGetter::getStructClass))
           .build();
+
+  private static final ThriftAnnotation AUTHORIZING_PARAM =
+      ImmutableThriftAnnotation.of("authorizing", "true");
 
   @VisibleForTesting
   static final String SHIRO_AUTHORIZATION_FAILURES = "shiro_authorization_failures";
@@ -166,10 +169,8 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   static final String SHIRO_BAD_REQUESTS = "shiro_bad_requests";
 
   /**
-   * Return each method in the inheritance hierarchy of method in the order described by
-   * {@link AuthorizingParam}.
-   *
-   * @see org.apache.aurora.scheduler.http.api.security.AuthorizingParam
+   * Return each method in the inheritance hierarchy of the given method in breadth-first order,
+   * superclass before interfaces.
    */
   private static Iterable<Method> getCandidateMethods(final Method method) {
     return () -> new AbstractSequentialIterator<Method>(method) {
@@ -207,7 +208,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       ImmutableList.Builder<JobKeyGetter> jobKeyGetters = ImmutableList.builder();
       for (int i = 0; i < parameters.length; i++) {
         Parameter param = parameters[i];
-        if (param.isAnnotationPresent(AuthorizingParam.class)) {
+        if (AUTHORIZING_PARAM.equals(param.getAnnotation(ThriftAnnotation.class))) {
           Class<?> parameterType = param.getType();
           @SuppressWarnings("unchecked")
           Optional<Function<Object, Optional<JobKey>>> jobKeyGetter =
@@ -233,7 +234,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
     throw new UnsupportedOperationException(
         "No parameter annotated with "
-            + AuthorizingParam.class.getName()
+            + AUTHORIZING_PARAM
             + " found on method "
             + method.getName()
             + " of "
@@ -265,7 +266,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
               if (Iterables.size(nonNullArgGetters) > 1) {
                 throw new IllegalStateException(
                     "Too many non-null arguments annotated with "
-                        + AuthorizingParam.class.getName()
+                        + AUTHORIZING_PARAM
                         + " passed to "
                         + method.getName()
                         + " of "
@@ -311,7 +312,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   }
 
   @VisibleForTesting
-  Permission makeTargetPermission(String methodName, IJobKey jobKey) {
+  Permission makeTargetPermission(String methodName, JobKey jobKey) {
     return Permissions.createJobScopedPermission(methodName, jobKey);
   }
 
@@ -327,27 +328,22 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       return invocation.proceed();
     }
 
-    Optional<IJobKey> jobKey = authorizingParamGetters
+    Optional<JobKey> jobKey = authorizingParamGetters
         .getUnchecked(invocation.getMethod())
-        .apply(invocation.getArguments())
-        .transform(IJobKey::build);
+        .apply(invocation.getArguments());
     if (jobKey.isPresent() && JobKeys.isValid(jobKey.get())) {
       Permission targetPermission = makeTargetPermission(method.getName(), jobKey.get());
       if (subject.isPermitted(targetPermission)) {
         return invocation.proceed();
       } else {
         authorizationFailures.incrementAndGet();
-        return Responses.addMessage(
-            Responses.empty(),
+        return Responses.create(
             ResponseCode.AUTH_FAILED,
             "Subject " + subject + " is not permitted to " + targetPermission + ".");
       }
     } else {
       badRequests.incrementAndGet();
-      return Responses.addMessage(
-          Responses.empty(),
-          ResponseCode.INVALID_REQUEST,
-          "Missing or invalid job key from request.");
+      return Responses.invalidRequest("Missing or invalid job key from request.");
     }
   }
 

@@ -16,21 +16,20 @@ package org.apache.aurora.scheduler.updater;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Range;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateStatus;
+import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.state.StateManager;
-import org.apache.aurora.scheduler.storage.entities.IInstanceKey;
-import org.apache.aurora.scheduler.storage.entities.IInstanceTaskConfig;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateInstructions;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,25 +39,25 @@ import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
 interface InstanceActionHandler {
 
   Optional<Amount<Long, Time>> getReevaluationDelay(
-      IInstanceKey instance,
-      IJobUpdateInstructions instructions,
+      InstanceKey instance,
+      JobUpdateInstructions instructions,
       MutableStoreProvider storeProvider,
       StateManager stateManager,
       JobUpdateStatus status);
 
   Logger LOG = LoggerFactory.getLogger(InstanceActionHandler.class);
 
-  static Optional<IScheduledTask> getExistingTask(
+  static Optional<ScheduledTask> getExistingTask(
       MutableStoreProvider storeProvider,
-      IInstanceKey instance) {
+      InstanceKey instance) {
 
     return Optional.fromNullable(Iterables.getOnlyElement(
         storeProvider.getTaskStore().fetchTasks(Query.instanceScoped(instance).active()), null));
   }
 
   class AddTask implements InstanceActionHandler {
-    private static ITaskConfig getTargetConfig(
-        IJobUpdateInstructions instructions,
+    private static TaskConfig getTargetConfig(
+        JobUpdateInstructions instructions,
         boolean rollingForward,
         int instanceId) {
 
@@ -66,9 +65,10 @@ interface InstanceActionHandler {
         // Desired state is assumed to be non-null when AddTask is used.
         return instructions.getDesiredState().getTask();
       } else {
-        for (IInstanceTaskConfig config : instructions.getInitialState()) {
-          for (IRange range : config.getInstances()) {
-            if (Range.closed(range.getFirst(), range.getLast()).contains(instanceId)) {
+        for (InstanceTaskConfig config : instructions.getInitialState()) {
+          for (Range range : config.getInstances()) {
+            if (com.google.common.collect.Range.closed(range.getFirst(), range.getLast())
+                .contains(instanceId)) {
               return config.getTask();
             }
           }
@@ -80,20 +80,20 @@ interface InstanceActionHandler {
 
     @Override
     public Optional<Amount<Long, Time>> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {
 
-      Optional<IScheduledTask> task = getExistingTask(storeProvider, instance);
+      Optional<ScheduledTask> task = getExistingTask(storeProvider, instance);
       if (task.isPresent()) {
         // Due to async event processing it's possible to have a race between task event
         // and instance addition. This is a perfectly valid case.
         LOG.info("Instance " + instance + " already exists while " + status);
       } else {
         LOG.info("Adding instance " + instance + " while " + status);
-        ITaskConfig replacement = getTargetConfig(
+        TaskConfig replacement = getTargetConfig(
             instructions,
             status == ROLLING_FORWARD,
             instance.getInstanceId());
@@ -110,13 +110,13 @@ interface InstanceActionHandler {
   class KillTask implements InstanceActionHandler {
     @Override
     public Optional<Amount<Long, Time>> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {
 
-      Optional<IScheduledTask> task = getExistingTask(storeProvider, instance);
+      Optional<ScheduledTask> task = getExistingTask(storeProvider, instance);
       if (task.isPresent()) {
         LOG.info("Killing " + instance + " while " + status);
         stateManager.changeState(
@@ -138,8 +138,8 @@ interface InstanceActionHandler {
   class WatchRunningTask implements InstanceActionHandler {
     @Override
     public Optional<Amount<Long, Time>> getReevaluationDelay(
-        IInstanceKey instance,
-        IJobUpdateInstructions instructions,
+        InstanceKey instance,
+        JobUpdateInstructions instructions,
         MutableStoreProvider storeProvider,
         StateManager stateManager,
         JobUpdateStatus status) {

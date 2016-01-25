@@ -13,16 +13,17 @@
  */
 package org.apache.aurora.scheduler.storage.log;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
-import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
-import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.storage.DeduplicatedScheduledTask;
@@ -30,10 +31,6 @@ import org.apache.aurora.gen.storage.DeduplicatedSnapshot;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.aurora.gen.AssignedTask._Fields.TASK;
-import static org.apache.aurora.gen.ScheduledTask._Fields.ASSIGNED_TASK;
-import static org.apache.aurora.gen.storage.Snapshot._Fields.TASKS;
 
 /**
  * Converter between denormalized storage Snapshots and de-duplicated snapshots.
@@ -62,74 +59,47 @@ public interface SnapshotDeduplicator {
   class SnapshotDeduplicatorImpl implements SnapshotDeduplicator {
     private static final Logger LOG = LoggerFactory.getLogger(SnapshotDeduplicatorImpl.class);
 
-    private static final Function<ScheduledTask, TaskConfig> SCHEDULED_TO_CONFIG =
-        task -> task.getAssignedTask().getTask();
-
-    private static ScheduledTask deepCopyWithoutTaskConfig(ScheduledTask scheduledTask) {
-      ScheduledTask scheduledTaskCopy = new ScheduledTask();
-      for (ScheduledTask._Fields scheduledTaskField : ScheduledTask._Fields.values()) {
-        if (scheduledTaskField == ASSIGNED_TASK) {
-          AssignedTask assignedTask = scheduledTask.getAssignedTask();
-          AssignedTask assignedTaskCopy = new AssignedTask();
-          for (AssignedTask._Fields assignedTaskField : AssignedTask._Fields.values()) {
-            // Copy all fields in AssignedTask except the TASK field.
-            if (assignedTaskField != TASK && assignedTask.isSet(assignedTaskField)) {
-              assignedTaskCopy.setFieldValue(
-                  assignedTaskField, assignedTask.getFieldValue(assignedTaskField));
-            }
-          }
-          scheduledTaskCopy.setAssignedTask(assignedTaskCopy);
-        } else if (scheduledTask.isSet(scheduledTaskField)) {
-          scheduledTaskCopy.setFieldValue(
-              scheduledTaskField, scheduledTask.getFieldValue(scheduledTaskField));
-        }
-      }
-      return scheduledTaskCopy.deepCopy();
+    private static ScheduledTask withoutTaskConfig(ScheduledTask scheduledTask) {
+      return scheduledTask.withAssignedTask(at -> at.withTask((TaskConfig) null));
     }
 
-    // NOTE: We intentionally try to minimize the number of copies of the Snapshot#tasks field
-    // we make. The simpler implementation of deepCopy followed by unsetTasks creates a
-    // lot of GC pressure.
-    private static Snapshot deepCopyWithoutTasks(Snapshot snapshot) {
-      Snapshot snapshotCopy = new Snapshot();
-      for (Snapshot._Fields field : Snapshot._Fields.values()) {
-        if (field != TASKS && snapshot.isSet(field)) {
-          snapshotCopy.setFieldValue(field, snapshot.getFieldValue(field));
-        }
-      }
-      return snapshotCopy.deepCopy();
+    private static Snapshot withoutTasks(Snapshot snapshot) {
+      return snapshot.withTasks(ImmutableSet.of());
     }
 
     @Override
     @Timed("snapshot_deduplicate")
     public DeduplicatedSnapshot deduplicate(Snapshot snapshot) {
-      int numInputTasks = snapshot.getTasksSize();
+      int numInputTasks = snapshot.getTasks().size();
       LOG.info("Starting deduplication of a snapshot with {} tasks.", numInputTasks);
 
-      DeduplicatedSnapshot deduplicatedSnapshot = new DeduplicatedSnapshot()
-          .setPartialSnapshot(deepCopyWithoutTasks(snapshot));
+      DeduplicatedSnapshot.Builder deduplicatedSnapshot = DeduplicatedSnapshot.builder()
+          .setPartialSnapshot(withoutTasks(snapshot));
 
       // Nothing to do if we don't have any input tasks.
-      if (!snapshot.isSetTasks()) {
+      if (snapshot.getTasks().isEmpty()) {
         LOG.warn("Got snapshot with unset tasks field.");
-        return deduplicatedSnapshot;
+        return deduplicatedSnapshot.build();
       }
 
       // Match each unique TaskConfig to its hopefully-multiple ScheduledTask owners.
       ListMultimap<TaskConfig, ScheduledTask> index = Multimaps.index(
           snapshot.getTasks(),
-          SCHEDULED_TO_CONFIG);
+          scheduledTask -> scheduledTask.getAssignedTask().getTask());
 
+      List<TaskConfig> indexedConfigs = new ArrayList<>(index.keySet().size());
+      ImmutableList.Builder<DeduplicatedScheduledTask> deduplicatedTasks = ImmutableList.builder();
       for (Entry<TaskConfig, List<ScheduledTask>> entry : Multimaps.asMap(index).entrySet()) {
-        deduplicatedSnapshot.addToTaskConfigs(entry.getKey());
+        indexedConfigs.add(entry.getKey());
         for (ScheduledTask scheduledTask : entry.getValue()) {
-          deduplicatedSnapshot.addToPartialTasks(new DeduplicatedScheduledTask()
-              .setPartialScheduledTask(deepCopyWithoutTaskConfig(scheduledTask))
-              .setTaskConfigId(deduplicatedSnapshot.getTaskConfigsSize() - 1));
+          deduplicatedTasks.add(DeduplicatedScheduledTask.builder()
+              .setPartialScheduledTask(withoutTaskConfig(scheduledTask))
+              .setTaskConfigId(indexedConfigs.size() - 1)
+              .build());
         }
       }
 
-      int numOutputTasks = deduplicatedSnapshot.getTaskConfigsSize();
+      int numOutputTasks = indexedConfigs.size();
 
       LOG.info(String.format(
           "Finished deduplicating snapshot. Deduplication ratio: %d/%d = %.2f%%.",
@@ -137,21 +107,25 @@ public interface SnapshotDeduplicator {
           numOutputTasks,
           100.0 * numInputTasks / numOutputTasks));
 
-      return deduplicatedSnapshot;
+      return deduplicatedSnapshot
+          .setTaskConfigs(indexedConfigs)
+          .setPartialTasks(deduplicatedTasks.build())
+          .build();
     }
 
     @Override
     @Timed("snapshot_reduplicate")
     public Snapshot reduplicate(DeduplicatedSnapshot deduplicatedSnapshot) throws CodingException {
       LOG.info("Starting reduplication.");
-      Snapshot snapshot = new Snapshot(deduplicatedSnapshot.getPartialSnapshot());
-      if (!deduplicatedSnapshot.isSetTaskConfigs()) {
+      int numInputTasks = deduplicatedSnapshot.getTaskConfigs().size();
+      Snapshot partialSnapshot = deduplicatedSnapshot.getPartialSnapshot();
+      if (numInputTasks == 0) {
         LOG.warn("Got deduplicated snapshot with unset task configs.");
-        return snapshot;
+        return partialSnapshot;
       }
 
+      ImmutableSet.Builder<ScheduledTask> reduplicatedTasks = ImmutableSet.builder();
       for (DeduplicatedScheduledTask partialTask : deduplicatedSnapshot.getPartialTasks()) {
-        ScheduledTask scheduledTask = new ScheduledTask(partialTask.getPartialScheduledTask());
         int taskConfigId = partialTask.getTaskConfigId();
         TaskConfig config;
         try {
@@ -160,19 +134,20 @@ public interface SnapshotDeduplicator {
           throw new CodingException(
               "DeduplicatedScheduledTask referenced invalid task index " + taskConfigId, e);
         }
-        scheduledTask.getAssignedTask().setTask(config);
-        snapshot.addToTasks(scheduledTask);
+        ScheduledTask reconstituted =
+            partialTask.getPartialScheduledTask().withAssignedTask(at -> at.withTask(config));
+        reduplicatedTasks.add(reconstituted);
       }
 
-      int numInputTasks = deduplicatedSnapshot.getTaskConfigsSize();
-      int numOutputTasks = snapshot.getTasksSize();
+      ImmutableSet<ScheduledTask> outputTasks = reduplicatedTasks.build();
+      int numOutputTasks = outputTasks.size();
       LOG.info(String.format(
           "Finished reduplicating snapshot. Compression ratio: %d/%d = %.2f%%.",
           numInputTasks,
           numOutputTasks,
           100.0 * numInputTasks / numOutputTasks));
 
-      return snapshot;
+      return partialSnapshot.withTasks(outputTasks);
     }
   }
 }

@@ -30,12 +30,12 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.StorageException;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static org.apache.aurora.scheduler.quota.QuotaManager.DEDICATED;
 import static org.apache.aurora.scheduler.quota.QuotaManager.NON_PROD_SHARED;
@@ -52,7 +52,7 @@ public class ResourceCounter {
     this.storage = Objects.requireNonNull(storage);
   }
 
-  private Iterable<ITaskConfig> getTasks(Query.Builder query) throws StorageException {
+  private Iterable<TaskConfig> getTasks(Query.Builder query) throws StorageException {
     return Iterables.transform(
         Storage.Util.fetchTasks(storage, query),
         Tasks::getConfig);
@@ -72,7 +72,7 @@ public class ResourceCounter {
         .transform(TO_GLOBAL_METRIC)
         .toList();
 
-    for (ITaskConfig task : getTasks(Query.unscoped().active())) {
+    for (TaskConfig task : getTasks(Query.unscoped().active())) {
       for (GlobalMetric count : counts) {
         count.accumulate(task);
       }
@@ -89,7 +89,7 @@ public class ResourceCounter {
   public Metric computeQuotaAllocationTotals() throws StorageException {
     return storage.read(storeProvider -> {
       Metric allocation = new Metric();
-      for (IResourceAggregate quota : storeProvider.getQuotaStore().fetchQuotas().values()) {
+      for (ResourceAggregate quota : storeProvider.getQuotaStore().fetchQuotas().values()) {
         allocation.accumulate(quota);
       }
       return allocation;
@@ -108,8 +108,8 @@ public class ResourceCounter {
    */
   public <K> Map<K, Metric> computeAggregates(
       Query.Builder query,
-      Predicate<ITaskConfig> filter,
-      Function<ITaskConfig, K> keyFunction) throws StorageException {
+      Predicate<TaskConfig> filter,
+      Function<TaskConfig, K> keyFunction) throws StorageException {
 
     LoadingCache<K, Metric> metrics = CacheBuilder.newBuilder()
         .build(new CacheLoader<K, Metric>() {
@@ -118,21 +118,21 @@ public class ResourceCounter {
             return new Metric();
           }
         });
-    for (ITaskConfig task : Iterables.filter(getTasks(query), filter)) {
+    for (TaskConfig task : Iterables.filter(getTasks(query), filter)) {
       metrics.getUnchecked(keyFunction.apply(task)).accumulate(task);
     }
     return metrics.asMap();
   }
 
   public enum MetricType {
-    TOTAL_CONSUMED(Predicates.<ITaskConfig>alwaysTrue()),
+    TOTAL_CONSUMED(Predicates.<TaskConfig>alwaysTrue()),
     DEDICATED_CONSUMED(DEDICATED),
     QUOTA_CONSUMED(PROD_SHARED),
     FREE_POOL_CONSUMED(NON_PROD_SHARED);
 
-    public final Predicate<ITaskConfig> filter;
+    public final Predicate<TaskConfig> filter;
 
-    MetricType(Predicate<ITaskConfig> filter) {
+    MetricType(Predicate<TaskConfig> filter) {
       this.filter = filter;
     }
   }
@@ -151,7 +151,7 @@ public class ResourceCounter {
     }
 
     @Override
-    protected void accumulate(ITaskConfig task) {
+    protected void accumulate(TaskConfig task) {
       if (type.filter.apply(task)) {
         super.accumulate(task);
       }
@@ -194,13 +194,13 @@ public class ResourceCounter {
       this.diskMb = diskMb;
     }
 
-    protected void accumulate(ITaskConfig task) {
+    protected void accumulate(TaskConfig task) {
       cpu += task.getNumCpus();
       ramMb += task.getRamMb();
       diskMb += task.getDiskMb();
     }
 
-    protected void accumulate(IResourceAggregate quota) {
+    protected void accumulate(ResourceAggregate quota) {
       cpu += quota.getNumCpus();
       ramMb += quota.getRamMb();
       diskMb += quota.getDiskMb();

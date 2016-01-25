@@ -27,14 +27,14 @@ import com.google.inject.Inject;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.configuration.executor.ExecutorSettings;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IConstraint;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 
 import static java.util.Objects.requireNonNull;
 
@@ -119,14 +119,14 @@ public class SchedulingFilterImpl implements SchedulingFilter {
     return vetoes.build();
   }
 
-  private static boolean isValueConstraint(IConstraint constraint) {
-    return constraint.getConstraint().getSetField() == TaskConstraint._Fields.VALUE;
+  private static boolean isValueConstraint(Constraint constraint) {
+    return constraint.getConstraint().getSetField() == TaskConstraint.Fields.VALUE;
   }
 
-  private static final Ordering<IConstraint> VALUES_FIRST = Ordering.from(
-      new Comparator<IConstraint>() {
+  private static final Ordering<Constraint> VALUES_FIRST = Ordering.from(
+      new Comparator<Constraint>() {
         @Override
-        public int compare(IConstraint a, IConstraint b) {
+        public int compare(Constraint a, Constraint b) {
           if (a.getConstraint().getSetField() == b.getConstraint().getSetField()) {
             return 0;
           }
@@ -143,11 +143,11 @@ public class SchedulingFilterImpl implements SchedulingFilter {
   }
 
   private Optional<Veto> getConstraintVeto(
-      Iterable<IConstraint> taskConstraints,
+      Iterable<Constraint> taskConstraints,
       AttributeAggregate jobState,
-      Iterable<IAttribute> offerAttributes) {
+      Iterable<Attribute> offerAttributes) {
 
-    for (IConstraint constraint : VALUES_FIRST.sortedCopy(taskConstraints)) {
+    for (Constraint constraint : VALUES_FIRST.sortedCopy(taskConstraints)) {
       Optional<Veto> veto = ConstraintMatcher.getVeto(jobState, offerAttributes, constraint);
       if (veto.isPresent()) {
         // Break early to avoid potentially-expensive operations to satisfy other constraints.
@@ -164,7 +164,7 @@ public class SchedulingFilterImpl implements SchedulingFilter {
         : NO_VETO;
   }
 
-  private boolean isDedicated(IHostAttributes attributes) {
+  private boolean isDedicated(HostAttributes attributes) {
     return Iterables.any(
         attributes.getAttributes(),
         new ConstraintMatcher.NameFilter(DEDICATED_ATTRIBUTE));

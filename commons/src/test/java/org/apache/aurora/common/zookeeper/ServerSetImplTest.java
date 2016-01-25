@@ -79,11 +79,12 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
     ServerSet.EndpointStatus status = server.join(
         InetSocketAddress.createUnresolved("foo", 1234), makePortMap("http-admin", 8080), 0);
 
-    ServiceInstance serviceInstance = new ServiceInstance(
-        new Endpoint("foo", 1234),
-        ImmutableMap.of("http-admin", new Endpoint("foo", 8080)),
-        Status.ALIVE)
-        .setShard(0);
+    ServiceInstance serviceInstance = ServiceInstance.builder()
+        .serviceEndpoint(Endpoint.create("foo", 1234))
+        .setAdditionalEndpoints(ImmutableMap.of("http-admin", Endpoint.create("foo", 8080)))
+        .setStatus(Status.ALIVE)
+        .setShard(0)
+        .build();
 
     assertChangeFired(serviceInstance);
 
@@ -163,21 +164,24 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
     ServerSetImpl server2 = createServerSet();
     ServerSetImpl server3 = createServerSet();
 
-    ServiceInstance instance1 = new ServiceInstance(
-        new Endpoint("foo", 1000),
-        ImmutableMap.of("http-admin1", new Endpoint("foo", 8080)),
-        Status.ALIVE)
-        .setShard(0);
-    ServiceInstance instance2 = new ServiceInstance(
-        new Endpoint("foo", 1001),
-        ImmutableMap.of("http-admin2", new Endpoint("foo", 8081)),
-        Status.ALIVE)
-        .setShard(1);
-    ServiceInstance instance3 = new ServiceInstance(
-        new Endpoint("foo", 1002),
-        ImmutableMap.of("http-admin3", new Endpoint("foo", 8082)),
-        Status.ALIVE)
-        .setShard(2);
+    ServiceInstance instance1 = ServiceInstance.builder()
+        .setServiceEndpoint(Endpoint.create("foo", 1000))
+        .setAdditionalEndpoints(ImmutableMap.of("http-admin1", Endpoint.create("foo", 8080)))
+        .setStatus(Status.ALIVE)
+        .setShard(0)
+        .build();
+    ServiceInstance instance2 = ServiceInstance.builder()
+        .setServiceEndpoint(Endpoint.create("foo", 1001))
+        .setAdditionalEndpoints(ImmutableMap.of("http-admin2", Endpoint.create("foo", 8081)))
+        .setStatus(Status.ALIVE)
+        .setShard(1)
+        .build();
+    ServiceInstance instance3 = ServiceInstance.builder()
+        .setServiceEndpoint(Endpoint.create("foo", 1002))
+        .setAdditionalEndpoints(ImmutableMap.of("http-admin3", Endpoint.create("foo", 8082)))
+        .setStatus(Status.ALIVE)
+        .setShard(2)
+        .build();
 
     server1.join(
         InetSocketAddress.createUnresolved("foo", 1000),
@@ -205,38 +209,47 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
   @Test
   public void testJsonCodecRoundtrip() throws Exception {
     Codec<ServiceInstance> codec = ServerSetImpl.createCodec();
-    ServiceInstance instance1 = new ServiceInstance(
-        new Endpoint("foo", 1000),
-        ImmutableMap.of("http", new Endpoint("foo", 8080)),
-        Status.ALIVE)
-        .setShard(0);
+    ServiceInstance instance1 = ServiceInstance.builder()
+        .setServiceEndpoint(Endpoint.create("foo", 1000))
+        .setAdditionalEndpoints(ImmutableMap.of("http", Endpoint.create("foo", 8080)))
+        .setStatus(Status.ALIVE)
+        .setShard(0)
+        .build();
     byte[] data = ServerSets.serializeServiceInstance(instance1, codec);
-    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertTrue(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
-    ServiceInstance instance2 = new ServiceInstance(
-        new Endpoint("foo", 1000),
-        ImmutableMap.of("http-admin1", new Endpoint("foo", 8080)),
+    ServiceInstance instance2 = ServiceInstance.create(
+        Endpoint.create("foo", 1000),
+        ImmutableMap.of("http-admin1", Endpoint.create("foo", 8080)),
         Status.ALIVE);
     data = ServerSets.serializeServiceInstance(instance2, codec);
-    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
-    ServiceInstance instance3 = new ServiceInstance(
-        new Endpoint("foo", 1000),
+    ServiceInstance instance3 = ServiceInstance.create(
+        Endpoint.create("foo", 1000),
         ImmutableMap.<String, Endpoint>of(),
         Status.ALIVE);
     data = ServerSets.serializeServiceInstance(instance3, codec);
-    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
   }
 
   @Test
   public void testJsonCompatibility() throws IOException {
-    ServiceInstance instance = new ServiceInstance(
-        new Endpoint("foo", 1000),
-        ImmutableMap.of("http", new Endpoint("foo", 8080)),
-        Status.ALIVE).setShard(42);
+    ServiceInstance instance = ServiceInstance.builder()
+        .setServiceEndpoint(Endpoint.create("foo", 1000))
+        .setAdditionalEndpoints(ImmutableMap.of("http", Endpoint.create("foo", 8080)))
+        .setStatus(Status.ALIVE)
+        .setShard(42)
+        .build();
 
     ByteArrayOutputStream results = new ByteArrayOutputStream();
     ServerSetImpl.createCodec().serialize(instance, results);
@@ -296,7 +309,7 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
       throws InterruptedException {
 
     assertChangeFired(ImmutableSet.copyOf(Iterables.transform(ImmutableSet.copyOf(serviceHosts),
-        serviceHost -> new ServiceInstance(new Endpoint(serviceHost, 42),
+        serviceHost -> ServiceInstance.create(Endpoint.create(serviceHost, 42),
             ImmutableMap.<String, Endpoint>of(), Status.ALIVE))));
   }
 

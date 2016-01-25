@@ -17,9 +17,9 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.ResourceSlot;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -27,13 +27,13 @@ import static java.util.Objects.requireNonNull;
  * A victim to be considered as a candidate for preemption.
  */
 public final class PreemptionVictim {
-  private final IAssignedTask task;
+  private final AssignedTask task;
 
-  private PreemptionVictim(IAssignedTask task) {
+  private PreemptionVictim(AssignedTask task) {
     this.task = requireNonNull(task);
   }
 
-  public static PreemptionVictim fromTask(IAssignedTask task) {
+  public static PreemptionVictim fromTask(AssignedTask task) {
     return new PreemptionVictim(task);
   }
 
@@ -61,7 +61,7 @@ public final class PreemptionVictim {
     return task.getTaskId();
   }
 
-  public ITaskConfig getConfig() {
+  public TaskConfig getConfig() {
     return task.getTask();
   }
 

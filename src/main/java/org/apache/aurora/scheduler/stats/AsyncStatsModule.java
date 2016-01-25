@@ -36,7 +36,6 @@ import org.apache.aurora.scheduler.base.Conversions;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.stats.SlotSizeCounter.MachineResource;
 import org.apache.aurora.scheduler.stats.SlotSizeCounter.MachineResourceProvider;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
 
 import static java.util.Objects.requireNonNull;
 
@@ -171,11 +170,12 @@ public class AsyncStatsModule extends AbstractModule {
       return builder.build();
     }
 
-    private static IResourceAggregate fromSlot(ResourceSlot slot) {
-      return IResourceAggregate.build(new ResourceAggregate()
+    private static ResourceAggregate fromSlot(ResourceSlot slot) {
+      return ResourceAggregate.builder()
           .setNumCpus(slot.getNumCpus())
           .setRamMb(slot.getRam().as(Data.MB))
-          .setDiskMb(slot.getDisk().as(Data.MB)));
+          .setDiskMb(slot.getDisk().as(Data.MB))
+          .build();
     }
   }
 }

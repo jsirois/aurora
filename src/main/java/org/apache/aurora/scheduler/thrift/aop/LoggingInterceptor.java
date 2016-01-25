@@ -43,10 +43,10 @@ class LoggingInterceptor implements MethodInterceptor {
       ImmutableMap.of(
           JobConfiguration.class,
           input -> {
-            JobConfiguration configuration = ((JobConfiguration) input).deepCopy();
+            JobConfiguration configuration = (JobConfiguration) input;
             if (configuration.isSetTaskConfig()) {
-              configuration.getTaskConfig().setExecutorConfig(
-                  new ExecutorConfig("BLANKED", "BLANKED"));
+              configuration = configuration.withTaskConfig(tc -> tc.withExecutorConfig(
+                  ExecutorConfig.create("BLANKED", "BLANKED")));
             }
             return configuration.toString();
           }
@@ -70,13 +70,13 @@ class LoggingInterceptor implements MethodInterceptor {
       return invocation.proceed();
     } catch (Storage.TransientStorageException e) {
       LOG.warn("Uncaught transient exception while handling " + message, e);
-      return Responses.addMessage(Responses.empty(), ResponseCode.ERROR_TRANSIENT, e);
+      return Responses.error(ResponseCode.ERROR_TRANSIENT, e);
     } catch (RuntimeException e) {
       // We need shiro's exceptions to bubble up to the Shiro servlet filter so we intentionally
       // do not swallow them here.
       Throwables.propagateIfInstanceOf(e, ShiroException.class);
       LOG.warn("Uncaught exception while handling " + message, e);
-      return Responses.addMessage(Responses.empty(), ResponseCode.ERROR, e);
+      return Responses.error(e);
     }
   }
 }

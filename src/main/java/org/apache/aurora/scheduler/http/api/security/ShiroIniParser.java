@@ -29,7 +29,7 @@ import org.apache.shiro.realm.text.IniRealm;
 /**
  * Parser for shiro.ini files. Accepts any string that {@link Ini#fromResourcePath(String)} does.
  * The provided ini file may have only the sections required for configuration
- * ({@link IniRealm.ROLES_SECTION_NAME} and {@link IniRealm.USERS_SECTION_NAME}) and no extras -
+ * ({@link IniRealm#ROLES_SECTION_NAME} and {@link IniRealm#USERS_SECTION_NAME}) and no extras -
  * Aurora uses Guice in to configure those sections in {@link HttpSecurityModule}}.
  */
 @ArgParser

@@ -46,6 +46,7 @@ import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.common.util.testing.FakeClock;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.TaskIdGenerator;
 import org.apache.aurora.scheduler.TaskStatusHandler;
 import org.apache.aurora.scheduler.TaskStatusHandlerImpl;
@@ -68,7 +69,6 @@ import org.apache.aurora.scheduler.state.StateModule;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -167,7 +167,7 @@ public class StatusUpdateBenchmark {
   private AbstractExecutionThreadService statusHandler;
   private SlowStorageWrapper storage;
   private EventBus eventBus;
-  private Set<IScheduledTask> tasks;
+  private Set<ScheduledTask> tasks;
   private CountDownLatch countDownLatch;
 
   /**

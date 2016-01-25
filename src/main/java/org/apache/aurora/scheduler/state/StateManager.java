@@ -18,9 +18,9 @@ import java.util.Set;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ScheduleStatus;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.mesos.Protos.SlaveID;
 
 import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;
@@ -65,7 +65,7 @@ public interface StateManager {
    * @param assignedPorts Ports on the host that are being assigned to the task.
    * @return The updated task record, or {@code null} if the task was not found.
    */
-  IAssignedTask assignTask(
+  AssignedTask assignTask(
       MutableStoreProvider storeProvider,
       String taskId,
       String slaveHost,
@@ -82,7 +82,7 @@ public interface StateManager {
    */
   void insertPendingTasks(
       MutableStoreProvider storeProvider,
-      ITaskConfig task,
+      TaskConfig task,
       Set<Integer> instanceIds);
 
   /**

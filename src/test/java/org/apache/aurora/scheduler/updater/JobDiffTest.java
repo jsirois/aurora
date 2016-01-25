@@ -22,17 +22,13 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.TaskStore;
-import org.apache.aurora.scheduler.storage.entities.IAssignedTask;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IRange;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.easymock.IExpectationSetters;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,9 +39,9 @@ import static org.junit.Assert.assertNotEquals;
 
 public class JobDiffTest extends EasyMockTest {
 
-  private static final IJobKey JOB = JobKeys.from("role", "env", "job");
-  private static final Set<IRange> NO_SCOPE = ImmutableSet.of();
-  private static final Set<IRange> CANARY_SCOPE = ImmutableSet.of(IRange.build(new Range(0, 0)));
+  private static final JobKey JOB = JobKeys.from("role", "env", "job");
+  private static final Set<Range> NO_SCOPE = ImmutableSet.of();
+  private static final Set<Range> CANARY_SCOPE = ImmutableSet.of(Range.create(0, 0));
 
   private TaskStore store;
 
@@ -56,7 +52,7 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testNoDiff() {
-    ITaskConfig task = makeTask("job", "echo");
+    TaskConfig task = makeTask("job", "echo");
 
     expectFetch(instance(task, 0), instance(task, 1)).times(2);
 
@@ -72,7 +68,7 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testInstancesAdded() {
-    ITaskConfig task = makeTask("job", "echo");
+    TaskConfig task = makeTask("job", "echo");
 
     expectFetch(instance(task, 0), instance(task, 1)).times(2);
 
@@ -88,7 +84,7 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testInstancesRemoved() {
-    ITaskConfig task = makeTask("job", "echo");
+    TaskConfig task = makeTask("job", "echo");
 
     expectFetch(instance(task, 0), instance(task, 1), instance(task, 2)).times(2);
 
@@ -107,8 +103,8 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testFullUpdate() {
-    ITaskConfig oldTask = makeTask("job", "echo");
-    ITaskConfig newTask = makeTask("job", "echo2");
+    TaskConfig oldTask = makeTask("job", "echo");
+    TaskConfig newTask = makeTask("job", "echo2");
 
     expectFetch(instance(oldTask, 0), instance(oldTask, 1), instance(oldTask, 2)).times(2);
 
@@ -130,9 +126,9 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testMultipleConfigsAndHoles() {
-    ITaskConfig oldTask = makeTask("job", "echo");
-    ITaskConfig oldTask2 = makeTask("job", "echo1");
-    ITaskConfig newTask = makeTask("job", "echo2");
+    TaskConfig oldTask = makeTask("job", "echo");
+    TaskConfig oldTask2 = makeTask("job", "echo1");
+    TaskConfig newTask = makeTask("job", "echo2");
 
     expectFetch(
         instance(oldTask, 0), instance(newTask, 1), instance(oldTask2, 3), instance(oldTask, 4))
@@ -156,8 +152,8 @@ public class JobDiffTest extends EasyMockTest {
 
   @Test
   public void testUnchangedInstances() {
-    ITaskConfig oldTask = makeTask("job", "echo");
-    ITaskConfig newTask = makeTask("job", "echo2");
+    TaskConfig oldTask = makeTask("job", "echo");
+    TaskConfig newTask = makeTask("job", "echo2");
 
     expectFetch(instance(oldTask, 0), instance(newTask, 1), instance(oldTask, 2)).times(3);
 
@@ -211,26 +207,26 @@ public class JobDiffTest extends EasyMockTest {
     assertEquals(a.toString(), b.toString());
   }
 
-  private IExpectationSetters<?> expectFetch(IAssignedTask... results) {
-    ImmutableSet.Builder<IScheduledTask> tasks = ImmutableSet.builder();
-    for (IAssignedTask result : results) {
-      tasks.add(IScheduledTask.build(new ScheduledTask().setAssignedTask(result.newBuilder())));
+  private IExpectationSetters<?> expectFetch(AssignedTask... results) {
+    ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
+    for (AssignedTask result : results) {
+      tasks.add(ScheduledTask.builder().setAssignedTask(result).build());
     }
 
     return expect(store.fetchTasks(Query.jobScoped(JOB).active()))
         .andReturn(tasks.build());
   }
 
-  private static IAssignedTask instance(ITaskConfig config, int instance) {
-    return IAssignedTask.build(
-        new AssignedTask().setTask(config.newBuilder()).setInstanceId(instance));
+  private static AssignedTask instance(TaskConfig config, int instance) {
+    return AssignedTask.builder().setTask(config).setInstanceId(instance).build();
   }
 
-  private static ITaskConfig makeTask(String job, String config) {
-    return ITaskConfig.build(new TaskConfig()
-        .setOwner(new Identity("owner", "owner"))
+  private static TaskConfig makeTask(String job, String config) {
+    return TaskConfig.builder()
+        .setOwner(Identity.create("owner", "owner"))
         .setEnvironment("test")
         .setJobName(job)
-        .setExecutorConfig(new ExecutorConfig().setData(config)));
+        .setExecutorConfig(ExecutorConfig.builder().setData(config).build())
+        .build();
   }
 }

@@ -136,14 +136,14 @@
     <include refid="insert_instance_ranges" />
   </insert>
 
-  <resultMap id="jobUpdateStateMap" type="org.apache.aurora.gen.JobUpdateState">
+  <resultMap id="jobUpdateStateMap" type="org.apache.aurora.gen.peer.MutableJobUpdateState">
     <id column="update_id" />
     <result property="status"
             column="status"
             typeHandler="org.apache.aurora.scheduler.storage.db.typehandlers.JobUpdateStatusTypeHandler" />
   </resultMap>
 
-  <resultMap id="jobUpdateSummaryMap" type="org.apache.aurora.gen.JobUpdateSummary">
+  <resultMap id="jobUpdateSummaryMap" type="org.apache.aurora.gen.peer.MutableJobUpdateSummary">
     <id column="update_id" property="key.id" javaType="String" />
     <association property="key.job"
                  resultMap="org.apache.aurora.scheduler.storage.db.JobKeyMapper.jobKeyMap"
@@ -153,13 +153,13 @@
                  columnPrefix="just_" />
   </resultMap>
 
-  <resultMap id="rangeMap" type="org.apache.aurora.gen.Range">
+  <resultMap id="rangeMap" type="org.apache.aurora.gen.peer.MutableRange">
     <id column="id" />
   </resultMap>
 
   <resultMap
       id="instanceConfigMap"
-      type="org.apache.aurora.scheduler.storage.db.views.DbInstanceTaskConfig">
+      type="org.apache.aurora.gen.peer.MutableInstanceTaskConfig">
     <id column="id" />
     <association
         property="task"
@@ -169,7 +169,7 @@
     <collection property="instances" resultMap="rangeMap" columnPrefix="r_" notNullColumn="id" />
   </resultMap>
 
-  <resultMap id="jobUpdateSettingsMap" type="org.apache.aurora.gen.JobUpdateSettings">
+  <resultMap id="jobUpdateSettingsMap" type="org.apache.aurora.gen.peer.MutableJobUpdateSettings">
     <id column="id" />
     <collection property="updateOnlyTheseInstances"
                 resultMap="rangeMap"
@@ -179,7 +179,7 @@
 
   <resultMap
       id="jobUpdateInstructionMap"
-      type="org.apache.aurora.scheduler.storage.db.views.DbJobUpdateInstructions">
+      type="org.apache.aurora.gen.peer.MutableJobUpdateInstructions">
     <id column="id" />
     <association property="desiredState" resultMap="instanceConfigMap" columnPrefix="ditc_" />
     <association property="settings" resultMap="jobUpdateSettingsMap" columnPrefix="juse_"/>
@@ -189,20 +189,20 @@
                 notNullColumn="id" />
   </resultMap>
 
-  <resultMap id="jobUpdateMap" type="org.apache.aurora.scheduler.storage.db.views.DbJobUpdate">
+  <resultMap id="jobUpdateMap" type="org.apache.aurora.gen.peer.MutableJobUpdate">
     <id column="u_id" />
     <association property="summary" resultMap="jobUpdateSummaryMap" columnPrefix="jusm_"/>
     <association property="instructions" resultMap="jobUpdateInstructionMap" columnPrefix="jui_"/>
   </resultMap>
 
-  <resultMap id="jobInstanceUpdateMap" type="org.apache.aurora.gen.JobInstanceUpdateEvent">
+  <resultMap id="jobInstanceUpdateMap" type="org.apache.aurora.gen.peer.MutableJobInstanceUpdateEvent">
     <id column="id" />
     <result property="action"
             column="action"
             typeHandler="org.apache.aurora.scheduler.storage.db.typehandlers.JobUpdateActionTypeHandler"/>
   </resultMap>
 
-  <resultMap id="jobUpdateEventMap" type="org.apache.aurora.gen.JobUpdateEvent">
+  <resultMap id="jobUpdateEventMap" type="org.apache.aurora.gen.peer.MutableJobUpdateEvent">
     <id column="id" />
     <result property="status"
             column="status"
@@ -211,7 +211,7 @@
 
   <resultMap
       id="jobUpdateDetailsMap"
-      type="org.apache.aurora.scheduler.storage.db.views.DbStoredJobUpdateDetails">
+      type="org.apache.aurora.gen.storage.peer.MutableStoredJobUpdateDetails">
     <id column="u_id" />
     <association property="details.update" resultMap="jobUpdateMap" />
     <collection property="details.updateEvents"
@@ -284,7 +284,7 @@
   </sql>
 
   <sql id="query_filter">
-    <if test="key != null || role != null || user != null || jobKey != null || updateStatuses != null || limit != 0 || offset != 0">
+    <if test="key != null || role != null || user != null || jobKey != null || !updateStatuses.isEmpty() || limit != 0 || offset != 0">
       WHERE TRUE
       <if test="key != null">
         AND <include refid="filter_by_update_key"/>
@@ -296,7 +296,7 @@
         AND j.name = #{jobKey.name}
         AND j.environment = #{jobKey.environment}
       </if>
-      <if test="updateStatuses != null and !updateStatuses.isEmpty()">
+      <if test="!updateStatuses.isEmpty()">
         AND (max_status.status IN
         <foreach item="element" collection="updateStatuses" open="(" separator="," close="))">
           #{element, typeHandler=org.apache.aurora.scheduler.storage.db.typehandlers.JobUpdateStatusTypeHandler}
@@ -513,13 +513,13 @@
     WHERE min_ts.timestamp_ms &lt; #{pruneThresholdMs} AND l.id IS NULL
   </select>
 
-  <resultMap id="jobUpdateKeyMap" type="org.apache.aurora.gen.JobUpdateKey">
+  <resultMap id="jobUpdateKeyMap" type="org.apache.aurora.gen.peer.MutableJobUpdateKey">
     <association property="job"
                  resultMap="org.apache.aurora.scheduler.storage.db.JobKeyMapper.jobKeyMap"
                  columnPrefix="jk_"/>
   </resultMap>
 
-  <resultMap id="pruneVictimMap" type="org.apache.aurora.scheduler.storage.db.PruneVictim">
+  <resultMap id="pruneVictimMap" type="org.apache.aurora.scheduler.storage.db.views.DbPruneVictim">
     <id column="row_id" property="rowId"/>
     <association property="update" resultMap="jobUpdateKeyMap" columnPrefix="u_" />
   </resultMap>

@@ -24,10 +24,10 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Range;
 
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Tasks;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 
 import static org.apache.aurora.scheduler.ResourceAggregates.EMPTY;
 import static org.apache.aurora.scheduler.ResourceAggregates.LARGE;
@@ -46,7 +46,7 @@ interface SlaGroup {
    * @param tasks Set of tasks to generate named groups for.
    * @return Multimap of group names and relevant tasks.
    */
-  Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks);
+  Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks);
 
   /**
    * Pre-configured SLA groupings.
@@ -97,10 +97,10 @@ interface SlaGroup {
    */
   class Job implements SlaGroup {
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
-      return Multimaps.index(tasks, Functions.compose(new Function<IJobKey, String>() {
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
+      return Multimaps.index(tasks, Functions.compose(new Function<JobKey, String>() {
         @Override
-        public String apply(IJobKey jobKey) {
+        public String apply(JobKey jobKey) {
           return "sla_" + JobKeys.canonicalString(jobKey) + "_";
         }
       }, Tasks::getJob));
@@ -112,7 +112,7 @@ interface SlaGroup {
    */
   class Cluster implements SlaGroup {
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
       return Multimaps.index(tasks, task -> "sla_cluster_");
     }
   }
@@ -125,16 +125,16 @@ interface SlaGroup {
   final class Resource<T extends Number & Comparable<T>> implements SlaGroup {
 
     private final Map<String, Range<T>> map;
-    private final Function<IScheduledTask, T> function;
+    private final Function<ScheduledTask, T> function;
 
-    private Resource(Map<String, Range<T>> map, Function<IScheduledTask, T> function) {
+    private Resource(Map<String, Range<T>> map, Function<ScheduledTask, T> function) {
       this.map = map;
       this.function = function;
     }
 
     @Override
-    public Multimap<String, IScheduledTask> createNamedGroups(Iterable<IScheduledTask> tasks) {
-      ImmutableListMultimap.Builder<String, IScheduledTask> result =
+    public Multimap<String, ScheduledTask> createNamedGroups(Iterable<ScheduledTask> tasks) {
+      ImmutableListMultimap.Builder<String, ScheduledTask> result =
           ImmutableListMultimap.builder();
 
       for (final Map.Entry<String, Range<T>> entry : map.entrySet()) {

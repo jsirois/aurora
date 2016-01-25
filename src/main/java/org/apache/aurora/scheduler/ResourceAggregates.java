@@ -16,27 +16,17 @@ package org.apache.aurora.scheduler;
 import com.google.common.collect.Ordering;
 
 import org.apache.aurora.gen.ResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
 
 /**
  * Convenience class for normalizing resource measures between tasks and offers.
  */
 public final class ResourceAggregates {
 
-  public static final IResourceAggregate EMPTY =
-      IResourceAggregate.build(new ResourceAggregate(0, 0, 0));
-
-  public static final IResourceAggregate SMALL =
-      IResourceAggregate.build(new ResourceAggregate(1.0, 1024, 4096));
-
-  public static final IResourceAggregate MEDIUM =
-      IResourceAggregate.build(new ResourceAggregate(4.0, 8192, 16384));
-
-  public static final IResourceAggregate LARGE =
-      IResourceAggregate.build(new ResourceAggregate(8.0, 16384, 32768));
-
-  public static final IResourceAggregate XLARGE =
-      IResourceAggregate.build(new ResourceAggregate(16.0, 32768, 65536));
+  public static final ResourceAggregate EMPTY = ResourceAggregate.create(0, 0, 0);
+  public static final ResourceAggregate SMALL = ResourceAggregate.create(1.0, 1024, 4096);
+  public static final ResourceAggregate MEDIUM = ResourceAggregate.create(4.0, 8192, 16384);
+  public static final ResourceAggregate LARGE = ResourceAggregate.create(8.0, 16384, 32768);
+  public static final ResourceAggregate XLARGE = ResourceAggregate.create(16.0, 32768, 65536);
 
   private ResourceAggregates() {
     // Utility class.
@@ -45,11 +35,12 @@ public final class ResourceAggregates {
   /**
    * a * m.
    */
-  public static IResourceAggregate scale(IResourceAggregate a, int m) {
-    return IResourceAggregate.build(new ResourceAggregate()
+  public static ResourceAggregate scale(ResourceAggregate a, int m) {
+    return ResourceAggregate.builder()
         .setNumCpus(a.getNumCpus() * m)
         .setRamMb(a.getRamMb() * m)
-        .setDiskMb(a.getDiskMb() * m));
+        .setDiskMb(a.getDiskMb() * m)
+        .build();
   }
 
   /**
@@ -58,7 +49,7 @@ public final class ResourceAggregates {
    * This calculates how many times {@code b} "fits into" {@code a}.  Behavior is undefined when
    * {@code b} contains resources with a value of zero.
    */
-  public static int divide(IResourceAggregate a, IResourceAggregate b) {
+  public static int divide(ResourceAggregate a, ResourceAggregate b) {
     return Ordering.natural().min(
         a.getNumCpus() / b.getNumCpus(),
         (double) a.getRamMb() / b.getRamMb(),

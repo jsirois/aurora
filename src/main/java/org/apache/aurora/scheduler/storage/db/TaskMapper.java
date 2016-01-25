@@ -18,12 +18,12 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import org.apache.aurora.common.collections.Pair;
-import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.TaskQuery;
-import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskEvent;
+import org.apache.aurora.gen.peer.MutableJobKey;
+import org.apache.aurora.gen.peer.MutableScheduledTask;
+import org.apache.aurora.scheduler.storage.db.views.Pairs;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -37,7 +37,7 @@ interface TaskMapper {
    * @param task Task to insert.
    */
   void insertScheduledTask(
-      @Param("task") IScheduledTask task,
+      @Param("task") ScheduledTask task,
       @Param("configId") long configId,
       @Param("result") InsertResult result);
 
@@ -47,7 +47,7 @@ interface TaskMapper {
    * @param query Query to use as a filter for tasks.
    * @return Tasks matching the query.
    */
-  List<DbScheduledTask> select(TaskQuery query);
+  List<MutableScheduledTask> select(TaskQuery query);
 
   /**
    * Gets a task by ID.
@@ -56,36 +56,36 @@ interface TaskMapper {
    * @return Task with the specified ID.
    */
   @Nullable
-  DbScheduledTask selectById(@Param("taskId") String taskId);
+  MutableScheduledTask selectById(@Param("taskId") String taskId);
 
   /**
    * Gets job keys of all stored tasks.
    *
    * @return Job keys.
    */
-  Set<JobKey> selectJobKeys();
+  Set<MutableJobKey> selectJobKeys();
 
   /**
    * Inserts the task events association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.IScheduledTask}.
+   * {@link org.apache.aurora.gen.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param events Events to insert.
    */
   void insertTaskEvents(
       @Param("taskRowId") long taskRowId,
-      @Param("events") List<ITaskEvent> events);
+      @Param("events") List<TaskEvent> events);
 
   /**
    * Inserts the assigned ports association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.IScheduledTask}.
+   * {@link org.apache.aurora.gen.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param ports Assigned ports to insert.
    */
   void insertPorts(
       @Param("taskRowId") long taskRowId,
-      @Param("ports") List<Pair<String, Integer>> ports);
+      @Param("ports") List<Pairs.Pair<String, Integer>> ports);
 
   /**
    * Deletes all task rows.

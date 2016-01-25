@@ -21,11 +21,12 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.Container;
-import org.apache.aurora.gen.Container._Fields;
+import org.apache.aurora.gen.Container.Fields;
 import org.apache.aurora.gen.DockerContainer;
 import org.apache.aurora.gen.DockerParameter;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.LimitConstraint;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.ScheduleStatus;
@@ -36,9 +37,6 @@ import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.TierInfo;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
-import org.apache.aurora.scheduler.storage.entities.IJobKey;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 /**
  * Convenience methods for working with tasks.
@@ -48,21 +46,21 @@ import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
  */
 public final class TaskTestUtil {
 
-  public static final IJobKey JOB = JobKeys.from("role", "env", "job");
+  public static final JobKey JOB = JobKeys.from("role", "env", "job");
   public static final TierInfo REVOCABLE_TIER = new TierInfo(true);
   public static final ConfigurationManager CONFIGURATION_MANAGER =
-      new ConfigurationManager(ImmutableSet.of(_Fields.MESOS), false, ImmutableMultimap.of());
+      new ConfigurationManager(ImmutableSet.of(Fields.MESOS), false, ImmutableMultimap.of());
 
   private TaskTestUtil() {
     // Utility class.
   }
 
-  public static ITaskConfig makeConfig(IJobKey job) {
-    return ITaskConfig.build(new TaskConfig()
-        .setJob(job.newBuilder())
+  public static TaskConfig makeConfig(JobKey job) {
+    return TaskConfig.builder()
+        .setJob(job)
         .setJobName(job.getName())
         .setEnvironment(job.getEnvironment())
-        .setOwner(new Identity(job.getRole(), job.getRole() + "-user"))
+        .setOwner(Identity.create(job.getRole(), job.getRole() + "-user"))
         .setIsService(true)
         .setNumCpus(1.0)
         .setRamMb(1024)
@@ -72,59 +70,69 @@ public final class TaskTestUtil {
         .setProduction(true)
         .setTier("tier-" + job.getEnvironment())
         .setConstraints(ImmutableSet.of(
-            new Constraint(
+            Constraint.create(
                 "valueConstraint",
                 TaskConstraint.value(
-                    new ValueConstraint(true, ImmutableSet.of("value1", "value2")))),
-            new Constraint(
+                    ValueConstraint.create(true, ImmutableSet.of("value1", "value2")))),
+            Constraint.create(
                 "limitConstraint",
-                TaskConstraint.limit(new LimitConstraint(5)))))
+                TaskConstraint.limit(LimitConstraint.create(5)))))
         .setRequestedPorts(ImmutableSet.of("http"))
         .setTaskLinks(ImmutableMap.of("http", "link", "admin", "otherLink"))
         .setContactEmail("foo@bar.com")
-        .setMetadata(ImmutableSet.of(new Metadata("key", "value")))
-        .setExecutorConfig(new ExecutorConfig("name", "config"))
+        .setMetadata(ImmutableSet.of(Metadata.create("key", "value")))
+        .setExecutorConfig(ExecutorConfig.create("name", "config"))
         .setContainer(Container.docker(
-            new DockerContainer("imagename")
-                .setParameters(ImmutableList.of(
-                    new DockerParameter("a", "b"),
-                    new DockerParameter("c", "d"))))));
+            DockerContainer.builder()
+                .setImage("imagename")
+                .setParameters(
+                    DockerParameter.create("a", "b"),
+                    DockerParameter.create("c", "d"))
+                .build()))
+        .build();
   }
 
-  public static IScheduledTask makeTask(String id, IJobKey job) {
+  public static ScheduledTask makeTask(String id, JobKey job) {
     return makeTask(id, makeConfig(job));
   }
 
-  public static IScheduledTask makeTask(String id, ITaskConfig config) {
-    return IScheduledTask.build(new ScheduledTask()
+  public static ScheduledTask makeTask(String id, TaskConfig config) {
+    return ScheduledTask.builder()
         .setStatus(ScheduleStatus.ASSIGNED)
         .setTaskEvents(ImmutableList.of(
-            new TaskEvent(100L, ScheduleStatus.PENDING)
-                .setMessage("message")
-                .setScheduler("scheduler"),
-            new TaskEvent(101L, ScheduleStatus.ASSIGNED)
-                .setMessage("message")
-                .setScheduler("scheduler2")))
+            TaskEvent.create(100L, ScheduleStatus.PENDING)
+                .withMessage("message")
+                .withScheduler("scheduler"),
+            TaskEvent.create(101L, ScheduleStatus.ASSIGNED)
+                .withMessage("message")
+                .withScheduler("scheduler2")))
         .setAncestorId("ancestor")
         .setFailureCount(3)
-        .setAssignedTask(new AssignedTask()
+        .setAssignedTask(AssignedTask.builder()
             .setInstanceId(2)
             .setTaskId(id)
             .setAssignedPorts(ImmutableMap.of("http", 1000))
-            .setTask(config.newBuilder())));
+            .setTask(config)
+            .build())
+        .build();
   }
 
-  public static IScheduledTask addStateTransition(
-      IScheduledTask task,
+  public static ScheduledTask addStateTransition(
+      ScheduledTask task,
       ScheduleStatus status,
       long timestamp) {
 
-    ScheduledTask builder = task.newBuilder();
-    builder.setStatus(status);
-    builder.addToTaskEvents(new TaskEvent()
-        .setTimestamp(timestamp)
+    return task.toBuilder()
         .setStatus(status)
-        .setScheduler("scheduler"));
-    return IScheduledTask.build(builder);
+        .setTaskEvents(
+            ImmutableList.<TaskEvent>builder()
+                .addAll(task.getTaskEvents())
+                .add(TaskEvent.builder()
+                    .setTimestamp(timestamp)
+                    .setStatus(status)
+                    .setScheduler("scheduler")
+                    .build())
+                .build())
+        .build();
   }
 }

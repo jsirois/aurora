@@ -27,12 +27,12 @@ import com.google.common.util.concurrent.AbstractIdleService;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.StatsProvider;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.mesos.Driver;
 import org.apache.aurora.scheduler.reconciliation.ReconciliationModule.BackgroundWorker;
 import org.apache.aurora.scheduler.storage.Storage;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.mesos.Protos;
 
 import static java.util.Objects.requireNonNull;
@@ -139,7 +139,7 @@ public class TaskReconciler extends AbstractIdleService {
   }
 
   @VisibleForTesting
-  static final Function<IScheduledTask, Protos.TaskStatus> TASK_TO_PROTO =
+  static final Function<ScheduledTask, Protos.TaskStatus> TASK_TO_PROTO =
       t -> Protos.TaskStatus.newBuilder()
           // TODO(maxim): State is required by protobuf but ignored by Mesos for reconciliation
           // purposes. This is the artifact of the native API. The new HTTP Mesos API will be

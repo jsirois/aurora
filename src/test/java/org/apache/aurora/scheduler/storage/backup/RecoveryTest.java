@@ -26,6 +26,7 @@ import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeBuildInfo;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.storage.SchedulerMetadata;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.scheduler.base.Query;
@@ -41,7 +42,6 @@ import org.apache.aurora.scheduler.storage.backup.Recovery.RecoveryImpl;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup.StorageBackupImpl;
 import org.apache.aurora.scheduler.storage.backup.StorageBackup.StorageBackupImpl.BackupConfig;
 import org.apache.aurora.scheduler.storage.backup.TemporaryStorage.TemporaryStorageFactory;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.testing.FakeScheduledExecutor;
 import org.easymock.Capture;
 import org.junit.Before;
@@ -56,8 +56,8 @@ import static org.junit.Assert.assertEquals;
 public class RecoveryTest extends EasyMockTest {
 
   private static final Amount<Long, Time> INTERVAL = Amount.of(1L, Time.HOURS);
-  private static final IScheduledTask TASK1 = TaskTestUtil.makeTask("task1", TaskTestUtil.JOB);
-  private static final IScheduledTask TASK2 = TaskTestUtil.makeTask("task2", TaskTestUtil.JOB);
+  private static final ScheduledTask TASK1 = TaskTestUtil.makeTask("task1", TaskTestUtil.JOB);
+  private static final ScheduledTask TASK2 = TaskTestUtil.makeTask("task2", TaskTestUtil.JOB);
   private static final Snapshot SNAPSHOT1 = makeSnapshot(TASK1, TASK2);
 
   private SnapshotStore<Snapshot> snapshotStore;
@@ -73,7 +73,7 @@ public class RecoveryTest extends EasyMockTest {
 
   @Before
   public void setUp() throws IOException {
-    final File backupDir = temporaryFolder.newFolder();
+    File backupDir = temporaryFolder.newFolder();
     snapshotStore = createMock(new Clazz<SnapshotStore<Snapshot>>() { });
     distributedStore = createMock(DistributedSnapshotStore.class);
     primaryStorage = createMock(Storage.class);
@@ -109,9 +109,7 @@ public class RecoveryTest extends EasyMockTest {
     assertEquals(ImmutableSet.of(backup1), recovery.listBackups());
 
     recovery.stage(backup1);
-    assertEquals(
-        IScheduledTask.setFromBuilders(SNAPSHOT1.getTasks()),
-        recovery.query(Query.unscoped()));
+    assertEquals(SNAPSHOT1.getTasks(), recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
   }
@@ -119,7 +117,7 @@ public class RecoveryTest extends EasyMockTest {
   @Test
   public void testModifySnapshotBeforeCommit() throws Exception {
     expect(snapshotStore.createSnapshot()).andReturn(SNAPSHOT1);
-    Snapshot modified = SNAPSHOT1.deepCopy().setTasks(ImmutableSet.of(TASK1.newBuilder()));
+    Snapshot modified = SNAPSHOT1.withTasks(ImmutableSet.of(TASK1));
     Capture<MutateWork<Object, Exception>> transaction = createCapture();
     expect(primaryStorage.write(capture(transaction))).andReturn(null);
     distributedStore.persist(modified);
@@ -131,13 +129,9 @@ public class RecoveryTest extends EasyMockTest {
     storageBackup.createSnapshot();
     String backup1 = storageBackup.createBackupName();
     recovery.stage(backup1);
-    assertEquals(
-        IScheduledTask.setFromBuilders(SNAPSHOT1.getTasks()),
-        recovery.query(Query.unscoped()));
+    assertEquals(SNAPSHOT1.getTasks(), recovery.query(Query.unscoped()));
     recovery.deleteTasks(Query.taskScoped(Tasks.id(TASK2)));
-    assertEquals(
-        IScheduledTask.setFromBuilders(modified.getTasks()),
-        recovery.query(Query.unscoped()));
+    assertEquals(modified.getTasks(), recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
   }
@@ -154,20 +148,22 @@ public class RecoveryTest extends EasyMockTest {
     recovery.commit();
   }
 
-  private static Snapshot makeSnapshot(IScheduledTask... tasks) {
-    SchedulerMetadata metadata = new SchedulerMetadata()
+  private static Snapshot makeSnapshot(ScheduledTask... tasks) {
+    SchedulerMetadata metadata = SchedulerMetadata.builder()
         .setDetails(ImmutableMap.of(
             FakeBuildInfo.DATE, FakeBuildInfo.DATE,
             FakeBuildInfo.GIT_REVISION, FakeBuildInfo.GIT_REVISION,
-            FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG));
+            FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG))
+        .build();
 
-    return new Snapshot()
-        .setHostAttributes(ImmutableSet.of())
-        .setCronJobs(ImmutableSet.of())
+    return Snapshot.builder()
+        .setHostAttributes()
+        .setCronJobs()
         .setSchedulerMetadata(metadata)
-        .setQuotaConfigurations(ImmutableSet.of())
-        .setTasks(IScheduledTask.toBuildersSet(ImmutableSet.copyOf(tasks)))
-        .setLocks(ImmutableSet.of())
-        .setJobUpdateDetails(ImmutableSet.of());
+        .setQuotaConfigurations()
+        .setTasks(tasks)
+        .setLocks()
+        .setJobUpdateDetails()
+        .build();
   }
 }

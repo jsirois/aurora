@@ -21,8 +21,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.stats.CachedCounters;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 
 import static java.util.Objects.requireNonNull;
 
@@ -105,7 +105,7 @@ public class PreemptorMetrics {
     return "preemptor_slot_validation_" + result(success);
   }
 
-  void recordPreemptionAttemptFor(ITaskConfig task) {
+  void recordPreemptionAttemptFor(TaskConfig task) {
     increment(attemptsStatName(task.isProduction()));
   }
 
@@ -113,7 +113,7 @@ public class PreemptorMetrics {
     increment(successStatName(victim.isProduction()));
   }
 
-  void recordSlotSearchResult(Optional<?> result, ITaskConfig task) {
+  void recordSlotSearchResult(Optional<?> result, TaskConfig task) {
     increment(slotSearchStatName(result.isPresent(), task.isProduction()));
   }
 

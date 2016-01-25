@@ -16,11 +16,9 @@ package org.apache.aurora.scheduler.storage.log;
 import java.util.Set;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeBuildInfo;
@@ -49,13 +47,6 @@ import org.apache.aurora.scheduler.ResourceAggregates;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.SnapshotStore;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IJobConfiguration;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdate;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateDetails;
-import org.apache.aurora.scheduler.storage.entities.IJobUpdateKey;
-import org.apache.aurora.scheduler.storage.entities.ILock;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.apache.aurora.scheduler.storage.testing.StorageTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,49 +73,57 @@ public class SnapshotStoreImplTest extends EasyMockTest {
         storageUtil.storage);
   }
 
-  private static IJobUpdateKey makeKey(String id) {
-    return IJobUpdateKey.build(
-        new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), id));
+  private static JobUpdateKey makeKey(String id) {
+    return JobUpdateKey.create(JobKeys.from("role", "env", "job"), id);
   }
 
   @Test
   public void testCreateAndRestoreNewSnapshot() {
-    ImmutableSet<IScheduledTask> tasks = ImmutableSet.of(
-        IScheduledTask.build(new ScheduledTask().setStatus(ScheduleStatus.PENDING)));
+    ImmutableSet<ScheduledTask> tasks = ImmutableSet.of(
+        ScheduledTask.builder().setStatus(ScheduleStatus.PENDING).build());
     Set<QuotaConfiguration> quotas =
         ImmutableSet.of(
-            new QuotaConfiguration("steve", ResourceAggregates.EMPTY.newBuilder()));
-    IHostAttributes attribute = IHostAttributes.build(
-        new HostAttributes("host", ImmutableSet.of(new Attribute("attr", ImmutableSet.of("value"))))
-            .setSlaveId("slave id"));
+            QuotaConfiguration.create("steve", ResourceAggregates.EMPTY));
+    HostAttributes attribute = HostAttributes.builder()
+        .setHost("host")
+        .setAttributes(Attribute.create("attr", ImmutableSet.of("value")))
+        .setSlaveId("slave id")
+        .build();
     // A legacy attribute that has a maintenance mode set, but nothing else.  These should be
     // dropped.
-    IHostAttributes legacyAttribute = IHostAttributes.build(
-        new HostAttributes("host", ImmutableSet.of()));
-    StoredCronJob job = new StoredCronJob(
-        new JobConfiguration().setKey(new JobKey("owner", "env", "name")));
+    HostAttributes legacyAttribute = HostAttributes.create("host", ImmutableSet.of());
+    StoredCronJob job = StoredCronJob.create(
+        JobConfiguration.builder().setKey(JobKey.create("owner", "env", "name")).build());
     String frameworkId = "framework_id";
-    ILock lock = ILock.build(new Lock()
-        .setKey(LockKey.job(JobKeys.from("testRole", "testEnv", "testJob").newBuilder()))
+    Lock lock = Lock.builder()
+        .setKey(LockKey.job(JobKeys.from("testRole", "testEnv", "testJob")))
         .setToken("lockId")
         .setUser("testUser")
-        .setTimestampMs(12345L));
-    SchedulerMetadata metadata = new SchedulerMetadata().setFrameworkId(frameworkId);
-    metadata.setDetails(Maps.newHashMap());
-    metadata.getDetails().put(FakeBuildInfo.DATE, FakeBuildInfo.DATE);
-    metadata.getDetails().put(FakeBuildInfo.GIT_REVISION, FakeBuildInfo.GIT_REVISION);
-    metadata.getDetails().put(FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG);
-    IJobUpdateKey updateId1 =  makeKey("updateId1");
-    IJobUpdateKey updateId2 = makeKey("updateId2");
-    IJobUpdateDetails updateDetails1 = IJobUpdateDetails.build(new JobUpdateDetails()
-        .setUpdate(new JobUpdate().setSummary(
-            new JobUpdateSummary().setKey(updateId1.newBuilder())))
-        .setUpdateEvents(ImmutableList.of(new JobUpdateEvent().setStatus(JobUpdateStatus.ERROR)))
-        .setInstanceEvents(ImmutableList.of(new JobInstanceUpdateEvent().setTimestampMs(123L))));
+        .setTimestampMs(12345L)
+        .build();
+    SchedulerMetadata metadata = SchedulerMetadata.builder()
+        .setFrameworkId(frameworkId)
+        .setDetails(ImmutableMap.<String, String>builder()
+            .put(FakeBuildInfo.DATE, FakeBuildInfo.DATE)
+            .put(FakeBuildInfo.GIT_REVISION, FakeBuildInfo.GIT_REVISION)
+            .put(FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG)
+            .build())
+        .build();
+    JobUpdateKey updateId1 =  makeKey("updateId1");
+    JobUpdateKey updateId2 = makeKey("updateId2");
+    JobUpdateDetails updateDetails1 = JobUpdateDetails.builder()
+        .setUpdate(JobUpdate.builder()
+            .setSummary(JobUpdateSummary.builder().setKey(updateId1).build())
+            .build())
+        .setUpdateEvents(JobUpdateEvent.builder().setStatus(JobUpdateStatus.ERROR).build())
+        .setInstanceEvents(JobInstanceUpdateEvent.builder().setTimestampMs(123L).build())
+        .build();
 
-    IJobUpdateDetails updateDetails2 = IJobUpdateDetails.build(new JobUpdateDetails()
-        .setUpdate(new JobUpdate().setSummary(
-            new JobUpdateSummary().setKey(updateId2.newBuilder()))));
+    JobUpdateDetails updateDetails2 = JobUpdateDetails.builder()
+        .setUpdate(JobUpdate.builder()
+            .setSummary(JobUpdateSummary.builder().setKey(updateId2).build())
+            .build())
+        .build();
 
     storageUtil.expectOperations();
     expect(storageUtil.taskStore.fetchTasks(Query.unscoped())).andReturn(tasks);
@@ -133,20 +132,20 @@ public class SnapshotStoreImplTest extends EasyMockTest {
     expect(storageUtil.attributeStore.getHostAttributes())
         .andReturn(ImmutableSet.of(attribute, legacyAttribute));
     expect(storageUtil.jobStore.fetchJobs())
-        .andReturn(ImmutableSet.of(IJobConfiguration.build(job.getJobConfiguration())));
+        .andReturn(ImmutableSet.of(job.getJobConfiguration()));
     expect(storageUtil.schedulerStore.fetchFrameworkId()).andReturn(Optional.of(frameworkId));
     expect(storageUtil.lockStore.fetchLocks()).andReturn(ImmutableSet.of(lock));
     String lockToken = "token";
     expect(storageUtil.jobUpdateStore.fetchAllJobUpdateDetails())
         .andReturn(ImmutableSet.of(
-            new StoredJobUpdateDetails(updateDetails1.newBuilder(), lockToken),
-            new StoredJobUpdateDetails(updateDetails2.newBuilder(), null)));
+            StoredJobUpdateDetails.create(updateDetails1, lockToken),
+            StoredJobUpdateDetails.create(updateDetails2, null)));
 
     expectDataWipe();
     storageUtil.taskStore.saveTasks(tasks);
     storageUtil.quotaStore.saveQuota("steve", ResourceAggregates.EMPTY);
     expect(storageUtil.attributeStore.saveHostAttributes(attribute)).andReturn(true);
-    storageUtil.jobStore.saveAcceptedJob(IJobConfiguration.build(job.getJobConfiguration()));
+    storageUtil.jobStore.saveAcceptedJob(job.getJobConfiguration());
     storageUtil.schedulerStore.saveFrameworkId(frameworkId);
     storageUtil.lockStore.saveLock(lock);
     storageUtil.jobUpdateStore.saveJobUpdate(
@@ -159,24 +158,23 @@ public class SnapshotStoreImplTest extends EasyMockTest {
         Iterables.getOnlyElement(updateDetails1.getInstanceEvents()));
 
     // The saved object for update2 should be backfilled.
-    JobUpdate update2Expected = updateDetails2.getUpdate().newBuilder();
-    update2Expected.getSummary().setKey(updateId2.newBuilder());
-    storageUtil.jobUpdateStore.saveJobUpdate(
-        IJobUpdate.build(update2Expected), Optional.absent());
+    JobUpdate update2Expected = updateDetails2.getUpdate().withSummary(s -> s.withKey(updateId2));
+    storageUtil.jobUpdateStore.saveJobUpdate(update2Expected, Optional.absent());
 
     control.replay();
 
-    Snapshot expected = new Snapshot()
+    Snapshot expected = Snapshot.builder()
         .setTimestamp(NOW)
-        .setTasks(IScheduledTask.toBuildersSet(tasks))
+        .setTasks(tasks)
         .setQuotaConfigurations(quotas)
-        .setHostAttributes(ImmutableSet.of(attribute.newBuilder(), legacyAttribute.newBuilder()))
+        .setHostAttributes(ImmutableSet.of(attribute, legacyAttribute))
         .setCronJobs(ImmutableSet.of(job))
         .setSchedulerMetadata(metadata)
-        .setLocks(ImmutableSet.of(lock.newBuilder()))
-        .setJobUpdateDetails(ImmutableSet.of(
-            new StoredJobUpdateDetails(updateDetails1.newBuilder(), lockToken),
-            new StoredJobUpdateDetails(updateDetails2.newBuilder(), null)));
+        .setLocks(ImmutableSet.of(lock))
+        .setJobUpdateDetails(
+            StoredJobUpdateDetails.create(updateDetails1, lockToken),
+            StoredJobUpdateDetails.create(updateDetails2, null))
+        .build();
 
     Snapshot snapshot = snapshotStore.createSnapshot();
     assertEquals(expected, snapshot);

@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.apache.aurora.common.testing.TearDownTestCase;
 import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.base.Tasks;
@@ -35,8 +36,6 @@ import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.apache.aurora.scheduler.storage.db.DbUtil;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
-import org.apache.aurora.scheduler.storage.entities.IScheduledTask;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -85,7 +84,7 @@ public class StorageTransactionTest extends TearDownTestCase {
     assertEquals("slowResult", future.get());
   }
 
-  private IScheduledTask makeTask(String taskId) {
+  private ScheduledTask makeTask(String taskId) {
     return TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB);
   }
 
@@ -114,8 +113,8 @@ public class StorageTransactionTest extends TearDownTestCase {
 
   @Test
   public void testWritesUnderTransaction() {
-    IResourceAggregate quota = IResourceAggregate
-        .build(new ResourceAggregate().setDiskMb(100).setNumCpus(2.0).setRamMb(512));
+    ResourceAggregate quota =
+        ResourceAggregate.builder().setDiskMb(100).setNumCpus(2.0).setRamMb(512).build();
 
     try {
       storage.write(storeProvider -> {

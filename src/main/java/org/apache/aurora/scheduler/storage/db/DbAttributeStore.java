@@ -21,9 +21,11 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
+import org.apache.aurora.GuavaUtils;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.peer.MutableHostAttributes;
 import org.apache.aurora.scheduler.storage.AttributeStore;
-import org.apache.aurora.scheduler.storage.entities.IAttribute;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -49,9 +51,8 @@ class DbAttributeStore implements AttributeStore.Mutable {
 
   @Timed("attribute_store_save")
   @Override
-  public boolean saveHostAttributes(IHostAttributes hostAttributes) {
+  public boolean saveHostAttributes(HostAttributes hostAttributes) {
     checkNotBlank(hostAttributes.getHost());
-    checkArgument(hostAttributes.isSetAttributes());
     checkArgument(hostAttributes.isSetMode());
 
     if (Iterables.any(hostAttributes.getAttributes(), EMPTY_VALUES)) {
@@ -59,7 +60,7 @@ class DbAttributeStore implements AttributeStore.Mutable {
           "Host attributes contains empty values: " + hostAttributes);
     }
 
-    Optional<IHostAttributes> existing = getHostAttributes(hostAttributes.getHost());
+    Optional<HostAttributes> existing = getHostAttributes(hostAttributes.getHost());
     if (existing.equals(Optional.of(hostAttributes))) {
       return false;
     } else if (existing.isPresent()) {
@@ -79,18 +80,20 @@ class DbAttributeStore implements AttributeStore.Mutable {
     return true;
   }
 
-  private static final Predicate<IAttribute> EMPTY_VALUES =
+  private static final Predicate<Attribute> EMPTY_VALUES =
       attribute -> attribute.getValues().isEmpty();
 
   @Timed("attribute_store_fetch_one")
   @Override
-  public Optional<IHostAttributes> getHostAttributes(String host) {
-    return Optional.fromNullable(mapper.select(host)).transform(IHostAttributes::build);
+  public Optional<HostAttributes> getHostAttributes(String host) {
+    return Optional.fromNullable(mapper.select(host)).transform(MutableHostAttributes::toThrift);
   }
 
   @Timed("attribute_store_fetch_all")
   @Override
-  public Set<IHostAttributes> getHostAttributes() {
-    return IHostAttributes.setFromBuilders(mapper.selectAll());
+  public Set<HostAttributes> getHostAttributes() {
+    return mapper.selectAll().stream()
+        .map(MutableHostAttributes::toThrift)
+        .collect(GuavaUtils.toImmutableSet());
   }
 }

@@ -13,21 +13,22 @@
  */
 package org.apache.aurora.scheduler.storage.log;
 
+import java.nio.ByteBuffer;
+import java.util.logging.Logger;
+
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import org.apache.aurora.codec.ThriftBinaryCodec;
 import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.storage.LogEntry;
-import org.apache.aurora.gen.storage.LogEntry._Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Utility class for working with log entries.
  */
 public final class Entries {
 
-  private static final Logger LOG = LoggerFactory.getLogger(Entries.class);
+  private static final Logger LOG = Logger.getLogger(Entries.class.getName());
 
   private Entries() {
     // Utility class.
@@ -46,8 +47,10 @@ public final class Entries {
    *         of the original entry.
    * @throws CodingException If the value could not be encoded or deflated.
    */
+  @VisibleForTesting
   public static LogEntry deflate(LogEntry entry) throws CodingException {
-    return LogEntry.deflatedEntry(ThriftBinaryCodec.deflateNonNull(entry));
+    byte[] data = ThriftBinaryCodec.deflateNonNull(entry);
+    return LogEntry.deflatedEntry(ByteBuffer.wrap(data));
   }
 
   /**
@@ -61,11 +64,11 @@ public final class Entries {
    * @throws CodingException If the value could not be inflated or decoded.
    */
   static LogEntry inflate(LogEntry entry) throws CodingException {
-    Preconditions.checkArgument(entry.isSet(_Fields.DEFLATED_ENTRY));
+    Preconditions.checkArgument(entry.isSet(LogEntry.Fields.DEFLATED_ENTRY));
 
-    byte[] data = entry.getDeflatedEntry();
-    LOG.info("Inflating deflated log entry of size " + data.length);
-    return ThriftBinaryCodec.inflateNonNull(LogEntry.class, entry.getDeflatedEntry());
+    ByteBuffer data = entry.getDeflatedEntry();
+    LOG.info("Inflating deflated log entry of size " + data.remaining());
+    return ThriftBinaryCodec.inflateNonNull(LogEntry.class, data);
   }
 
   /**

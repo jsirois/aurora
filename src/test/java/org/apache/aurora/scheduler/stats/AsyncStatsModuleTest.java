@@ -22,8 +22,6 @@ import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.ResourceType;
 import org.apache.aurora.scheduler.offers.OfferManager;
 import org.apache.aurora.scheduler.stats.SlotSizeCounter.MachineResource;
-import org.apache.aurora.scheduler.storage.entities.IHostAttributes;
-import org.apache.aurora.scheduler.storage.entities.IResourceAggregate;
 import org.apache.mesos.Protos;
 import org.junit.Test;
 
@@ -44,7 +42,7 @@ public class AsyncStatsModuleTest extends EasyMockTest {
             .addResources(getCpuResource(true, 2.0))
             .addResources(getCpuResource(false, 4.0))
             .build(),
-            IHostAttributes.build(new HostAttributes()))));
+            HostAttributes.builder().build())));
 
     control.replay();
 
@@ -54,8 +52,7 @@ public class AsyncStatsModuleTest extends EasyMockTest {
   }
 
   private static MachineResource resource(boolean revocable, double cpu) {
-    return new MachineResource(
-        IResourceAggregate.build(new ResourceAggregate(cpu, 0, 0)), false, revocable);
+    return new MachineResource(ResourceAggregate.create(cpu, 0, 0), false, revocable);
   }
 
   private static Protos.Resource getCpuResource(boolean revocable, double value) {

@@ -29,8 +29,8 @@ import com.google.common.collect.Range;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Numbers;
-import org.apache.aurora.scheduler.storage.entities.ITaskConfig;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.ExecutorInfo;
 import org.apache.mesos.Protos.Resource;
@@ -87,7 +87,7 @@ public final class ResourceSlot {
    * @param task Task to get resources from.
    * @return The resources required by the task.
    */
-  public static ResourceSlot from(ITaskConfig task) {
+  public static ResourceSlot from(TaskConfig task) {
     requireNonNull(task);
     return new ResourceSlot(
         task.getNumCpus(),

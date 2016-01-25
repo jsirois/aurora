@@ -11,30 +11,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.aurora.scheduler.storage.db;
+package org.apache.aurora.scheduler.storage.db.views;
 
-import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.Container;
+import org.apache.aurora.gen.MesosContainer;
+import org.apache.aurora.gen.peer.MutableDockerContainer;
 
-/**
- * A job update that should be pruned.
- */
-public class PruneVictim {
-  private long rowId;
-  private JobUpdateKey update;
+public final class DbContainer {
+  private MutableDockerContainer docker;
 
-  public long getRowId() {
-    return rowId;
+  private DbContainer() {
   }
 
-  public JobUpdateKey getUpdate() {
-    return update;
-  }
-
-  public void setRowId(long rowId) {
-    this.rowId = rowId;
-  }
-
-  public void setUpdate(JobUpdateKey update) {
-    this.update = update;
+  public Container toThrift() {
+    if (docker == null) {
+      return Container.mesos(MesosContainer.create());
+    } else {
+      return Container.docker(docker.toThrift());
+    }
   }
 }

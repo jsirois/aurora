@@ -272,18 +272,21 @@ public class HttpSecurityIT extends AbstractJettyTest {
     expect(auroraAdmin.killTasks(adsScopedQuery, null, null, null)).andReturn(OK);
     expect(auroraAdmin.killTasks(null, null, ADS_STAGING_JOB, null)).andReturn(OK);
 
-    expectShiroAfterAuthFilter().times(24);
+    // The following 12 authenticated client calls with authenticated users (many without
+    // authorization) and the 1 unauthenticated client call which will skip authentication and move
+    // on to the chained filter before failing authorization.
+    expectShiroAfterAuthFilter().times(13);
 
     replayAndStart();
 
-    assertEquals(
+    assertEquals( // 1
         OK,
         getAuthenticatedClient(WFARNER).killTasks(
             null,
             Lock.builder().setMessage("1").build(),
             null,
             null));
-    assertEquals(
+    assertEquals( // 2
         OK,
         getAuthenticatedClient(ROOT).killTasks(
             null,
@@ -291,46 +294,46 @@ public class HttpSecurityIT extends AbstractJettyTest {
             null,
             null));
 
-    assertEquals(
+    assertEquals( // 3
         ResponseCode.INVALID_REQUEST,
         getAuthenticatedClient(UNPRIVILEGED).killTasks(null, null, null, null).getResponseCode());
-    assertEquals(
+    assertEquals( // 4
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(UNPRIVILEGED)
             .killTasks(jobScopedQuery, null, null, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 5
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(UNPRIVILEGED)
             .killTasks(null, null, job, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 6
         ResponseCode.INVALID_REQUEST,
         getAuthenticatedClient(BACKUP_SERVICE).killTasks(null, null, null, null).getResponseCode());
-    assertEquals(
+    assertEquals( // 7
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(BACKUP_SERVICE)
             .killTasks(jobScopedQuery, null, null, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 8
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(BACKUP_SERVICE)
             .killTasks(null, null, job, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 9
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(DEPLOY_SERVICE)
             .killTasks(jobScopedQuery, null, null, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 10
         ResponseCode.AUTH_FAILED,
         getAuthenticatedClient(DEPLOY_SERVICE)
             .killTasks(null, null, job, null)
             .getResponseCode());
-    assertEquals(
+    assertEquals( // 11
         OK,
         getAuthenticatedClient(DEPLOY_SERVICE).killTasks(adsScopedQuery, null, null, null));
-    assertEquals(
+    assertEquals( // 12
         OK,
         getAuthenticatedClient(DEPLOY_SERVICE).killTasks(
             null,
@@ -338,7 +341,7 @@ public class HttpSecurityIT extends AbstractJettyTest {
             ADS_STAGING_JOB,
             null));
 
-    assertKillTasksFails(getUnauthenticatedClient());
+    assertKillTasksFails(getUnauthenticatedClient()); // 13
     assertKillTasksFails(getAuthenticatedClient(INCORRECT));
     assertKillTasksFails(getAuthenticatedClient(NONEXISTENT));
   }
@@ -356,11 +359,15 @@ public class HttpSecurityIT extends AbstractJettyTest {
   public void testAuroraAdmin() throws Exception {
     expect(auroraAdmin.snapshot()).andReturn(OK);
     expect(auroraAdmin.listBackups()).andReturn(OK);
-    expectShiroAfterAuthFilter().times(12);
+    // 1 - ROOT+snapshot - OK
+    // 3 - VALID_CREDENTIALS-ROOT+snapshot - AUTH(orization)_FAILED
+    // 1 - BACKUP_SERVICE+listBackups - OK
+    // The remaining 2 have INVALID_CREDENTIALS - AUTH(entication)_FAILEDs
+    expectShiroAfterAuthFilter().times(5);
 
     replayAndStart();
 
-    assertEquals(OK, getAuthenticatedClient(ROOT).snapshot());
+    assertEquals(OK, getAuthenticatedClient(ROOT).snapshot()); // 1
 
     for (Credentials credentials : INVALID_CREDENTIALS) {
       assertSnapshotFails(getAuthenticatedClient(credentials));
@@ -369,10 +376,10 @@ public class HttpSecurityIT extends AbstractJettyTest {
     for (Credentials credentials : Sets.difference(VALID_CREDENTIALS, ImmutableSet.of(ROOT))) {
       assertEquals(
           ResponseCode.AUTH_FAILED,
-          getAuthenticatedClient(credentials).snapshot().getResponseCode());
+          getAuthenticatedClient(credentials).snapshot().getResponseCode()); // 2,3,4
     }
 
-    assertEquals(OK, getAuthenticatedClient(BACKUP_SERVICE).listBackups());
+    assertEquals(OK, getAuthenticatedClient(BACKUP_SERVICE).listBackups()); // 5
   }
 
   private HttpResponse callH2Console(Credentials credentials) throws Exception {

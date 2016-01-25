@@ -17,10 +17,13 @@ import java.util.Map;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
 import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.peer.MutableResourceAggregate;
 import org.apache.aurora.gen.storage.SaveQuota;
+import org.apache.aurora.gen.storage.peer.MutableSaveQuota;
 import org.apache.aurora.scheduler.storage.QuotaStore;
 
 import static java.util.Objects.requireNonNull;
@@ -42,14 +45,15 @@ class DbQuotaStore implements QuotaStore.Mutable {
   @Timed("quota_store_fetch_quota")
   @Override
   public Optional<ResourceAggregate> fetchQuota(String role) {
-    return Optional.fromNullable(mapper.select(role));
+    return Optional.fromNullable(mapper.select(role))
+        .transform(MutableResourceAggregate::toThrift);
   }
 
   @Timed("quota_store_fetch_quotas")
   @Override
   public Map<String, ResourceAggregate> fetchQuotas() {
     ImmutableMap.Builder<String, ResourceAggregate> results = ImmutableMap.builder();
-    for (SaveQuota result : mapper.selectAll()) {
+    for (SaveQuota result : Iterables.transform(mapper.selectAll(), MutableSaveQuota::toThrift)) {
       results.put(result.getRole(), result.getQuota());
     }
     return results.build();

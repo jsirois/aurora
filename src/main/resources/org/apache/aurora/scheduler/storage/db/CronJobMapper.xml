@@ -62,7 +62,7 @@
 
   <resultMap
       id="cronJobWrapperResultMap"
-      type="org.apache.aurora.scheduler.storage.db.views.DbJobConfiguration">
+      type="org.apache.aurora.gen.peer.MutableJobConfiguration">
 
     <id column="c_id" />
     <result property="owner.role" column="j_role"/>

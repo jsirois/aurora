@@ -147,10 +147,9 @@ public class DbJobUpdateStoreTest {
 
     StorageEntityUtil.assertFullyPopulated(
         update1,
-        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(Range.class, "first"),
-        StorageEntityUtil.getField(Range.class, "last"));
+        JobUpdateSummary.Fields.STATE,
+        Range.Fields.FIRST,
+        Range.Fields.LAST);
     saveUpdate(update1, Optional.of("lock1"));
     assertUpdate(update1);
 
@@ -186,10 +185,9 @@ public class DbJobUpdateStoreTest {
 
     StorageEntityUtil.assertFullyPopulated(
         update,
-        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(JobUpdateSummary.class, "state"),
-        StorageEntityUtil.getField(Range.class, "first"),
-        StorageEntityUtil.getField(Range.class, "last"));
+        JobUpdateSummary.Fields.STATE,
+        Range.Fields.FIRST,
+        Range.Fields.LAST);
     saveUpdate(update, Optional.of("lock1"));
     assertUpdate(update);
   }

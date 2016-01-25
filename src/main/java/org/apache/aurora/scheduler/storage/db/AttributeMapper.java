@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 
 import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
+import org.apache.aurora.gen.peer.MutableHostAttributes;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -66,14 +67,14 @@ interface AttributeMapper {
    * @return Attributes associated with {@code host}, or {@code null} if no association exists.
    */
   @Nullable
-  HostAttributes select(@Param("host") String host);
+  MutableHostAttributes select(@Param("host") String host);
 
   /**
    * Retrieves all stored host attributes.
    *
    * @return All host attributes.
    */
-  List<HostAttributes> selectAll();
+  List<MutableHostAttributes> selectAll();
 
   /**
    * Deletes all stored attributes and values.

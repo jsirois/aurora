@@ -56,7 +56,7 @@ struct RemoveTasks {
 struct SaveQuota {
   1: string role
   2: api.ResourceAggregate quota
-}
+} (mutablePeer="true")
 
 struct RemoveQuota {
   1: string role
@@ -75,7 +75,7 @@ struct StoredJobUpdateDetails {
   1: api.JobUpdateDetails details
   /** ID of the lock associated with this update. */
   2: string lockToken
-}
+} (mutablePeer="true")
 
 struct SaveJobUpdateEvent {
   1: api.JobUpdateEvent event

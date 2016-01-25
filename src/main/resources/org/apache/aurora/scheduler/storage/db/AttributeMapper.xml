@@ -44,14 +44,14 @@
     WHERE host = #{host}
   </update>
 
-  <resultMap id="hostAttributeResultMap" type="org.apache.aurora.gen.HostAttributes">
+  <resultMap id="hostAttributeResultMap" type="org.apache.aurora.gen.peer.MutableHostAttributes">
     <id column="a_id" />
     <result property="mode"
             column="a_mode"
             typeHandler="org.apache.aurora.scheduler.storage.db.typehandlers.MaintenanceModeTypeHandler" />
     <result property="host" column="a_host" />
     <result property="slaveId" column="a_slave_id" />
-    <collection property="attributes" ofType="org.apache.aurora.gen.Attribute" columnPrefix="v_">
+    <collection property="attributes" ofType="org.apache.aurora.gen.peer.MutableAttribute" columnPrefix="v_">
       <id column="name" property="name" />
       <collection property="values" ofType="String">
         <result column="value" />

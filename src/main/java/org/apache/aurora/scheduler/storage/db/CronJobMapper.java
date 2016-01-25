@@ -19,7 +19,7 @@ import javax.annotation.Nullable;
 
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
-import org.apache.aurora.scheduler.storage.db.views.DbJobConfiguration;
+import org.apache.aurora.gen.peer.MutableJobConfiguration;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -33,8 +33,8 @@ interface CronJobMapper {
 
   void truncate();
 
-  List<DbJobConfiguration> selectAll();
+  List<MutableJobConfiguration> selectAll();
 
   @Nullable
-  DbJobConfiguration select(@Param("job") JobKey job);
+  MutableJobConfiguration select(@Param("job") JobKey job);
 }

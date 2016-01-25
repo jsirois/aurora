@@ -15,16 +15,13 @@ package org.apache.aurora.scheduler.base;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Ordering;
@@ -120,10 +117,6 @@ public final class Tasks {
     return ids(ImmutableList.copyOf(tasks));
   }
 
-  public static Map<String, ScheduledTask> mapById(Iterable<ScheduledTask> tasks) {
-    return Maps.uniqueIndex(tasks, Tasks::id);
-  }
-
   /**
    * Get the latest active task or the latest inactive task if no active task exists.
    *
@@ -144,10 +137,5 @@ public final class Tasks {
   }
 
   public static final Ordering<ScheduledTask> LATEST_ACTIVITY = Ordering.natural()
-      .onResultOf(new Function<ScheduledTask, Long>() {
-        @Override
-        public Long apply(ScheduledTask task) {
-          return getLatestEvent(task).getTimestamp();
-        }
-      });
+      .onResultOf(task -> getLatestEvent(task).getTimestamp());
 }

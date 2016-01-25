@@ -13,19 +13,21 @@
  */
 package org.apache.aurora.scheduler.storage.db.views;
 
-import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.Container;
+import org.apache.aurora.gen.MesosContainer;
+import org.apache.aurora.gen.peer.MutableDockerContainer;
 
-public final class DbConstraint {
-  private String name;
-  private DbTaskConstraint constraint;
+public final class DbContainer {
+  private MutableDockerContainer docker;
 
-  private DbConstraint() {
+  private DbContainer() {
   }
 
-  public Constraint toThrift() {
-    return Constraint.builder()
-        .setName(name)
-        .setConstraint(constraint.toThrift())
-        .build();
+  public Container toThrift() {
+    if (docker == null) {
+      return Container.mesos(MesosContainer.create());
+    } else {
+      return Container.docker(docker.toThrift());
+    }
   }
 }

@@ -279,7 +279,7 @@ public class StateManagerImpl implements StateManager {
 
       switch (sideEffect.getAction()) {
         case INCREMENT_FAILURES:
-          taskStore.mutateTask(taskId, task1 -> task1.withFailureCount(fc -> fc++));
+          taskStore.mutateTask(taskId, task1 -> task1.withFailureCount(fc -> fc + 1));
           break;
 
         case SAVE_STATE:

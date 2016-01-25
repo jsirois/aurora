@@ -73,7 +73,7 @@ public class RecoveryTest extends EasyMockTest {
 
   @Before
   public void setUp() throws IOException {
-    final File backupDir = temporaryFolder.newFolder();
+    File backupDir = temporaryFolder.newFolder();
     snapshotStore = createMock(new Clazz<SnapshotStore<Snapshot>>() { });
     distributedStore = createMock(DistributedSnapshotStore.class);
     primaryStorage = createMock(Storage.class);
@@ -109,9 +109,7 @@ public class RecoveryTest extends EasyMockTest {
     assertEquals(ImmutableSet.of(backup1), recovery.listBackups());
 
     recovery.stage(backup1);
-    assertEquals(
-        SNAPSHOT1.getTasks(),
-        recovery.query(Query.unscoped()));
+    assertEquals(SNAPSHOT1.getTasks(), recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
   }
@@ -131,13 +129,9 @@ public class RecoveryTest extends EasyMockTest {
     storageBackup.createSnapshot();
     String backup1 = storageBackup.createBackupName();
     recovery.stage(backup1);
-    assertEquals(
-        SNAPSHOT1.getTasks(),
-        recovery.query(Query.unscoped()));
+    assertEquals(SNAPSHOT1.getTasks(), recovery.query(Query.unscoped()));
     recovery.deleteTasks(Query.taskScoped(Tasks.id(TASK2)));
-    assertEquals(
-        modified.getTasks(),
-        recovery.query(Query.unscoped()));
+    assertEquals(modified.getTasks(), recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
   }

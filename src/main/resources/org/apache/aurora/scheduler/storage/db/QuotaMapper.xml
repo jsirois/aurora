@@ -32,14 +32,14 @@
     )
   </insert>
 
-  <select id="select" resultType="org.apache.aurora.gen.ResourceAggregate">
+  <select id="select" resultType="org.apache.aurora.gen.peer.MutableResourceAggregate">
     SELECT * FROM quotas
     WHERE role = #{id}
   </select>
 
-  <resultMap id="quotaResultMap" type="org.apache.aurora.gen.storage.SaveQuota">
+  <resultMap id="quotaResultMap" type="org.apache.aurora.gen.storage.peer.MutableSaveQuota">
     <id column="id" />
-    <association property="quota" javaType="org.apache.aurora.gen.ResourceAggregate" />
+    <association property="quota" javaType="org.apache.aurora.gen.peer.MutableResourceAggregate" />
   </resultMap>
 
   <select id="selectAll" resultMap="quotaResultMap">

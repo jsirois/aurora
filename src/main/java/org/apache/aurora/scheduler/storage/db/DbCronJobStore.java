@@ -20,8 +20,8 @@ import com.google.common.collect.FluentIterable;
 
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.peer.MutableJobConfiguration;
 import org.apache.aurora.scheduler.storage.CronJobStore;
-import org.apache.aurora.scheduler.storage.db.views.DbJobConfiguration;
 
 import static java.util.Objects.requireNonNull;
 
@@ -65,7 +65,7 @@ class DbCronJobStore implements CronJobStore.Mutable {
   @Override
   public Iterable<JobConfiguration> fetchJobs() {
     return FluentIterable.from(cronJobMapper.selectAll())
-        .transform(DbJobConfiguration::toThrift)
+        .transform(MutableJobConfiguration::toThrift)
         .toList();
   }
 
@@ -73,6 +73,6 @@ class DbCronJobStore implements CronJobStore.Mutable {
   public Optional<JobConfiguration> fetchJob(JobKey jobKey) {
     requireNonNull(jobKey);
     return Optional.fromNullable(cronJobMapper.select(jobKey))
-        .transform(DbJobConfiguration::toThrift);
+        .transform(MutableJobConfiguration::toThrift);
   }
 }

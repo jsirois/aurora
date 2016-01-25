@@ -13,21 +13,24 @@
  */
 package org.apache.aurora.scheduler.storage.db.views;
 
-import org.apache.aurora.gen.Container;
-import org.apache.aurora.gen.DockerContainer;
-import org.apache.aurora.gen.MesosContainer;
+import javax.annotation.Nullable;
 
-public final class DbContainer {
-  private DockerContainer docker;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.peer.MutableJobUpdateKey;
 
-  private DbContainer() {
+/**
+ * A job update that should be pruned.
+ */
+public class DbPruneVictim {
+  private long rowId;
+  private MutableJobUpdateKey update;
+
+  public long getRowId() {
+    return rowId;
   }
 
-  public Container toThrift() {
-    if (docker == null) {
-      return Container.mesos(MesosContainer.create());
-    } else {
-      return Container.docker(docker);
-    }
+  @Nullable
+  public JobUpdateKey getUpdate() {
+    return update == null ? null : update.toThrift();
   }
 }

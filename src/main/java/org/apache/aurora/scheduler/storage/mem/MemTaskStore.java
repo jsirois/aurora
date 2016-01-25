@@ -79,7 +79,10 @@ class MemTaskStore implements TaskStore.Mutable {
   private static final Function<Query.Builder, Optional<Set<JobKey>>> QUERY_TO_JOB_KEY =
       JobKeys::from;
   private static final Function<Query.Builder, Optional<Set<String>>> QUERY_TO_SLAVE_HOST =
-      query -> Optional.fromNullable(query.get().getSlaveHosts());
+      query -> {
+        ImmutableSet<String> slaveHosts = query.get().getSlaveHosts();
+        return slaveHosts.isEmpty() ? Optional.absent() : Optional.of(slaveHosts);
+      };
 
   // Since this class operates under the API and umbrella of {@link Storage}, it is expected to be
   // thread-safe but not necessarily strongly-consistent unless the externally-controlled storage
@@ -239,14 +242,7 @@ class MemTaskStore implements TaskStore.Mutable {
   }
 
   private static Predicate<Task> queryFilter(Query.Builder query) {
-    return Predicates.compose(
-        Util.queryFilter(query),
-        new Function<Task, ScheduledTask>() {
-          @Override
-          public ScheduledTask apply(Task canonicalTask) {
-            return canonicalTask.storedTask;
-          }
-        });
+    return Predicates.compose(Util.queryFilter(query),canonicalTask -> canonicalTask.storedTask);
   }
 
   private Iterable<Task> fromIdIndex(Iterable<String> taskIds) {
@@ -295,10 +291,9 @@ class MemTaskStore implements TaskStore.Mutable {
     private final ScheduledTask storedTask;
 
     Task(ScheduledTask storedTask, Interner<TaskConfig, String> interner) {
-      interner.removeAssociation(storedTask.getAssignedTask().getTask(), Tasks.id(storedTask));
-      TaskConfig canonical = interner.addAssociation(
-          storedTask.getAssignedTask().getTask(),
-          Tasks.id(storedTask));
+      TaskConfig task = storedTask.getAssignedTask().getTask();
+      interner.removeAssociation(task, Tasks.id(storedTask));
+      TaskConfig canonical = interner.addAssociation(task, Tasks.id(storedTask));
       this.storedTask = storedTask.withAssignedTask(at -> at.withTask(canonical));
     }
 
@@ -406,7 +401,7 @@ class MemTaskStore implements TaskStore.Mutable {
             }
             return builder.build();
           }
-    };
+        };
 
     Optional<Iterable<String>> getMatches(Query.Builder query) {
       return queryExtractor.apply(query).transform(lookup);

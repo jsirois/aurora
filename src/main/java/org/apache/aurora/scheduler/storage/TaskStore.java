@@ -122,7 +122,7 @@ public interface TaskStore {
       // Utility class.
     }
 
-    public static Predicate<ScheduledTask> queryFilter(final Query.Builder queryBuilder) {
+    public static Predicate<ScheduledTask> queryFilter(Query.Builder queryBuilder) {
       return task -> {
         TaskQuery query = queryBuilder.get();
         TaskConfig config = task.getAssignedTask().getTask();
@@ -143,7 +143,7 @@ public interface TaskStore {
         if (!query.getJobKeys().isEmpty() && !query.getJobKeys().contains(config.getJob())) {
           return false;
         }
-        if (query.getTaskIds() != null && !query.getTaskIds().contains(Tasks.id(task))) {
+        if (!query.getTaskIds().isEmpty() && !query.getTaskIds().contains(Tasks.id(task))) {
           return false;
         }
 

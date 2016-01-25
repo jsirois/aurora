@@ -48,11 +48,12 @@ public class ResourceSlotTest {
       new ResourceSlot(2.0, Amount.of(2L, Data.MB), Amount.of(2L, Data.MB), 2);
   private static final ResourceSlot THREE =
       new ResourceSlot(3.0, Amount.of(3L, Data.MB), Amount.of(3L, Data.MB), 3);
-  private static final TaskConfig TASK = TaskConfig.build(new TaskConfig()
+  private static final TaskConfig TASK = TaskConfig.builder()
       .setNumCpus(1.0)
       .setRamMb(1024)
       .setDiskMb(2048)
-      .setRequestedPorts(ImmutableSet.of("http", "debug")));
+      .setRequestedPorts("http", "debug")
+      .build();
 
   @Test
   public void testMaxElements() {

@@ -43,8 +43,9 @@ public class LeaderRedirectTest extends EasyMockTest {
   private static final int HTTP_PORT = 500;
 
   private static final Function<HostAndPort, ServiceInstance> CREATE_INSTANCE =
-      endpoint -> new ServiceInstance()
-          .setServiceEndpoint(new Endpoint(endpoint.getHostText(), endpoint.getPort()));
+      endpoint -> ServiceInstance.builder()
+          .setServiceEndpoint(Endpoint.create(endpoint.getHostText(), endpoint.getPort()))
+          .build();
 
   private Capture<HostChangeMonitor<ServiceInstance>> monitorCapture;
 
@@ -122,7 +123,7 @@ public class LeaderRedirectTest extends EasyMockTest {
   public void testBadServiceInstance() throws Exception {
     replayAndMonitor();
 
-    publishSchedulers(ImmutableSet.of(new ServiceInstance()));
+    publishSchedulers(ImmutableSet.of(ServiceInstance.builder().build()));
 
     assertEquals(Optional.absent(), leaderRedirector.getRedirect());
     assertEquals(LeaderStatus.NO_LEADER, leaderRedirector.getLeaderStatus());

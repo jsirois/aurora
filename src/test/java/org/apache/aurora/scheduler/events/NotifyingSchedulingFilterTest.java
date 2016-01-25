@@ -37,14 +37,15 @@ import static org.junit.Assert.assertEquals;
 
 public class NotifyingSchedulingFilterTest extends EasyMockTest {
 
-  private static final TaskConfig TASK = TaskConfig.build(new TaskConfig()
+  private static final TaskConfig TASK = TaskConfig.builder()
       .setNumCpus(1)
       .setRamMb(1024)
-      .setDiskMb(1024));
+      .setDiskMb(1024)
+      .build();
   private static final TaskGroupKey GROUP_KEY = TaskGroupKey.from(TASK);
   private static final UnusedResource RESOURCE = new UnusedResource(
       ResourceSlot.from(TASK),
-      HostAttributes.build(new HostAttributes().setHost("host").setMode(MaintenanceMode.NONE)));
+      HostAttributes.builder().setHost("host").setMode(MaintenanceMode.NONE).build());
   private static final ResourceRequest REQUEST =
       new ResourceRequest(TASK, AttributeAggregate.EMPTY);
 

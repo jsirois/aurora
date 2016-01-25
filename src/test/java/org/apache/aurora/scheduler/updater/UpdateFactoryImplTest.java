@@ -33,17 +33,18 @@ import static org.junit.Assert.assertEquals;
  */
 public class UpdateFactoryImplTest {
 
-  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
-      new JobUpdateInstructions()
-          .setDesiredState(instanceConfig(new Range(0, 2)))
-          .setInitialState(ImmutableSet.of(instanceConfig(new Range(1, 2))))
-          .setSettings(new JobUpdateSettings()
-              .setMaxFailedInstances(1)
-              .setMaxPerInstanceFailures(1)
-              .setMaxWaitToInstanceRunningMs(100)
-              .setMinWaitInInstanceRunningMs(100)
-              .setUpdateGroupSize(2)
-              .setUpdateOnlyTheseInstances(ImmutableSet.of())));
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.builder()
+      .setDesiredState(instanceConfig(Range.create(0, 2)))
+      .setInitialState(ImmutableSet.of(instanceConfig(Range.create(1, 2))))
+      .setSettings(JobUpdateSettings.builder()
+          .setMaxFailedInstances(1)
+          .setMaxPerInstanceFailures(1)
+          .setMaxWaitToInstanceRunningMs(100)
+          .setMinWaitInInstanceRunningMs(100)
+          .setUpdateGroupSize(2)
+          .setUpdateOnlyTheseInstances()
+          .build())
+      .build();
 
   private UpdateFactory factory;
 
@@ -66,38 +67,43 @@ public class UpdateFactoryImplTest {
 
   @Test
   public void testRollForwardSpecificInstances() throws Exception {
-    JobUpdateInstructions config = INSTRUCTIONS.newBuilder();
-    config.setInitialState(ImmutableSet.of());
-    config.setDesiredState(instanceConfig(new Range(1, 1)));
-    config.getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of(new Range(0, 1)));
+    JobUpdateInstructions config = INSTRUCTIONS.toBuilder()
+        .setInitialState(ImmutableSet.of())
+        .setDesiredState(instanceConfig(Range.create(1, 1)))
+        .setSettings(INSTRUCTIONS.getSettings()
+            .withUpdateOnlyTheseInstances(ImmutableSet.of(Range.create(0, 1))))
+        .build();
 
-    Update update = factory.newUpdate(JobUpdateInstructions.build(config), true);
+    Update update = factory.newUpdate(config, true);
     assertEquals(ImmutableSet.of(1), update.getUpdater().getInstances());
   }
 
   @Test
   public void testRollBackSpecificInstances() throws Exception {
-    JobUpdateInstructions config = INSTRUCTIONS.newBuilder();
-    config.setInitialState(ImmutableSet.of());
-    config.setDesiredState(instanceConfig(new Range(1, 1)));
-    config.getSettings().setUpdateOnlyTheseInstances(ImmutableSet.of(new Range(0, 1)));
+    JobUpdateInstructions config = INSTRUCTIONS.toBuilder()
+        .setInitialState()
+        .setDesiredState(instanceConfig(Range.create(1, 1)))
+        .setSettings(INSTRUCTIONS.getSettings()
+            .withUpdateOnlyTheseInstances(ImmutableSet.of(Range.create(0, 1))))
+        .build();
 
-    Update update = factory.newUpdate(JobUpdateInstructions.build(config), false);
+    Update update = factory.newUpdate(config, false);
     assertEquals(ImmutableSet.of(1), update.getUpdater().getInstances());
   }
 
   @Test
   public void testUpdateRemovesInstance() throws Exception {
-    JobUpdateInstructions config = INSTRUCTIONS.newBuilder();
-    config.getDesiredState().setInstances(ImmutableSet.of(new Range(0, 1)));
+    JobUpdateInstructions config = INSTRUCTIONS.withDesiredState(
+        ds -> ds.withInstances(ImmutableSet.of(Range.create(0, 1))));
 
-    Update update = factory.newUpdate(JobUpdateInstructions.build(config), true);
+    Update update = factory.newUpdate(config, true);
     assertEquals(ImmutableSet.of(0, 1, 2), update.getUpdater().getInstances());
   }
 
   private static InstanceTaskConfig instanceConfig(Range instances) {
-    return new InstanceTaskConfig()
-        .setTask(new TaskConfig())
-        .setInstances(ImmutableSet.of(instances));
+    return InstanceTaskConfig.builder()
+        .setTask(TaskConfig.builder().build())
+        .setInstances(instances)
+        .build();
   }
 }

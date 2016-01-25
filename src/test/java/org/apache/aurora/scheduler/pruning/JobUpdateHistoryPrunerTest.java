@@ -45,8 +45,7 @@ public class JobUpdateHistoryPrunerTest extends EasyMockTest {
 
     expect(storageUtil.jobUpdateStore.pruneHistory(1, 1))
         .andReturn(ImmutableSet.of(
-            JobUpdateKey.build(
-                new JobUpdateKey().setJob(new JobKey("role", "env", "job")).setId("id1"))));
+            JobUpdateKey.create(JobKey.create("role", "env", "job"), "id1")));
     expect(storageUtil.jobUpdateStore.pruneHistory(1, 1)).andReturn(ImmutableSet.of());
 
     control.replay();

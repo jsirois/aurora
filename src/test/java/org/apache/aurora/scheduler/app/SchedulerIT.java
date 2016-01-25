@@ -49,6 +49,10 @@ import org.apache.aurora.common.zookeeper.ServerSetImpl;
 import org.apache.aurora.common.zookeeper.ZooKeeperClient;
 import org.apache.aurora.common.zookeeper.ZooKeeperClient.Credentials;
 import org.apache.aurora.common.zookeeper.testing.BaseZooKeeperTest;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ExecutorConfig;
+import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.ServerInfo;
@@ -186,10 +190,10 @@ public class SchedulerIT extends BaseZooKeeperTest {
         install(new BackupModule(backupDir, SnapshotStoreImpl.class));
 
         bind(ServerInfo.class).toInstance(
-            ServerInfo.build(
-                new ServerInfo()
-                    .setClusterName(CLUSTER_NAME)
-                    .setStatsUrlPrefix(STATS_URL_PREFIX)));
+            ServerInfo.builder()
+                .setClusterName(CLUSTER_NAME)
+                .setStatsUrlPrefix(STATS_URL_PREFIX)
+                .build());
       }
     };
     Credentials credentials = ZooKeeperClient.digestCredentials("mesos", "mesos");
@@ -269,14 +273,14 @@ public class SchedulerIT extends BaseZooKeeperTest {
         });
   }
 
-  private static IScheduledTask makeTask(String id, ScheduleStatus status) {
+  private static ScheduledTask makeTask(String id, ScheduleStatus status) {
     ScheduledTask builder = TaskTestUtil.addStateTransition(
         TaskTestUtil.makeTask(id, TaskTestUtil.JOB),
         status,
         100)
         .newBuilder();
     builder.getAssignedTask().setSlaveId("slave-id");
-    return IScheduledTask.build(builder);
+    return ScheduledTask.build(builder);
   }
 
   @Test
@@ -289,8 +293,8 @@ public class SchedulerIT extends BaseZooKeeperTest {
         eq(SETTINGS.getMasterUri())))
         .andReturn(driver).anyTimes();
 
-    IScheduledTask snapshotTask = makeTask("snapshotTask", ScheduleStatus.ASSIGNED);
-    IScheduledTask transactionTask = makeTask("transactionTask", ScheduleStatus.RUNNING);
+    ScheduledTask snapshotTask = makeTask("snapshotTask", ScheduleStatus.ASSIGNED);
+    ScheduledTask transactionTask = makeTask("transactionTask", ScheduleStatus.RUNNING);
     Iterable<Entry> recoveredEntries = toEntries(
         LogEntry.snapshot(new Snapshot().setTasks(ImmutableSet.of(snapshotTask.newBuilder()))),
         LogEntry.transaction(new Transaction(

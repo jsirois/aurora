@@ -26,6 +26,7 @@ import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeBuildInfo;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.storage.SchedulerMetadata;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.scheduler.base.Query;
@@ -109,7 +110,7 @@ public class RecoveryTest extends EasyMockTest {
 
     recovery.stage(backup1);
     assertEquals(
-        ScheduledTask.setFromBuilders(SNAPSHOT1.getTasks()),
+        SNAPSHOT1.getTasks(),
         recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
@@ -118,7 +119,7 @@ public class RecoveryTest extends EasyMockTest {
   @Test
   public void testModifySnapshotBeforeCommit() throws Exception {
     expect(snapshotStore.createSnapshot()).andReturn(SNAPSHOT1);
-    Snapshot modified = SNAPSHOT1.deepCopy().setTasks(ImmutableSet.of(TASK1.newBuilder()));
+    Snapshot modified = SNAPSHOT1.withTasks(ImmutableSet.of(TASK1));
     Capture<MutateWork<Object, Exception>> transaction = createCapture();
     expect(primaryStorage.write(capture(transaction))).andReturn(null);
     distributedStore.persist(modified);
@@ -131,11 +132,11 @@ public class RecoveryTest extends EasyMockTest {
     String backup1 = storageBackup.createBackupName();
     recovery.stage(backup1);
     assertEquals(
-        ScheduledTask.setFromBuilders(SNAPSHOT1.getTasks()),
+        SNAPSHOT1.getTasks(),
         recovery.query(Query.unscoped()));
     recovery.deleteTasks(Query.taskScoped(Tasks.id(TASK2)));
     assertEquals(
-        ScheduledTask.setFromBuilders(modified.getTasks()),
+        modified.getTasks(),
         recovery.query(Query.unscoped()));
     recovery.commit();
     transaction.getValue().apply(storeProvider);
@@ -154,19 +155,21 @@ public class RecoveryTest extends EasyMockTest {
   }
 
   private static Snapshot makeSnapshot(ScheduledTask... tasks) {
-    SchedulerMetadata metadata = new SchedulerMetadata()
+    SchedulerMetadata metadata = SchedulerMetadata.builder()
         .setDetails(ImmutableMap.of(
             FakeBuildInfo.DATE, FakeBuildInfo.DATE,
             FakeBuildInfo.GIT_REVISION, FakeBuildInfo.GIT_REVISION,
-            FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG));
+            FakeBuildInfo.GIT_TAG, FakeBuildInfo.GIT_TAG))
+        .build();
 
-    return new Snapshot()
-        .setHostAttributes(ImmutableSet.of())
-        .setCronJobs(ImmutableSet.of())
+    return Snapshot.builder()
+        .setHostAttributes()
+        .setCronJobs()
         .setSchedulerMetadata(metadata)
-        .setQuotaConfigurations(ImmutableSet.of())
-        .setTasks(ScheduledTask.toBuildersSet(ImmutableSet.copyOf(tasks)))
-        .setLocks(ImmutableSet.of())
-        .setJobUpdateDetails(ImmutableSet.of());
+        .setQuotaConfigurations()
+        .setTasks(tasks)
+        .setLocks()
+        .setJobUpdateDetails()
+        .build();
   }
 }

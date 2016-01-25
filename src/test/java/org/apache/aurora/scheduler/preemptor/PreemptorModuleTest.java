@@ -76,7 +76,7 @@ public class PreemptorModuleTest extends EasyMockTest {
     assertEquals(
         Optional.absent(),
         injector.getInstance(Preemptor.class).attemptPreemptionFor(
-            AssignedTask.build(new AssignedTask()),
+            AssignedTask.builder().build(),
             AttributeAggregate.EMPTY,
             storageUtil.mutableStoreProvider));
   }

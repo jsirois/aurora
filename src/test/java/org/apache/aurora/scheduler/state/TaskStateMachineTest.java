@@ -68,8 +68,8 @@ public class TaskStateMachineTest {
     stateMachine = makeStateMachine(makeTask(false));
   }
 
-  private TaskStateMachine makeStateMachine(ScheduledTask builder) {
-    return new TaskStateMachine(ScheduledTask.build(builder));
+  private TaskStateMachine makeStateMachine(ScheduledTask scheduledTask) {
+    return new TaskStateMachine(scheduledTask);
   }
 
   @Test
@@ -237,15 +237,14 @@ public class TaskStateMachineTest {
 
   @Test
   public void testHonorsMaxFailures() {
-    ScheduledTask task = makeTask(false);
-    task.getAssignedTask().getTask().setMaxTaskFailures(10);
-    task.setFailureCount(8);
+    ScheduledTask task = makeTask(false)
+        .withFailureCount(8)
+        .withAssignedTask(at -> at.withTask(tc -> tc.withMaxTaskFailures(10)));
     stateMachine = makeStateMachine(task);
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
     legalTransition(FAILED, Action.SAVE_STATE, Action.RESCHEDULE, Action.INCREMENT_FAILURES);
 
-    ScheduledTask rescheduled = task.deepCopy();
-    rescheduled.setFailureCount(9);
+    ScheduledTask rescheduled = task.withFailureCount(9);
     stateMachine = makeStateMachine(rescheduled);
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
     legalTransition(FAILED, Action.SAVE_STATE, Action.INCREMENT_FAILURES);
@@ -253,9 +252,9 @@ public class TaskStateMachineTest {
 
   @Test
   public void testHonorsUnlimitedFailures() {
-    ScheduledTask task = makeTask(false);
-    task.getAssignedTask().getTask().setMaxTaskFailures(-1);
-    task.setFailureCount(1000);
+    ScheduledTask task = makeTask(false)
+        .withFailureCount(1000)
+        .withAssignedTask(at -> at.withTask(tc -> tc.withMaxTaskFailures(-1)));
     stateMachine = makeStateMachine(task);
 
     expectUpdateStateOnTransitionTo(PENDING, ASSIGNED, STARTING, RUNNING);
@@ -540,8 +539,7 @@ public class TaskStateMachineTest {
             // Cannot create a state machine for an DELETED task that is in the store.
             boolean expectException = from.equals(DELETED);
             try {
-              machine = new TaskStateMachine(
-                  ScheduledTask.build(makeTask(false).setStatus(from.getStatus().get())));
+              machine = new TaskStateMachine(makeTask(false).withStatus(from.getStatus().get()));
               if (expectException) {
                 fail();
               }

@@ -32,7 +32,7 @@ public class VolumeParserTest {
   @Test
   public void testValidConfig() {
     assertEquals(
-        new Volume("/container", "/host", Mode.RO),
+        Volume.create("/container", "/host", Mode.RO),
         volumeParser.doParse("/host:/container:ro"));
   }
 

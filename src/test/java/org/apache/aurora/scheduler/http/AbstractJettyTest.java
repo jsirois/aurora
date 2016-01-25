@@ -113,9 +113,10 @@ public abstract class AbstractJettyTest extends EasyMockTest {
           protected void configure() {
             bind(StatsProvider.class).toInstance(new FakeStatsProvider());
             bind(Storage.class).toInstance(storage.storage);
-            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()
+            bind(ServerInfo.class).toInstance(ServerInfo.builder()
                 .setClusterName("unittest")
-                .setStatsUrlPrefix("none")));
+                .setStatsUrlPrefix("none")
+                .build());
             bind(TaskGroupsSettings.class).toInstance(
                 new TaskGroupsSettings(
                     Amount.of(1L, Time.MILLISECONDS),
@@ -141,7 +142,8 @@ public abstract class AbstractJettyTest extends EasyMockTest {
 
   protected void setLeadingScheduler(String host, int port) {
     schedulerWatcher.getValue().onChange(
-        ImmutableSet.of(new ServiceInstance().setServiceEndpoint(new Endpoint(host, port))));
+        ImmutableSet.of(
+            ServiceInstance.builder().setServiceEndpoint(Endpoint.create(host, port)).build()));
   }
 
   protected void unsetLeadingSchduler() {

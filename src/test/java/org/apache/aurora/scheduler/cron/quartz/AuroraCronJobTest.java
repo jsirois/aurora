@@ -128,11 +128,13 @@ public class AuroraCronJobTest extends EasyMockTest {
   private void populateTaskStore() {
     storage.write((NoResult.Quiet)
         storeProvider -> storeProvider.getUnsafeTaskStore().saveTasks(ImmutableSet.of(
-            ScheduledTask.build(new ScheduledTask()
+            ScheduledTask.builder()
                 .setStatus(ScheduleStatus.RUNNING)
-                .setAssignedTask(new AssignedTask()
+                .setAssignedTask(AssignedTask.builder()
                     .setTaskId(TASK_ID)
-                    .setTask(QuartzTestUtil.JOB.getTaskConfig().newBuilder()))))));
+                    .setTask(QuartzTestUtil.JOB.getTaskConfig())
+                    .build())
+                .build())));
   }
 
   private void populateStorage(CronCollisionPolicy policy) {

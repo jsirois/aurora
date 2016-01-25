@@ -27,6 +27,7 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
@@ -143,22 +144,30 @@ public class TaskReconcilerTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(String id, TaskConfig config) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(ScheduleStatus.ASSIGNED)
         .setTaskEvents(ImmutableList.of(
-            new TaskEvent(100L, ScheduleStatus.ASSIGNED)
+            TaskEvent.builder()
+                .setTimestamp(100L)
+                .setStatus(ScheduleStatus.ASSIGNED)
                 .setMessage("message")
-                .setScheduler("scheduler"),
-            new TaskEvent(101L, ScheduleStatus.ASSIGNED)
+                .setScheduler("scheduler")
+                .build(),
+            TaskEvent.builder()
+                .setTimestamp(101L)
+                .setStatus(ScheduleStatus.ASSIGNED)
                 .setMessage("message")
-                .setScheduler("scheduler2")))
+                .setScheduler("scheduler2")
+                .build()))
         .setAncestorId("ancestor")
         .setFailureCount(3)
-        .setAssignedTask(new AssignedTask()
+        .setAssignedTask(AssignedTask.builder()
             .setInstanceId(2)
             .setTaskId(id)
             .setSlaveId("slave-id")
             .setAssignedPorts(ImmutableMap.of("http", 1000))
-            .setTask(config.newBuilder())));
+            .setTask(config)
+            .build())
+        .build();
   }
 }

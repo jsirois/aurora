@@ -26,6 +26,7 @@ import com.google.inject.matcher.Matchers;
 
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.JobUpdateRequest;
@@ -45,6 +46,7 @@ import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingPara
 import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingParamInterceptor.SHIRO_AUTHORIZATION_FAILURES;
 import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingParamInterceptor.SHIRO_BAD_REQUESTS;
 import static org.easymock.EasyMock.expect;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
@@ -54,10 +56,10 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
   private ShiroAuthorizingParamInterceptor interceptor;
 
   private Subject subject;
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
   private StatsProvider statsProvider;
 
-  private AnnotatedAuroraAdmin decoratedThrift;
+  private AuroraAdmin.Sync decoratedThrift;
 
   private static final JobKey JOB_KEY = JobKeys.from("role", "env", "name");
 
@@ -66,8 +68,8 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     interceptor = new ShiroAuthorizingParamInterceptor(DOMAIN);
     subject = createMock(Subject.class);
     statsProvider = createMock(StatsProvider.class);
-    thrift = createMock(AnnotatedAuroraAdmin.class);
-  }
+    thrift = createMock(AuroraAdmin.Sync.class);
+  };
 
   private void replayAndInitialize() {
     expect(statsProvider.makeCounter(SHIRO_AUTHORIZATION_FAILURES))
@@ -82,20 +84,20 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
             bind(Subject.class).toInstance(subject);
             MockDecoratedThrift.bindForwardedMock(binder(), thrift);
             bindInterceptor(
-                Matchers.subclassesOf(AnnotatedAuroraAdmin.class),
+                Matchers.subclassesOf(AuroraAdmin.Sync.class),
                 HttpSecurityModule.AURORA_SCHEDULER_MANAGER_SERVICE,
                 interceptor);
             bind(StatsProvider.class).toInstance(statsProvider);
             requestInjection(interceptor);
           }
-        }).getInstance(AnnotatedAuroraAdmin.class);
+        }).getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test
   public void testHandlesAllDecoratedParamTypes() {
     control.replay();
 
-    for (Method method : AnnotatedAuroraAdmin.class.getMethods()) {
+    for (Method method : AuroraAdmin.Sync.class.getMethods()) {
       if (HttpSecurityModule.AURORA_SCHEDULER_MANAGER_SERVICE.matches(method)) {
         interceptor.getAuthorizingParamGetters().getUnchecked(method);
       }
@@ -104,7 +106,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
 
   @Test
   public void testCreateJobWithScopedPermission() throws TException {
-    JobConfiguration jobConfiguration = new JobConfiguration().setKey(JOB_KEY.newBuilder());
+    JobConfiguration jobConfiguration = JobConfiguration.builder().setKey(JOB_KEY).build();
     Response response = Responses.ok();
 
     expect(subject.isPermitted(interceptor.makeWildcardPermission("createJob")))
@@ -171,25 +173,25 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     replayAndInitialize();
 
     assertEquals(
-        JOB_KEY.newBuilder(),
+        JOB_KEY,
         QUERY_TO_JOB_KEY
-            .apply(new TaskQuery()
+            .apply(TaskQuery.builder()
                 .setRole(JOB_KEY.getRole())
                 .setEnvironment(JOB_KEY.getEnvironment())
-                .setJobName(JOB_KEY.getName()))
+                .setJobName(JOB_KEY.getName())
+                .build())
             .orNull());
 
     assertEquals(
-        JOB_KEY.newBuilder(),
-        QUERY_TO_JOB_KEY.apply(new TaskQuery().setJobKeys(ImmutableSet.of(JOB_KEY.newBuilder())))
-            .orNull());
+        JOB_KEY,
+        QUERY_TO_JOB_KEY.apply(TaskQuery.builder().setJobKeys(JOB_KEY).build()).orNull());
   }
 
   @Test
   public void testExtractTaskQueryBroadlyScoped() {
     control.replay();
 
-    assertNull(QUERY_TO_JOB_KEY.apply(new TaskQuery().setRole("role")).orNull());
+    assertNull(QUERY_TO_JOB_KEY.apply(TaskQuery.builder().setRole("role").build()).orNull());
   }
 
   @Test
@@ -199,11 +201,9 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
     // of whether they share a common role.
     control.replay();
 
-    assertNull(QUERY_TO_JOB_KEY
-        .apply(
-            new TaskQuery().setJobKeys(
-                ImmutableSet.of(JOB_KEY.newBuilder(), JOB_KEY.newBuilder().setName("other"))))
-        .orNull());
+    TaskQuery multiScopedQuery =
+        TaskQuery.builder().setJobKeys(JOB_KEY, JOB_KEY.withName("other")).build();
+    assertNull(QUERY_TO_JOB_KEY.apply(multiScopedQuery).orNull());
   }
 
   @Test

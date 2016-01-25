@@ -24,7 +24,10 @@ import com.google.inject.Module;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.base.Tasks;
@@ -77,19 +80,13 @@ public abstract class AbstractCronJobStoreTest {
 
   @Test
   public void testJobStoreSameEnvironment() {
-    JobConfiguration templateConfig = makeJob("labrat");
-    JobConfiguration prodBuilder = templateConfig.newBuilder();
-    prodBuilder.getKey().setEnvironment("prod");
-    JobConfiguration prod = JobConfiguration.build(prodBuilder);
-    JobConfiguration stagingBuilder = templateConfig.newBuilder();
-    stagingBuilder.getKey().setEnvironment("staging");
-    JobConfiguration staging = JobConfiguration.build(stagingBuilder);
+    JobConfiguration prod = makeJob("labrat").withKey(k -> k.withEnvironment("prod"));
+    JobConfiguration staging = prod.withKey(k -> k.withEnvironment("staging"));
 
     saveAcceptedJob(prod);
     saveAcceptedJob(staging);
 
-    assertNull(fetchJob(
-        JobKey.build(templateConfig.getKey().newBuilder().setEnvironment("test"))).orNull());
+    assertNull(fetchJob(prod.getKey().withEnvironment("test")).orNull());
     assertEquals(prod, fetchJob(prod.getKey()).orNull());
     assertEquals(staging, fetchJob(staging.getKey()).orNull());
 
@@ -120,8 +117,7 @@ public abstract class AbstractCronJobStoreTest {
     // backfilling fields upon storage recovery.
 
     saveAcceptedJob(JOB_A);
-    JobConfiguration jobAUpdated =
-        JobConfiguration.build(JOB_A.newBuilder().setCronSchedule("changed"));
+    JobConfiguration jobAUpdated = JOB_A.withCronSchedule("changed");
     saveAcceptedJob(jobAUpdated);
     assertEquals(jobAUpdated, fetchJob(KEY_A).orNull());
   }
@@ -131,14 +127,14 @@ public abstract class AbstractCronJobStoreTest {
     TaskConfig config = TaskTestUtil.makeConfig(job);
 
     return StorageEntityUtil.assertFullyPopulated(
-        JobConfiguration.build(
-            new JobConfiguration()
-                .setKey(job.newBuilder())
-                .setOwner(new Identity(job.getRole(), "user"))
-                .setCronSchedule("schedule")
-                .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
-                .setTaskConfig(config.newBuilder())
-                .setInstanceCount(5)));
+        JobConfiguration.builder()
+            .setKey(job)
+            .setOwner(Identity.create(job.getRole(), "user"))
+            .setCronSchedule("schedule")
+            .setCronCollisionPolicy(CronCollisionPolicy.CANCEL_NEW)
+            .setTaskConfig(config)
+            .setInstanceCount(5)
+            .build());
   }
 
   private Set<JobConfiguration> fetchJobs() {

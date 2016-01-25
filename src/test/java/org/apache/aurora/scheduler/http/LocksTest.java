@@ -19,6 +19,7 @@ import javax.ws.rs.core.Response;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -34,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 public class LocksTest extends EasyMockTest {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JobKey JOB_KEY = JobKeys.from("role", "env", "job");
-  private static final LockKey LOCK_KEY = LockKey.build(LockKey.job(JOB_KEY.newBuilder()));
+  private static final LockKey LOCK_KEY = LockKey.job(JOB_KEY);
 
   private Locks locks;
   private LockManager lockManager;
@@ -47,12 +48,13 @@ public class LocksTest extends EasyMockTest {
 
   @Test
   public void testDumpContents() throws Exception {
-    Lock lock = Lock.build(new Lock()
-        .setKey(LOCK_KEY.newBuilder())
+    Lock lock = Lock.builder()
+        .setKey(LOCK_KEY)
         .setToken("test token")
         .setMessage("test msg")
         .setUser("test usr")
-        .setTimestampMs(325));
+        .setTimestampMs(325)
+        .build();
     expect(lockManager.getLocks()).andReturn(ImmutableSet.of(lock));
 
     control.replay();

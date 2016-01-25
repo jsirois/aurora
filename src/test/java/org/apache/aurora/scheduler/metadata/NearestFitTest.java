@@ -48,7 +48,7 @@ public class NearestFitTest {
   private static final Veto SEVERITY_4_PORTS =
       Veto.insufficientResources("ports", RESOURCE_MAX_SCORE);
 
-  private static final TaskConfig TASK = TaskConfig.build(new TaskConfig().setNumCpus(1.0));
+  private static final TaskConfig TASK = TaskConfig.builder().setNumCpus(1.0).build();
   private static final TaskGroupKey GROUP_KEY = TaskGroupKey.from(TASK);
 
   private FakeTicker ticker;
@@ -85,8 +85,9 @@ public class NearestFitTest {
   }
 
   private ScheduledTask makeTask() {
-    return ScheduledTask.build(
-        new ScheduledTask().setAssignedTask(new AssignedTask().setTask(TASK.newBuilder())));
+    return ScheduledTask.builder()
+        .setAssignedTask(AssignedTask.builder().setTask(TASK).build())
+        .build();
   }
 
   @Test
@@ -102,9 +103,7 @@ public class NearestFitTest {
   public void testStateChanged() {
     vetoed(SEVERITY_2);
     assertNearest(SEVERITY_2);
-    ScheduledTask task = ScheduledTask.build(new ScheduledTask()
-        .setStatus(ScheduleStatus.ASSIGNED)
-        .setAssignedTask(new AssignedTask().setTask(TASK.newBuilder())));
+    ScheduledTask task = makeTask().withStatus(ScheduleStatus.ASSIGNED);
     nearest.stateChanged(TaskStateChange.transition(task, ScheduleStatus.PENDING));
     assertNearest();
   }

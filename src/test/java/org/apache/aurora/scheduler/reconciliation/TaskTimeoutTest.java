@@ -100,9 +100,10 @@ public class TaskTimeoutTest extends EasyMockTest {
   }
 
   private void changeState(String taskId, ScheduleStatus from, ScheduleStatus to) {
-    ScheduledTask task = ScheduledTask.build(new ScheduledTask()
+    ScheduledTask task = ScheduledTask.builder()
         .setStatus(to)
-        .setAssignedTask(new AssignedTask().setTaskId(taskId)));
+        .setAssignedTask(AssignedTask.builder().setTaskId(taskId).build())
+        .build();
     timeout.recordStateChange(TaskStateChange.transition(task, from));
   }
 
@@ -187,12 +188,14 @@ public class TaskTimeoutTest extends EasyMockTest {
       ScheduleStatus status,
       long stateEnteredMs) {
 
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(status)
-        .setTaskEvents(ImmutableList.of(new TaskEvent(stateEnteredMs, status)))
-        .setAssignedTask(new AssignedTask()
+        .setTaskEvents(TaskEvent.create(stateEnteredMs, status))
+        .setAssignedTask(AssignedTask.builder()
             .setTaskId(taskId)
-            .setTask(new TaskConfig())));
+            .setTask(TaskConfig.builder().build())
+            .build())
+        .build();
   }
 
   @Test

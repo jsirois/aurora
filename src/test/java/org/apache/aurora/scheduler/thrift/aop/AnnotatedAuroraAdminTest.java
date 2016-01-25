@@ -21,6 +21,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.reflect.Invokable;
 import com.google.common.reflect.Parameter;
 
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.AuroraSchedulerManager;
 import org.apache.aurora.scheduler.http.api.security.AuthorizingParam;
 import org.junit.Test;
@@ -30,11 +31,11 @@ import static org.junit.Assert.assertFalse;
 public class AnnotatedAuroraAdminTest {
   @Test
   public void testAllAuroraSchedulerManagerIfaceMethodsHaveAuthorizingParam() throws Exception {
-    for (Method declaredMethod : AuroraSchedulerManager.Iface.class.getDeclaredMethods()) {
+    for (Method declaredMethod : AuroraSchedulerManager.Sync.class.getDeclaredMethods()) {
       Invokable<?, ?> invokable = Invokable.from(declaredMethod);
       Collection<Parameter> parameters = invokable.getParameters();
       Invokable<?, ?> annotatedInvokable = Invokable.from(
-          AnnotatedAuroraAdmin.class.getDeclaredMethod(
+          AuroraAdmin.Sync.class.getDeclaredMethod(
               invokable.getName(),
               FluentIterable.from(parameters)
                   .transform(input -> input.getType().getRawType())

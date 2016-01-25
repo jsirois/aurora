@@ -41,7 +41,7 @@ import static org.easymock.EasyMock.expect;
 public class TaskGroupsTest extends EasyMockTest {
   private static final Amount<Long, Time> FIRST_SCHEDULE_DELAY = Amount.of(1L, Time.MILLISECONDS);
   private static final Amount<Long, Time> RESCHEDULE_DELAY = FIRST_SCHEDULE_DELAY;
-  private static final JobKey JOB_A = JobKey.build(new JobKey("role", "test", "jobA"));
+  private static final JobKey JOB_A = JobKey.create("role", "test", "jobA");
   private static final String TASK_A_ID = "a";
 
   private BackoffStrategy backoffStrategy;
@@ -123,7 +123,7 @@ public class TaskGroupsTest extends EasyMockTest {
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a1", 1), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(makeTask(JOB_A, "a2", 2), INIT));
     taskGroups.taskChangedState(TaskStateChange.transition(
-        makeTask(JobKey.build(JOB_A.newBuilder().setName("jobB")), "b0", 0), INIT));
+        makeTask(JOB_A.withName("jobB"), "b0", 0), INIT));
 
     clock.advance(FIRST_SCHEDULE_DELAY);
   }
@@ -132,8 +132,7 @@ public class TaskGroupsTest extends EasyMockTest {
   public void testNonPendingIgnored() {
     control.replay();
 
-    ScheduledTask task =
-        ScheduledTask.build(makeTask(TASK_A_ID).newBuilder().setStatus(ASSIGNED));
+    ScheduledTask task = makeTask(TASK_A_ID).withStatus(ASSIGNED);
     taskGroups.taskChangedState(TaskStateChange.initialized(task));
   }
 
@@ -142,12 +141,13 @@ public class TaskGroupsTest extends EasyMockTest {
   }
 
   private static ScheduledTask makeTask(JobKey jobKey, String id, int instanceId) {
-    return ScheduledTask.build(new ScheduledTask()
+    return ScheduledTask.builder()
         .setStatus(ScheduleStatus.PENDING)
-        .setAssignedTask(new AssignedTask()
+        .setAssignedTask(AssignedTask.builder()
             .setInstanceId(instanceId)
             .setTaskId(id)
-            .setTask(new TaskConfig()
-                .setJob(jobKey.newBuilder()))));
+            .setTask(TaskConfig.builder().setJob(jobKey).build())
+            .build())
+        .build();
   }
 }

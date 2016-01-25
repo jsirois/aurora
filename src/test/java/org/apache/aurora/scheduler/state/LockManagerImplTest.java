@@ -25,6 +25,8 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -39,6 +41,7 @@ import org.junit.rules.ExpectedException;
 
 import static org.apache.aurora.scheduler.storage.Storage.Work;
 import static org.easymock.EasyMock.expect;
+import static org.junit.Assert.assertEquals;
 
 public class LockManagerImplTest extends EasyMockTest {
   private static final String USER = "jim-user";
@@ -71,11 +74,12 @@ public class LockManagerImplTest extends EasyMockTest {
   public void testAcquireLock() throws Exception {
     control.replay();
 
-    Lock expected = Lock.build(new Lock()
-        .setKey(LOCK_KEY.newBuilder())
+    Lock expected = Lock.builder()
+        .setKey(LOCK_KEY)
         .setToken(TOKEN.toString())
         .setTimestampMs(timestampMs)
-        .setUser(USER));
+        .setUser(USER)
+        .build();
 
     Lock actual = lockManager.acquireLock(expected.getKey(), USER);
     assertEquals(expected, actual);
@@ -122,7 +126,7 @@ public class LockManagerImplTest extends EasyMockTest {
 
     expectLockException(JOB_KEY);
     Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
-    lock = Lock.build(lock.newBuilder().setUser("bob"));
+    lock = lock.withUser("bob");
     lockManager.validateIfLocked(LOCK_KEY, Optional.of(lock));
   }
 
@@ -142,7 +146,7 @@ public class LockManagerImplTest extends EasyMockTest {
     JobKey jobKey = JobKeys.from("r", "e", "n");
     expectLockException(jobKey);
     Lock lock = lockManager.acquireLock(LOCK_KEY, USER);
-    LockKey key = LockKey.build(LockKey.job(jobKey.newBuilder()));
+    LockKey key = LockKey.job(jobKey);
     lockManager.validateIfLocked(key, Optional.of(lock));
   }
 

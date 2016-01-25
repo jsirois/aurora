@@ -86,13 +86,13 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     eventSink = PubsubTestUtil.startPubsub(injector);
   }
 
-  private static IScheduledTask makeTask(String host, String taskId) {
+  private static ScheduledTask makeTask(String host, String taskId) {
     ScheduledTask builder = TaskTestUtil.addStateTransition(
         TaskTestUtil.makeTask(taskId, TaskTestUtil.JOB),
         RUNNING,
         1000).newBuilder();
     builder.getAssignedTask().setSlaveHost(host);
-    return IScheduledTask.build(builder);
+    return ScheduledTask.build(builder);
   }
 
   @Test
@@ -105,8 +105,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     expectTaskDraining(task1);
     expectTaskDraining(task2);
     expectMaintenanceModeChange(HOST_A, DRAINING);
-    HostAttributes attributes =
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(DRAINING));
+    HostAttributes attributes = HostAttributes.builder().setHost(HOST_A).setMode(DRAINING).build();
 
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A))
         .andReturn(Optional.of(attributes)).times(2);
@@ -160,7 +159,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
     expectMaintenanceModeChange(HOST_A, SCHEDULED);
     expectMaintenanceModeChange(HOST_A, NONE);
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A)).andReturn(Optional.of(
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(NONE))));
+        HostAttributes.builder().setHost(HOST_A).setMode(NONE).build()));
 
     control.replay();
 
@@ -178,7 +177,7 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   @Test
   public void testGetMode() {
     expect(storageUtil.attributeStore.getHostAttributes(HOST_A)).andReturn(Optional.of(
-        HostAttributes.build(new HostAttributes().setHost(HOST_A).setMode(DRAINING))));
+        HostAttributes.builder().setHost(HOST_A).setMode(DRAINING).build()));
     expect(storageUtil.attributeStore.getHostAttributes("unknown")).andReturn(Optional.absent());
 
     control.replay();
@@ -202,11 +201,11 @@ public class MaintenanceControllerImplTest extends EasyMockTest {
   }
 
   private void expectMaintenanceModeChange(String hostName, MaintenanceMode mode) {
-    HostAttributes attributes = HostAttributes.build(new HostAttributes().setHost(hostName));
+    HostAttributes attributes = HostAttributes.builder().setHost(hostName).build();
 
     expect(storageUtil.attributeStore.getHostAttributes(hostName))
         .andReturn(Optional.of(attributes));
-    HostAttributes updated = HostAttributes.build(attributes.newBuilder().setMode(mode));
+    HostAttributes updated = attributes.withMode(mode);
     expect(storageUtil.attributeStore.saveHostAttributes(updated)).andReturn(true);
   }
 

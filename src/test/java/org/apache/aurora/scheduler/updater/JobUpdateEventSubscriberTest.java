@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.Service;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
@@ -100,8 +101,7 @@ public class JobUpdateEventSubscriberTest extends EasyMockTest {
   public void testIgnoresPrunedTasks() throws Exception {
     control.replay();
 
-    ScheduledTask task =
-        ScheduledTask.build(TASK.newBuilder().setStatus(ScheduleStatus.FAILED));
+    ScheduledTask task = TASK.withStatus(ScheduleStatus.FAILED);
     eventBus.post(new TasksDeleted(ImmutableSet.of(task)));
   }
 }

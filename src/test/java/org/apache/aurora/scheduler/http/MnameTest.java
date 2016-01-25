@@ -40,13 +40,14 @@ public class MnameTest extends AbstractJettyTest {
   private static final int PORT = 50000;
   private static final String APP_URI = "http://" + SLAVE_HOST + ":" + PORT + "/";
 
-  private static final ScheduledTask TASK = ScheduledTask.build(
-      new ScheduledTask()
-          .setStatus(ScheduleStatus.RUNNING)
-          .setAssignedTask(
-              new AssignedTask()
-                  .setSlaveHost("fakehost")
-                  .setAssignedPorts(ImmutableMap.of("http", 50000))));
+  private static final ScheduledTask TASK = ScheduledTask.builder()
+      .setStatus(ScheduleStatus.RUNNING)
+      .setAssignedTask(
+          AssignedTask.builder()
+              .setSlaveHost("fakehost")
+              .setAssignedPorts(ImmutableMap.of("http", 50000))
+              .build())
+      .build();
   private static final Query.Builder TASK_QUERY =
       Query.instanceScoped(JobKeys.from("myrole", "test", "myjob"), 1).active();
 
@@ -114,8 +115,7 @@ public class MnameTest extends AbstractJettyTest {
   public void testInstanceNotRunning() {
     storage.expectOperations();
 
-    ScheduledTask pending =
-        ScheduledTask.build(TASK.newBuilder().setStatus(ScheduleStatus.PENDING));
+    ScheduledTask pending = TASK.withStatus(ScheduleStatus.PENDING);
 
     storage.expectTaskFetch(TASK_QUERY, pending);
 
@@ -130,9 +130,8 @@ public class MnameTest extends AbstractJettyTest {
   public void testInstanceNoHttp() {
     storage.expectOperations();
 
-    ScheduledTask builder = TASK.newBuilder();
-    builder.getAssignedTask().setAssignedPorts(ImmutableMap.of("telnet", 80));
-    ScheduledTask noHttp = ScheduledTask.build(builder);
+    ScheduledTask noHttp =
+        TASK.withAssignedTask(at -> at.withAssignedPorts(ImmutableMap.of("telnet", 80)));
 
     storage.expectTaskFetch(TASK_QUERY, noHttp);
 
@@ -158,6 +157,6 @@ public class MnameTest extends AbstractJettyTest {
   }
 
   private Optional<Integer> getRedirectPort(Map<String, Integer> ports) {
-    return Mname.getRedirectPort(AssignedTask.build(new AssignedTask().setAssignedPorts(ports)));
+    return Mname.getRedirectPort(AssignedTask.builder().setAssignedPorts(ports).build());
   }
 }

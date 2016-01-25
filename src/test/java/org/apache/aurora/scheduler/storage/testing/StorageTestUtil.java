@@ -17,6 +17,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 import org.apache.aurora.scheduler.storage.CronJobStore;

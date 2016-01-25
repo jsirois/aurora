@@ -91,7 +91,7 @@ public class LoggingInterceptorTest extends EasyMockTest {
 
   @Test
   public void testInvokePrintsArgs() throws Throwable {
-    Response response = new Response();
+    Response response = Response.builder().build();
 
     expect(methodInvocation.getMethod())
         .andReturn(InterceptedClass.class.getDeclaredMethod("respond", Object.class, Object.class));
@@ -116,11 +116,14 @@ public class LoggingInterceptorTest extends EasyMockTest {
 
   @Test
   public void testInvokePrintsBlankedJobConfiguration() throws Throwable {
-    Response response = new Response();
+    Response response = Response.builder().build();
     expect(methodInvocation.getMethod())
         .andReturn(InterceptedClass.class.getDeclaredMethod("respond", JobConfiguration.class));
     expect(methodInvocation.getArguments())
-        .andReturn(new Object[] {new JobConfiguration().setTaskConfig(new TaskConfig())});
+        .andReturn(new Object[] {
+            JobConfiguration.builder()
+                .setTaskConfig(TaskConfig.builder().build())
+                .build()});
     expect(methodInvocation.proceed()).andReturn(response);
 
     control.replay();
@@ -130,10 +133,11 @@ public class LoggingInterceptorTest extends EasyMockTest {
 
   @Test
   public void testInvokePrintsJobConfiguration() throws Throwable {
-    Response response = new Response();
+    Response response = Response.builder().build();
     expect(methodInvocation.getMethod())
         .andReturn(InterceptedClass.class.getDeclaredMethod("respond", JobConfiguration.class));
-    expect(methodInvocation.getArguments()).andReturn(new Object[] {new JobConfiguration()});
+    expect(methodInvocation.getArguments())
+        .andReturn(new Object[] {JobConfiguration.builder().build()});
     expect(methodInvocation.proceed()).andReturn(response);
 
     control.replay();

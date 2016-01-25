@@ -47,7 +47,7 @@ final class SlaTestUtil {
   private static List<TaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {
     ImmutableList.Builder<TaskEvent> taskEvents = ImmutableList.builder();
     for (Map.Entry<Long, ScheduleStatus> entry : events.entrySet()) {
-      taskEvents.add(TaskEvent.build(new TaskEvent(entry.getKey(), entry.getValue())));
+      taskEvents.add(TaskEvent.create(entry.getKey(), entry.getValue()));
     }
 
     return taskEvents.build();

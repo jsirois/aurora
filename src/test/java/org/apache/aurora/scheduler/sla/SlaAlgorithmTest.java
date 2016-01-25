@@ -23,6 +23,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Test;
 
 import static org.apache.aurora.gen.ScheduleStatus.ASSIGNED;

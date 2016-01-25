@@ -19,6 +19,9 @@ import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.CronCollisionPolicy;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.Metadata;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
@@ -51,7 +54,7 @@ final class QuartzTestUtil {
     try {
       return SanitizedCronJob.fromUnsanitized(
           TaskTestUtil.CONFIGURATION_MANAGER,
-          JobConfiguration.build(JOB.newBuilder().setCronCollisionPolicy(collisionPolicy)));
+          JOB.withCronCollisionPolicy(collisionPolicy));
     } catch (CronException | ConfigurationManager.TaskDescriptionException e) {
       throw Throwables.propagate(e);
     }
@@ -64,6 +67,6 @@ final class QuartzTestUtil {
   static SanitizedCronJob makeUpdatedJob() throws Exception {
     return SanitizedCronJob.fromUnsanitized(
         TaskTestUtil.CONFIGURATION_MANAGER,
-        JobConfiguration.build(JOB.newBuilder().setCronSchedule("* * 1 * *")));
+        JOB.withCronSchedule("* * 1 * *"));
   }
 }

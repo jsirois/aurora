@@ -109,9 +109,7 @@ public class TaskVarsTest extends EasyMockTest {
   }
 
   private void changeState(ScheduledTask task, ScheduleStatus status) {
-    vars.taskChangedState(TaskStateChange.transition(
-        ScheduledTask.build(task.newBuilder().setStatus(status)),
-        task.getStatus()));
+    vars.taskChangedState(TaskStateChange.transition(task.withStatus(status), task.getStatus()));
   }
 
   private void applyVeto(ScheduledTask task, Veto... vetoes) {
@@ -131,10 +129,13 @@ public class TaskVarsTest extends EasyMockTest {
     ScheduledTask task = TaskTestUtil.makeTask("task_id", job).newBuilder()
         .setStatus(status);
     if (Tasks.SLAVE_ASSIGNED_STATES.contains(status) || Tasks.isTerminated(status)) {
-      task.getAssignedTask().setSlaveHost(host);
+      assignedTask.setSlaveHost(host);
     }
 
-    return ScheduledTask.build(task);
+    return ScheduledTask.builder()
+        .setStatus(status)
+        .setAssignedTask(assignedTask.build())
+        .build();
   }
 
   private ScheduledTask makeTask(JobKey job, ScheduleStatus status) {
@@ -164,7 +165,7 @@ public class TaskVarsTest extends EasyMockTest {
     // No variables should be exported since schedulerActive is never called.
     ScheduledTask taskA = makeTask(JOB_A, INIT);
     changeState(taskA, PENDING);
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(PENDING)), ASSIGNED);
+    changeState(taskA.withStatus(PENDING), ASSIGNED);
   }
 
   private int getValue(String name) {
@@ -188,19 +189,18 @@ public class TaskVarsTest extends EasyMockTest {
 
     changeState(makeTask(JOB_A, INIT), PENDING);
     assertEquals(1, getValue(PENDING));
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(PENDING)), ASSIGNED);
+    changeState(taskA.withStatus(PENDING), ASSIGNED);
     assertEquals(0, getValue(PENDING));
     assertEquals(1, getValue(ASSIGNED));
     taskA = makeTask(JOB_A, ASSIGNED, "hostA");
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(ASSIGNED)), RUNNING);
+    changeState(taskA.withStatus(ASSIGNED), RUNNING);
     assertEquals(0, getValue(ASSIGNED));
     assertEquals(1, getValue(RUNNING));
-    changeState(ScheduledTask.build(taskA.newBuilder().setStatus(RUNNING)), FINISHED);
+    changeState(taskA.withStatus(RUNNING), FINISHED);
     assertEquals(0, getValue(RUNNING));
     assertEquals(1, getValue(FINISHED));
     assertEquals(0, getValue(rackStatName("rackA")));
-    vars.tasksDeleted(new TasksDeleted(ImmutableSet.of(
-        ScheduledTask.build(taskA.newBuilder().setStatus(FINISHED)))));
+    vars.tasksDeleted(new TasksDeleted(ImmutableSet.of(taskA.withStatus(FINISHED))));
     assertAllZero();
   }
 
@@ -276,10 +276,10 @@ public class TaskVarsTest extends EasyMockTest {
   }
 
   private IExpectationSetters<?> expectGetHostRack(String host, String rackToReturn) {
-    HostAttributes attributes = HostAttributes.build(new HostAttributes()
+    HostAttributes attributes = HostAttributes.builder()
         .setHost(host)
-        .setAttributes(ImmutableSet.of(
-            new Attribute().setName("rack").setValues(ImmutableSet.of(rackToReturn)))));
+        .setAttributes(Attribute.create("rack", ImmutableSet.of(rackToReturn)))
+        .build();
     return expect(storageUtil.attributeStore.getHostAttributes(host))
         .andReturn(Optional.of(attributes));
   }

@@ -16,6 +16,7 @@ package org.apache.aurora.scheduler.storage.log;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import org.apache.aurora.codec.ThriftBinaryCodec;
@@ -25,7 +26,7 @@ import org.apache.aurora.gen.storage.LogEntry;
 /**
  * Utility class for working with log entries.
  */
-final class Entries {
+public final class Entries {
 
   private static final Logger LOG = Logger.getLogger(Entries.class.getName());
 
@@ -46,7 +47,8 @@ final class Entries {
    *         of the original entry.
    * @throws CodingException If the value could not be encoded or deflated.
    */
-  static LogEntry deflate(LogEntry entry) throws CodingException {
+  @VisibleForTesting
+  public static LogEntry deflate(LogEntry entry) throws CodingException {
     byte[] data = ThriftBinaryCodec.deflateNonNull(entry);
     return LogEntry.deflatedEntry(ByteBuffer.wrap(data));
   }

@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
@@ -116,9 +117,9 @@ public class ResourceCounterTest {
   public void testComputeQuotaAllocationTotals() {
     storage.write((NoResult.Quiet) storeProvider -> {
       storeProvider.getQuotaStore()
-          .saveQuota("a", ResourceAggregate.build(new ResourceAggregate(1, 1, 1)));
+          .saveQuota("a", ResourceAggregate.create(1, 1, 1));
       storeProvider.getQuotaStore()
-          .saveQuota("b", ResourceAggregate.build(new ResourceAggregate(2, 3, 4)));
+          .saveQuota("b", ResourceAggregate.create(2, 3, 4));
     });
 
     assertEquals(new Metric(3, 4, 5), resourceCounter.computeQuotaAllocationTotals());
@@ -160,21 +161,23 @@ public class ResourceCounterTest {
       ScheduleStatus status,
       Optional<String> dedicated) {
 
-    ScheduledTask task = TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job)).newBuilder();
-    TaskConfig config = task.getAssignedTask().getTask()
-        .setNumCpus(numCpus)
-        .setRamMb(ramMb)
-        .setDiskMb(diskMb)
-        .setProduction(production);
-
-    if (dedicated.isPresent()) {
-      config.addToConstraints(new Constraint(
-          ConfigurationManager.DEDICATED_ATTRIBUTE,
-          TaskConstraint.value(new ValueConstraint(false, ImmutableSet.of(dedicated.get())))));
-    }
-
-    task.setStatus(status);
-    return ScheduledTask.build(task);
+    return TaskTestUtil.makeTask(id, JobKeys.from(role, "test", job))
+        .withStatus(status)
+        .withAssignedTask(
+            at -> at.withTask(
+                tc -> tc.toBuilder()
+                    .setNumCpus(numCpus)
+                    .setRamMb(ramMb)
+                    .setDiskMb(diskMb)
+                    .setProduction(production)
+                    .setConstraints(dedicated
+                        .transform(d -> Constraint.create(
+                            ConfigurationManager.DEDICATED_ATTRIBUTE,
+                            TaskConstraint.value(
+                                ValueConstraint.create(false, ImmutableSet.of(d)))))
+                        .asSet())
+                    .build()
+            ));
   }
 
   private void insertTasks(final ScheduledTask... tasks) {

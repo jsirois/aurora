@@ -32,16 +32,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class AddTaskTest extends EasyMockTest {
-  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
-      new JobUpdateInstructions()
-          .setDesiredState(new InstanceTaskConfig()
-              .setTask(new TaskConfig())
-              .setInstances(ImmutableSet.of(new Range(0, 0))))
-          .setSettings(
-              new JobUpdateSettings()
-                  .setMinWaitInInstanceRunningMs(1000)));
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.builder()
+      .setDesiredState(InstanceTaskConfig.builder()
+          .setTask(TaskConfig.builder().build())
+          .setInstances(Range.create(0, 0))
+          .build())
+      .setSettings(JobUpdateSettings.builder().setMinWaitInInstanceRunningMs(1000).build())
+      .build();
   private static final InstanceKey INSTANCE =
-      InstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
+      InstanceKey.create(JobKeys.from("role", "env", "job"), 0);
 
   private StorageTestUtil storageUtil;
   private StateManager stateManager;

@@ -20,6 +20,7 @@ import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.sun.jersey.api.client.ClientResponse;
 
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
 import org.junit.Before;
@@ -29,11 +30,11 @@ import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 
 public class ApiIT extends AbstractJettyTest {
-  private AnnotatedAuroraAdmin thrift;
+  private AuroraAdmin.Sync thrift;
 
   @Before
   public void setUp() {
-    thrift = createMock(AnnotatedAuroraAdmin.class);
+    thrift = createMock(AuroraAdmin.Sync.class);
   }
 
   @Override
@@ -43,14 +44,14 @@ public class ApiIT extends AbstractJettyTest {
         new AbstractModule() {
           @Override
           protected void configure() {
-            bind(AnnotatedAuroraAdmin.class).toInstance(thrift);
+            bind(AuroraAdmin.Sync.class).toInstance(thrift);
           }
         });
   }
 
   @Test
   public void testGzipFilterApplied() throws Exception {
-    expect(thrift.getRoleSummary()).andReturn(new Response());
+    expect(thrift.getRoleSummary()).andReturn(Response.builder().build());
 
     replayAndStart();
 

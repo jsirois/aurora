@@ -42,7 +42,7 @@ public class AsyncStatsModuleTest extends EasyMockTest {
             .addResources(getCpuResource(true, 2.0))
             .addResources(getCpuResource(false, 4.0))
             .build(),
-            HostAttributes.build(new HostAttributes()))));
+            HostAttributes.builder().build())));
 
     control.replay();
 
@@ -52,8 +52,7 @@ public class AsyncStatsModuleTest extends EasyMockTest {
   }
 
   private static MachineResource resource(boolean revocable, double cpu) {
-    return new MachineResource(
-        ResourceAggregate.build(new ResourceAggregate(cpu, 0, 0)), false, revocable);
+    return new MachineResource(ResourceAggregate.create(cpu, 0, 0), false, revocable);
   }
 
   private static Protos.Resource getCpuResource(boolean revocable, double value) {

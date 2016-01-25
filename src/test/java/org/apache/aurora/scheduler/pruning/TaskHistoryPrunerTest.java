@@ -307,7 +307,7 @@ public class TaskHistoryPrunerTest extends EasyMockTest {
   }
 
   private ScheduledTask copy(ScheduledTask task, ScheduleStatus status) {
-    return ScheduledTask.build(task.newBuilder().setStatus(status));
+    return task.withStatus(status);
   }
 
   private ScheduledTask makeTask(

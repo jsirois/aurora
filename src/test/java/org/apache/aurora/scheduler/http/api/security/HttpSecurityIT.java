@@ -14,7 +14,9 @@
 package org.apache.aurora.scheduler.http.api.security;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -22,9 +24,19 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.facebook.nifty.client.HttpClientChannel;
+import com.facebook.nifty.client.HttpClientConnector;
+import com.facebook.nifty.client.NettyClientConfig;
+import com.facebook.nifty.duplex.TDuplexProtocolFactory;
+import com.facebook.swift.service.RuntimeTException;
+import com.facebook.swift.service.RuntimeTTransportException;
+import com.facebook.swift.service.ThriftClientManager;
+import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;
 import com.google.inject.Module;
@@ -45,23 +57,22 @@ import org.apache.aurora.scheduler.http.AbstractJettyTest;
 import org.apache.aurora.scheduler.http.H2ConsoleModule;
 import org.apache.aurora.scheduler.http.api.ApiModule;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TJSONProtocol;
-import org.apache.thrift.transport.THttpClient;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.easymock.IExpectationSetters;
+import org.jboss.netty.channel.Channel;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -76,7 +87,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class HttpSecurityIT extends AbstractJettyTest {
-  private static final Response OK = new Response().setResponseCode(ResponseCode.OK);
+  private static final Response OK = Response.builder().setResponseCode(ResponseCode.OK).build();
 
   private static final UsernamePasswordCredentials ROOT =
       new UsernamePasswordCredentials("root", "secret");
@@ -113,7 +124,7 @@ public class HttpSecurityIT extends AbstractJettyTest {
   private static final Named SHIRO_AFTER_AUTH_FILTER_ANNOTATION = Names.named("shiro_post_filter");
 
   private Ini ini;
-  private AnnotatedAuroraAdmin auroraAdmin;
+  private AuroraAdmin.Sync auroraAdmin;
   private Filter shiroAfterAuthFilter;
 
   @Before
@@ -146,7 +157,7 @@ public class HttpSecurityIT extends AbstractJettyTest {
             + ADS_STAGING_JOB.getName());
     roles.put(H2_ROLE, H2_PERM);
 
-    auroraAdmin = createMock(AnnotatedAuroraAdmin.class);
+    auroraAdmin = createMock(AuroraAdmin.Sync.class);
     shiroAfterAuthFilter = createMock(Filter.class);
   }
 
@@ -169,30 +180,44 @@ public class HttpSecurityIT extends AbstractJettyTest {
         });
   }
 
-  private AuroraAdmin.Client getUnauthenticatedClient() throws TTransportException {
-    return getClient(null);
+  private AuroraAdmin.Sync getUnauthenticatedClient() throws Exception {
+    return getClient(channel -> { });
   }
 
   private String formatUrl(String endpoint) {
     return "http://" + httpServer.getHostText() + ":" + httpServer.getPort() + endpoint;
   }
 
-  private AuroraAdmin.Client getClient(HttpClient httpClient) throws TTransportException {
-    final TTransport httpClientTransport = new THttpClient(formatUrl(API_PATH), httpClient);
-    addTearDown(httpClientTransport::close);
-    return new AuroraAdmin.Client(new TJSONProtocol(httpClientTransport));
+  private AuroraAdmin.Sync getClient(Consumer<HttpClientChannel> channelModifier) throws Exception {
+    URI uri = URI.create(formatUrl(API_PATH));
+    TDuplexProtocolFactory protocolFactory =
+        TDuplexProtocolFactory.fromSingleFactory(new TJSONProtocol.Factory());
+
+    HttpClientConnector httpClientConnector = new HttpClientConnector(uri, protocolFactory) {
+      @Override
+      public HttpClientChannel newThriftClientChannel(Channel channel, NettyClientConfig config) {
+        HttpClientChannel httpChannel = super.newThriftClientChannel(channel, config);
+        channelModifier.accept(httpChannel);
+        return httpChannel;
+      }
+    };
+
+    ThriftClientManager thriftClientManager = new ThriftClientManager();
+    addTearDown(thriftClientManager::close);
+
+    ListenableFuture<AuroraAdmin.Sync> connectingClient =
+        thriftClientManager.createClient(httpClientConnector, AuroraAdmin.Sync.class);
+    AuroraAdmin.Sync sync = connectingClient.get();
+    addTearDown(sync::close);
+    return sync;
   }
 
-  private AuroraAdmin.Client getAuthenticatedClient(Credentials credentials)
-      throws TTransportException {
-
-    DefaultHttpClient defaultHttpClient = new DefaultHttpClient();
-
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    credentialsProvider.setCredentials(AuthScope.ANY, credentials);
-    defaultHttpClient.setCredentialsProvider(credentialsProvider);
-
-    return getClient(defaultHttpClient);
+  private AuroraAdmin.Sync getAuthenticatedClient(Credentials credentials) throws Exception {
+    return getClient(channel -> {
+      Header authenticate =
+          BasicScheme.authenticate(credentials, Charsets.UTF_8.displayName(), /* proxy */ false);
+      channel.setHeaders(ImmutableMap.of(authenticate.getName(), authenticate.getValue()));
+    });
   }
 
   private IExpectationSetters<Object> expectShiroAfterAuthFilter()
@@ -211,7 +236,7 @@ public class HttpSecurityIT extends AbstractJettyTest {
   }
 
   @Test
-  public void testReadOnlyScheduler() throws TException, ServletException, IOException {
+  public void testReadOnlyScheduler() throws Exception {
     expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(3);
     expectShiroAfterAuthFilter().times(3);
 
@@ -224,11 +249,11 @@ public class HttpSecurityIT extends AbstractJettyTest {
     assertEquals(OK, getAuthenticatedClient(INCORRECT).getRoleSummary());
   }
 
-  private void assertKillTasksFails(AuroraAdmin.Client client) throws TException {
+  private void assertKillTasksFails(AuroraAdmin.Sync client) throws TException {
     try {
       client.killTasks(null, null, null, null);
       fail("killTasks should fail.");
-    } catch (TTransportException e) {
+    } catch (RuntimeTException e) {
       // Expected.
     }
   }
@@ -307,17 +332,17 @@ public class HttpSecurityIT extends AbstractJettyTest {
     assertKillTasksFails(getAuthenticatedClient(NONEXISTENT));
   }
 
-  private void assertSnapshotFails(AuroraAdmin.Client client) throws TException {
+  private void assertSnapshotFails(AuroraAdmin.Sync client) throws TException {
     try {
       client.snapshot();
       fail("snapshot should fail");
-    } catch (TTransportException e) {
+    } catch (RuntimeTTransportException e) {
       // Expected.
     }
   }
 
   @Test
-  public void testAuroraAdmin() throws TException, ServletException, IOException {
+  public void testAuroraAdmin() throws Exception {
     expect(auroraAdmin.snapshot()).andReturn(OK);
     expect(auroraAdmin.listBackups()).andReturn(OK);
     expectShiroAfterAuthFilter().times(12);

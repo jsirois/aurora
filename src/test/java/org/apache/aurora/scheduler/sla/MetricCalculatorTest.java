@@ -26,6 +26,7 @@ import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.sla.MetricCalculator.MetricCalculatorSettings;
 import org.apache.aurora.scheduler.sla.SlaGroup.GroupType;

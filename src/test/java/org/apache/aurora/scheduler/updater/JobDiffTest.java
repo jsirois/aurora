@@ -22,6 +22,7 @@ import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.Identity;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
@@ -40,7 +41,7 @@ public class JobDiffTest extends EasyMockTest {
 
   private static final JobKey JOB = JobKeys.from("role", "env", "job");
   private static final Set<Range> NO_SCOPE = ImmutableSet.of();
-  private static final Set<Range> CANARY_SCOPE = ImmutableSet.of(Range.build(new Range(0, 0)));
+  private static final Set<Range> CANARY_SCOPE = ImmutableSet.of(Range.create(0, 0));
 
   private TaskStore store;
 
@@ -209,7 +210,7 @@ public class JobDiffTest extends EasyMockTest {
   private IExpectationSetters<?> expectFetch(AssignedTask... results) {
     ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
     for (AssignedTask result : results) {
-      tasks.add(ScheduledTask.build(new ScheduledTask().setAssignedTask(result.newBuilder())));
+      tasks.add(ScheduledTask.builder().setAssignedTask(result).build());
     }
 
     return expect(store.fetchTasks(Query.jobScoped(JOB).active()))
@@ -217,15 +218,15 @@ public class JobDiffTest extends EasyMockTest {
   }
 
   private static AssignedTask instance(TaskConfig config, int instance) {
-    return AssignedTask.build(
-        new AssignedTask().setTask(config.newBuilder()).setInstanceId(instance));
+    return AssignedTask.builder().setTask(config).setInstanceId(instance).build();
   }
 
   private static TaskConfig makeTask(String job, String config) {
-    return TaskConfig.build(new TaskConfig()
-        .setOwner(new Identity("owner", "owner"))
+    return TaskConfig.builder()
+        .setOwner(Identity.create("owner", "owner"))
         .setEnvironment("test")
         .setJobName(job)
-        .setExecutorConfig(new ExecutorConfig().setData(config)));
+        .setExecutorConfig(ExecutorConfig.builder().setData(config).build())
+        .build();
   }
 }

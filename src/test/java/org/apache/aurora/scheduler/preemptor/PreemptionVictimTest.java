@@ -39,10 +39,11 @@ public class PreemptionVictimTest {
   }
 
   private PreemptionVictim makeVictim(String taskId) {
-    return PreemptionVictim.fromTask(AssignedTask.build(new AssignedTask()
+    return PreemptionVictim.fromTask(AssignedTask.builder()
         .setTaskId(taskId)
         .setSlaveId(taskId + "slave")
         .setSlaveHost(taskId + "host")
-        .setTask(new TaskConfig().setJob(new JobKey("role", "env", "job")))));
+        .setTask(TaskConfig.builder().setJob(JobKey.create("role", "env", "job")).build())
+        .build());
   }
 }

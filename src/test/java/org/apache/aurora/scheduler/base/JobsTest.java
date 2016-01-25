@@ -20,10 +20,12 @@ import com.google.common.collect.ImmutableList;
 
 import org.apache.aurora.gen.JobStats;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.junit.Test;
 
 import static org.apache.aurora.scheduler.base.TaskTestUtil.addStateTransition;
 import static org.apache.aurora.scheduler.base.TaskTestUtil.makeTask;
+import static org.junit.Assert.assertEquals;
 
 public class JobsTest {
   @Test
@@ -34,11 +36,12 @@ public class JobsTest {
             .transform(status ->
                 addStateTransition(makeTask("id", TaskTestUtil.JOB), status, 100L)).toList();
 
-    JobStats expectedStats = JobStats.build(new JobStats()
+    JobStats expectedStats = JobStats.builder()
         .setActiveTaskCount(7)
         .setFailedTaskCount(2)
         .setFinishedTaskCount(2)
-        .setPendingTaskCount(3));
+        .setPendingTaskCount(3)
+        .build();
 
     assertEquals(expectedStats, Jobs.getJobStats(tasks));
   }

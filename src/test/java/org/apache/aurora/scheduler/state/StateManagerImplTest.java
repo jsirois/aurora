@@ -34,6 +34,7 @@ import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.TaskIdGenerator;
 import org.apache.aurora.scheduler.base.Query;
@@ -77,12 +78,12 @@ import static org.junit.Assert.assertEquals;
 
 public class StateManagerImplTest extends EasyMockTest {
 
-  private static final HostAttributes HOST_A = HostAttributes.build(
-      new HostAttributes(
-          "hostA",
-          ImmutableSet.of(new Attribute("zone", ImmutableSet.of("1a"))))
-          .setSlaveId("slaveIdA")
-          .setMode(MaintenanceMode.NONE));
+  private static final HostAttributes HOST_A = HostAttributes.builder()
+      .setHost("hostA")
+      .setAttributes(Attribute.create("zone", ImmutableSet.of("1a")))
+      .setSlaveId("slaveIdA")
+      .setMode(MaintenanceMode.NONE)
+      .build();
   private static final TaskConfig NON_SERVICE_CONFIG =
       setIsService(TaskTestUtil.makeConfig(TaskTestUtil.JOB), false);
   private static final TaskConfig SERVICE_CONFIG = setIsService(NON_SERVICE_CONFIG, true);
@@ -186,17 +187,20 @@ public class StateManagerImplTest extends EasyMockTest {
     control.replay();
 
     insertTask(NON_SERVICE_CONFIG, 3);
-    ScheduledTask expected = new ScheduledTask()
+    ScheduledTask expected = ScheduledTask.builder()
         .setStatus(PENDING)
-        .setTaskEvents(ImmutableList.of(new TaskEvent()
+        .setTaskEvents(TaskEvent.builder()
             .setTimestamp(clock.nowMillis())
             .setScheduler(StateManagerImpl.LOCAL_HOST_SUPPLIER.get())
-            .setStatus(PENDING)))
-        .setAssignedTask(new AssignedTask()
+            .setStatus(PENDING)
+            .build())
+        .setAssignedTask(AssignedTask.builder()
             .setAssignedPorts(ImmutableMap.of())
             .setInstanceId(3)
             .setTaskId(taskId)
-            .setTask(NON_SERVICE_CONFIG.newBuilder()));
+            .setTask(NON_SERVICE_CONFIG)
+            .build())
+        .build();
     assertEquals(
         ImmutableSet.of(ScheduledTask.build(expected)),
         Storage.Util.fetchTask(storage, taskId).asSet());
@@ -285,7 +289,7 @@ public class StateManagerImplTest extends EasyMockTest {
   }
 
   private static TaskConfig setIsService(TaskConfig config, boolean service) {
-    return TaskConfig.build(config.newBuilder().setIsService(service));
+    return config.withIsService(service);
   }
 
   @Test
@@ -346,7 +350,7 @@ public class StateManagerImplTest extends EasyMockTest {
   }
 
   private static TaskConfig setMaxFailures(TaskConfig config, int maxFailures) {
-    return TaskConfig.build(config.newBuilder().setMaxTaskFailures(maxFailures));
+    return config.withMaxTaskFailures(maxFailures);
   }
 
   @Test
@@ -400,13 +404,13 @@ public class StateManagerImplTest extends EasyMockTest {
         storeProvider -> stateManager.deleteTasks(storeProvider, ImmutableSet.of(taskId)));
   }
 
-  private static TaskConfig setRequestedPorts(TaskConfig config, Set<String> portNames) {
-    return TaskConfig.build(config.newBuilder().setRequestedPorts(portNames));
+  private static TaskConfig setRequestedPorts(TaskConfig config, ImmutableSet<String> portNames) {
+    return config.withRequestedPorts(portNames);
   }
 
   @Test
   public void testPortResource() throws Exception {
-    Set<String> requestedPorts = ImmutableSet.of("one", "two", "three");
+    ImmutableSet<String> requestedPorts = ImmutableSet.of("one", "two", "three");
     TaskConfig task = setRequestedPorts(NON_SERVICE_CONFIG, requestedPorts);
 
     String taskId = "a";
@@ -427,7 +431,7 @@ public class StateManagerImplTest extends EasyMockTest {
 
   @Test
   public void testPortResourceResetAfterReschedule() throws Exception {
-    Set<String> requestedPorts = ImmutableSet.of("one");
+    ImmutableSet<String> requestedPorts = ImmutableSet.of("one");
     TaskConfig task = setRequestedPorts(NON_SERVICE_CONFIG, requestedPorts);
 
     String taskId = "a";

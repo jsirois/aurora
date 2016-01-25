@@ -36,10 +36,12 @@ import org.apache.aurora.gen.Attribute;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.ExecutorConfig;
 import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.MesosContainer;
 import org.apache.aurora.gen.Metadata;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
@@ -61,21 +63,21 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public abstract class AbstractTaskStoreTest extends TearDownTestCase {
-  protected static final HostAttributes HOST_A = HostAttributes.build(
-      new HostAttributes(
-          "hostA",
-          ImmutableSet.of(new Attribute("zone", ImmutableSet.of("1a"))))
-          .setSlaveId("slaveIdA")
-          .setMode(MaintenanceMode.NONE));
-  protected static final HostAttributes HOST_B = HostAttributes.build(
-      new HostAttributes(
-          "hostB",
-          ImmutableSet.of(new Attribute("zone", ImmutableSet.of("1a"))))
-          .setSlaveId("slaveIdB")
-          .setMode(MaintenanceMode.NONE));
+  protected static final HostAttributes HOST_A = HostAttributes.builder()
+      .setHost("hostA")
+      .setAttributes(Attribute.create("zone", ImmutableSet.of("1a")))
+      .setSlaveId("slaveIdA")
+      .setMode(MaintenanceMode.NONE)
+      .build();
+  protected static final HostAttributes HOST_B = HostAttributes.builder()
+      .setHost("hostB")
+      .setAttributes(Attribute.create("zone", ImmutableSet.of("1a")))
+      .setSlaveId("slaveIdB")
+      .setMode(MaintenanceMode.NONE)
+      .build();
   protected static final ScheduledTask TASK_A = createTask("a");
   protected static final ScheduledTask TASK_B =
-      setContainer(createTask("b"), Container.mesos(new MesosContainer()));
+      setContainer(createTask("b"), Container.mesos(MesosContainer.create()));
   protected static final ScheduledTask TASK_C = createTask("c");
   protected static final ScheduledTask TASK_D = createTask("d");
 
@@ -137,7 +139,7 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
   @Test
   public void testSave() {
     ScheduledTask aWithHost = setHost(TASK_A, HOST_A);
-    StorageEntityUtil.assertFullyPopulated(aWithHost.newBuilder());
+    StorageEntityUtil.assertFullyPopulated(aWithHost);
 
     saveTasks(aWithHost, TASK_B);
     assertStoreContents(aWithHost, TASK_B);
@@ -146,19 +148,18 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
     assertStoreContents(aWithHost, TASK_B, TASK_C, TASK_D);
 
     // Saving the same task should overwrite.
-    ScheduledTask taskAModified = ScheduledTask.build(aWithHost.newBuilder().setStatus(RUNNING));
+    ScheduledTask taskAModified = aWithHost.withStatus(RUNNING);
     saveTasks(taskAModified);
     assertStoreContents(taskAModified, TASK_B, TASK_C, TASK_D);
   }
 
   @Test
   public void testSaveWithMetadata() {
-    ScheduledTask builder = TASK_A.newBuilder();
-    builder.getAssignedTask().getTask().setMetadata(
-        ImmutableSet.of(
-            new Metadata("package", "a"),
-            new Metadata("package", "b")));
-    ScheduledTask task = ScheduledTask.build(builder);
+    ScheduledTask task = TASK_A.withAssignedTask(
+        at -> at.withTask(
+            t -> t.withMetadata(ImmutableSet.of(
+                Metadata.create("package", "a"),
+                Metadata.create("package", "b")))));
     saveTasks(task);
     assertStoreContents(task);
   }
@@ -181,27 +182,22 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
     assertQueryResults(Query.jobScoped(JobKeys.from("role-b", "env-b", "job-b")).active(), TASK_B);
     assertQueryResults(Query.jobScoped(JobKeys.from("role-b", "devel", "job-b")).active());
 
-    // Explicitly call out the current differing behaviors for types of empty query conditions.
-    // Specifically - null task IDs and empty task IDs are different than other 'IN' conditions..
-    assertQueryResults(new TaskQuery().setTaskIds(null), TASK_A, TASK_B, TASK_C, TASK_D);
-    assertQueryResults(new TaskQuery().setTaskIds(ImmutableSet.of()));
+    assertQueryResults(TaskQuery.builder().setTaskIds().build(), TASK_A, TASK_B, TASK_C, TASK_D);
     assertQueryResults(
-        new TaskQuery().setInstanceIds(ImmutableSet.of()),
+        TaskQuery.builder().setInstanceIds().build(),
         TASK_A, TASK_B, TASK_C, TASK_D);
-    assertQueryResults(
-        new TaskQuery().setStatuses(ImmutableSet.of()),
-        TASK_A, TASK_B, TASK_C, TASK_D);
+    assertQueryResults(TaskQuery.builder().setStatuses().build(), TASK_A, TASK_B, TASK_C, TASK_D);
   }
 
   @Test
   public void testQueryMultipleInstances() {
     ImmutableSet.Builder<ScheduledTask> tasksBuilder = ImmutableSet.builder();
     for (int i = 0; i < 100; i++) {
-      ScheduledTask builder = TASK_A.newBuilder();
-      builder.getAssignedTask()
-          .setTaskId("id" + i)
-          .setInstanceId(i);
-      tasksBuilder.add(ScheduledTask.build(builder));
+      int id = i; // Capture i for the mutation closures below.
+      tasksBuilder.add(TASK_A.withAssignedTask(at -> at.toBuilder()
+          .setTaskId("id " + id)
+          .setInstanceId(id)
+          .build()));
     }
     Set<ScheduledTask> tasks = tasksBuilder.build();
     saveTasks(tasks);
@@ -262,7 +258,7 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
 
     assertQueryResults(
         Query.statusScoped(RUNNING),
-        ScheduledTask.build(TASK_A.newBuilder().setStatus(RUNNING)));
+        TASK_A.withStatus(RUNNING));
 
     assertEquals(
         Optional.absent(),
@@ -279,11 +275,8 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
 
   @Test
   public void testUnsafeModifyInPlace() {
-    TaskConfig updated = TaskConfig.build(
-        TASK_A.getAssignedTask()
-            .getTask()
-            .newBuilder()
-            .setExecutorConfig(new ExecutorConfig("aurora", "new_config")));
+    TaskConfig updated =  TASK_A.getAssignedTask().getTask()
+        .withExecutorConfig(ExecutorConfig.create("aurora", "new_config"));
 
     String taskId = Tasks.id(TASK_A);
     assertFalse(unsafeModifyInPlace(taskId, updated));
@@ -379,25 +372,17 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
   }
 
   private static ScheduledTask setHost(ScheduledTask task, HostAttributes host) {
-    ScheduledTask builder = task.newBuilder();
-    builder.getAssignedTask()
-        .setSlaveHost(host.getHost())
-        .setSlaveId(host.getSlaveId());
-    return ScheduledTask.build(builder);
+    return task.withAssignedTask(
+        at -> at.toBuilder().setSlaveHost(host.getHost()).setSlaveId(host.getSlaveId()).build());
   }
 
   private static ScheduledTask unsetHost(ScheduledTask task) {
-    ScheduledTask builder = task.newBuilder();
-    builder.getAssignedTask()
-        .setSlaveHost(null)
-        .setSlaveId(null);
-    return ScheduledTask.build(builder);
+    return task.withAssignedTask(at -> at.toBuilder().setSlaveHost(null).setSlaveId(null).build());
   }
 
   private static ScheduledTask setConfigData(ScheduledTask task, String configData) {
-    ScheduledTask builder = task.newBuilder();
-    builder.getAssignedTask().getTask().getExecutorConfig().setData(configData);
-    return ScheduledTask.build(builder);
+    return task.withAssignedTask(
+        at -> at.withTask(t -> t.withExecutorConfig(ec -> ec.withData(configData))));
   }
 
   @Test
@@ -534,10 +519,11 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
 
   @Test
   public void testNullVsEmptyRelations() throws Exception {
+    // TODO(John Sirois): XXX no more null - trash test or reword motivation / test name?
     // Test for regression of AURORA-1476.
 
-    TaskConfig nullMetadata =
-        TaskConfig.build(TaskTestUtil.makeConfig(TaskTestUtil.JOB).newBuilder().setMetadata(null));
+    TaskConfig nullMetadata = TaskTestUtil.makeConfig(TaskTestUtil.JOB)
+        .withMetadata(ImmutableSet.of());
 
     ScheduledTask a = makeTask("a", nullMetadata);
     ScheduledTask b = makeTask("a", nullMetadata);
@@ -568,8 +554,6 @@ public abstract class AbstractTaskStoreTest extends TearDownTestCase {
   }
 
   private static ScheduledTask setContainer(ScheduledTask task, Container container) {
-    ScheduledTask builder = task.newBuilder();
-    builder.getAssignedTask().getTask().setContainer(container);
-    return ScheduledTask.build(builder);
+    return task.withAssignedTask(at -> at.withTask(t -> t.withContainer(container)));
   }
 }

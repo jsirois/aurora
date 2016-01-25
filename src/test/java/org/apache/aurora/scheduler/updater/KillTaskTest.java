@@ -33,13 +33,11 @@ import org.junit.Test;
 import static org.easymock.EasyMock.expect;
 
 public class KillTaskTest extends EasyMockTest {
-  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.build(
-      new JobUpdateInstructions()
-          .setSettings(
-              new JobUpdateSettings()
-                  .setMinWaitInInstanceRunningMs(1000)));
+  private static final JobUpdateInstructions INSTRUCTIONS = JobUpdateInstructions.builder()
+      .setSettings(JobUpdateSettings.builder().setMinWaitInInstanceRunningMs(1000).build())
+      .build();
   private static final InstanceKey INSTANCE =
-      InstanceKey.build(new InstanceKey(JobKeys.from("role", "env", "job").newBuilder(), 0));
+      InstanceKey.create(JobKeys.from("role", "env", "job"), 0);
 
   private StorageTestUtil storageUtil;
   private StateManager stateManager;

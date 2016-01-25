@@ -16,6 +16,7 @@ package org.apache.aurora.scheduler.configuration;
 import java.util.Arrays;
 import java.util.List;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -54,60 +55,52 @@ public class ConfigurationManagerTest {
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private static final ImmutableSet<Container._Fields> ALL_CONTAINER_TYPES =
-      ImmutableSet.of(Container._Fields.DOCKER, Container._Fields.MESOS);
+  private static final ImmutableSet<Container.Fields> ALL_CONTAINER_TYPES =
+      ImmutableSet.of(Container.Fields.DOCKER, Container.Fields.MESOS);
 
-  private static final JobConfiguration UNSANITIZED_JOB_CONFIGURATION = new JobConfiguration()
-      .setKey(new JobKey("owner-role", "devel", "email_stats"))
+  private static final JobConfiguration UNSANITIZED_JOB_CONFIGURATION = JobConfiguration.builder()
+      .setKey(JobKey.create("owner-role", "devel", "email_stats"))
       .setCronSchedule("0 2 * * *")
       .setCronCollisionPolicy(CronCollisionPolicy.KILL_EXISTING)
       .setInstanceCount(1)
       .setTaskConfig(
-          new TaskConfig()
+          TaskConfig.builder()
               .setIsService(false)
               .setTaskLinks(ImmutableMap.of())
-              .setExecutorConfig(new ExecutorConfig("aurora", "config"))
+              .setExecutorConfig(ExecutorConfig.create("aurora", "config"))
               .setEnvironment("devel")
-              .setRequestedPorts(ImmutableSet.of())
+              .setRequestedPorts()
               .setJobName(null)
               .setPriority(0)
               .setOwner(null)
               .setContactEmail("foo@twitter.com")
               .setProduction(false)
               .setDiskMb(1)
-              .setMetadata(null)
+              .setMetadata()
               .setNumCpus(1.0)
               .setRamMb(1)
               .setMaxTaskFailures(0)
               .setConstraints(
-                  ImmutableSet.of(
-                      new Constraint()
-                          .setName("executor")
-                          .setConstraint(TaskConstraint
-                              .value(new ValueConstraint()
-                                  .setNegated(false)
-                                  .setValues(ImmutableSet.of("legacy")))),
-                      new Constraint()
-                          .setName("host")
-                          .setConstraint(TaskConstraint.limit(new LimitConstraint()
-                              .setLimit(1))),
-                      new Constraint()
-                          .setName(DEDICATED_ATTRIBUTE)
-                          .setConstraint(TaskConstraint.value(new ValueConstraint(
-                              false, ImmutableSet.of("foo"))))))
-              .setOwner(new Identity()
-                  .setRole("owner-role")
-                  .setUser("owner-user")));
-  private static final TaskConfig CONFIG_WITH_CONTAINER = TaskConfig.build(new TaskConfig()
+                  Constraint.create("executor",
+                      TaskConstraint.value(
+                          ValueConstraint.create(false, ImmutableSet.of("legacy")))),
+                  Constraint.create("host", TaskConstraint.limit(LimitConstraint.create(1))),
+                  Constraint.create(DEDICATED_ATTRIBUTE,
+                      TaskConstraint.value(
+                          ValueConstraint.create(false, ImmutableSet.of("foo")))))
+              .build())
+      .setOwner(Identity.create("owner-role", "owner-user"))
+      .build();
+  private static final TaskConfig CONFIG_WITH_CONTAINER = TaskConfig.builder()
       .setJobName("container-test")
       .setEnvironment("devel")
-      .setExecutorConfig(new ExecutorConfig())
-      .setOwner(new Identity("role", "user"))
+      .setExecutorConfig(ExecutorConfig.builder().build())
+      .setOwner(Identity.create("role", "user"))
       .setNumCpus(1)
       .setRamMb(1)
       .setDiskMb(1)
-      .setContainer(Container.docker(new DockerContainer("testimage"))))
-      .newBuilder();
+      .setContainer(Container.docker(DockerContainer.create("testimage")))
+      .build();
 
   private ConfigurationManager configurationManager;
   private ConfigurationManager dockerConfigurationManager;
@@ -133,31 +126,35 @@ public class ConfigurationManagerTest {
 
   @Test
   public void testBadContainerConfig() throws TaskDescriptionException {
-    TaskConfig taskConfig = CONFIG_WITH_CONTAINER.deepCopy();
-    taskConfig.getContainer().getDocker().setImage(null);
+    TaskConfig invalidTaskConfig =
+        CONFIG_WITH_CONTAINER.withContainer(
+            c -> Container.docker(c.getDocker().withImage((String) null)));
 
     expectTaskDescriptionException("A container must specify an image");
-    configurationManager.validateAndPopulate(TaskConfig.build(taskConfig));
+    configurationManager.validateAndPopulate(invalidTaskConfig);
   }
 
   @Test
   public void testDisallowedDockerParameters() throws TaskDescriptionException {
-    TaskConfig taskConfig = CONFIG_WITH_CONTAINER.deepCopy();
-    taskConfig.getContainer().getDocker().addToParameters(new DockerParameter("foo", "bar"));
+    TaskConfig invalidTaskConfig =
+        CONFIG_WITH_CONTAINER.withContainer(
+            c -> Container.docker(c.getDocker().withParameters(
+                ImmutableList.of(DockerParameter.create("foo", "bar")))));
 
     ConfigurationManager noParamsManager = new ConfigurationManager(
         ALL_CONTAINER_TYPES, false, ImmutableMultimap.of());
 
     expectTaskDescriptionException("Docker parameters not allowed");
-    noParamsManager.validateAndPopulate(TaskConfig.build(taskConfig));
+    noParamsManager.validateAndPopulate(invalidTaskConfig);
   }
 
   @Test
   public void testInvalidTier() throws TaskDescriptionException {
-    TaskConfig config = TaskConfig.build(UNSANITIZED_JOB_CONFIGURATION.deepCopy().getTaskConfig()
+    TaskConfig config = UNSANITIZED_JOB_CONFIGURATION.getTaskConfig().toBuilder()
         .setJobName("job")
         .setEnvironment("env")
-        .setTier("pr/d"));
+        .setTier("pr/d")
+        .build();
 
     expectTaskDescriptionException("Tier contains illegal characters");
     configurationManager.validateAndPopulate(config);
@@ -165,29 +162,24 @@ public class ConfigurationManagerTest {
 
   @Test
   public void testDefaultDockerParameters() throws TaskDescriptionException {
-    TaskConfig result = dockerConfigurationManager.validateAndPopulate(
-        TaskConfig.build(CONFIG_WITH_CONTAINER.deepCopy()));
+    TaskConfig result = dockerConfigurationManager.validateAndPopulate(CONFIG_WITH_CONTAINER);
 
     // The resulting task config should contain parameters supplied to the ConfigurationManager.
     List<DockerParameter> params = result.getContainer().getDocker().getParameters();
-    assertThat(
-        params, is(Arrays.asList(DockerParameter.build(new DockerParameter("foo", "bar")))));
+    assertThat(params, is(Arrays.asList(DockerParameter.create("foo", "bar"))));
   }
 
   @Test
   public void testPassthroughDockerParameters() throws TaskDescriptionException {
-    TaskConfig taskConfig = CONFIG_WITH_CONTAINER.deepCopy();
-    DockerParameter userParameter = new DockerParameter("bar", "baz");
-    taskConfig.getContainer().getDocker().getParameters().clear();
-    taskConfig.getContainer().getDocker().addToParameters(userParameter);
+    DockerParameter userParameter = DockerParameter.create("bar", "baz");
 
     TaskConfig result = dockerConfigurationManager.validateAndPopulate(
-        TaskConfig.build(taskConfig));
+        CONFIG_WITH_CONTAINER.withContainer(
+            c -> Container.docker(c.getDocker().withParameters(ImmutableList.of(userParameter)))));
 
     // The resulting task config should contain parameters supplied from user config.
     List<DockerParameter> params = result.getContainer().getDocker().getParameters();
-    assertThat(
-        params, is(Arrays.asList(DockerParameter.build(userParameter))));
+    assertThat(params, is(Arrays.asList(userParameter)));
   }
 
   private void expectTaskDescriptionException(String message) {

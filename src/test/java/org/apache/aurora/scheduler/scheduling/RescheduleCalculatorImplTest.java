@@ -154,18 +154,17 @@ public class RescheduleCalculatorImplTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String taskId, ScheduleStatus status) {
-    return ScheduledTask.build(makeTask(taskId).newBuilder().setStatus(status));
+    return makeTask(taskId).withStatus(status);
   }
 
   private ScheduledTask setAncestor(ScheduledTask task, String ancestorId) {
-    return ScheduledTask.build(task.newBuilder().setAncestorId(ancestorId));
+    return task.withAncestorId(ancestorId);
   }
 
   private static final Function<Map.Entry<ScheduleStatus, Long>, TaskEvent> TO_EVENT =
-      input -> new TaskEvent().setStatus(input.getKey()).setTimestamp(input.getValue());
+      input -> TaskEvent.builder().setStatus(input.getKey()).setTimestamp(input.getValue()).build();
 
   private ScheduledTask setEvents(ScheduledTask task, Map<ScheduleStatus, Long> events) {
-    return ScheduledTask.build(task.newBuilder().setTaskEvents(
-        FluentIterable.from(events.entrySet()).transform(TO_EVENT).toList()));
+    return task.withTaskEvents(FluentIterable.from(events.entrySet()).transform(TO_EVENT).toList());
   }
 }

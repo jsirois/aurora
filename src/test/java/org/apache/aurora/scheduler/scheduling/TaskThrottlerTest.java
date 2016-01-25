@@ -14,7 +14,6 @@
 package org.apache.aurora.scheduler.scheduling;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableList;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
@@ -130,12 +129,14 @@ public class TaskThrottlerTest extends EasyMockTest {
   }
 
   private ScheduledTask makeTask(String id, ScheduleStatus status) {
-    return ScheduledTask.build(new ScheduledTask()
-        .setTaskEvents(ImmutableList.of(
-            new TaskEvent()
+    return ScheduledTask.builder()
+        .setTaskEvents(
+            TaskEvent.builder()
                 .setStatus(status)
-                .setTimestamp(clock.nowMillis())))
+                .setTimestamp(clock.nowMillis())
+                .build())
         .setStatus(status)
-        .setAssignedTask(new AssignedTask().setTaskId(id)));
+        .setAssignedTask(AssignedTask.builder().setTaskId(id).build())
+        .build();
   }
 }

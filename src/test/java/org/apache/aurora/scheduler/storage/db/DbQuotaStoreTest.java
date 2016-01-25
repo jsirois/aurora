@@ -32,10 +32,8 @@ public class DbQuotaStoreTest {
 
   private static final String ROLE_A = "roleA";
   private static final String ROLE_B = "roleB";
-  private static final ResourceAggregate QUOTA_A =
-      ResourceAggregate.build(new ResourceAggregate(1.0D, 2, 3));
-  private static final ResourceAggregate QUOTA_B =
-      ResourceAggregate.build(new ResourceAggregate(2.0D, 4, 6));
+  private static final ResourceAggregate QUOTA_A = ResourceAggregate.create(1.0D, 2, 3);
+  private static final ResourceAggregate QUOTA_B = ResourceAggregate.create(2.0D, 4, 6);
 
   private Storage storage;
 

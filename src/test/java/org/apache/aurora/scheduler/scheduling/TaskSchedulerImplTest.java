@@ -29,6 +29,7 @@ import com.google.inject.TypeLiteral;
 import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.testing.easymock.EasyMockTest;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.async.AsyncModule.AsyncExecutor;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -234,9 +235,9 @@ public class TaskSchedulerImplTest extends EasyMockTest {
 
     control.replay();
 
-    ScheduledTask taskBuilder = TASK_A.newBuilder().setStatus(PENDING);
-    taskBuilder.getAssignedTask().setSlaveId(SLAVE_ID);
-    eventSink.post(TaskStateChange.transition(ScheduledTask.build(taskBuilder), PENDING));
+    ScheduledTask scheduledTask =
+        TASK_A.withStatus(PENDING).withAssignedTask(at -> at.withSlaveId(SLAVE_ID));
+    eventSink.post(TaskStateChange.transition(scheduledTask, PENDING));
   }
 
   @Test
@@ -248,10 +249,8 @@ public class TaskSchedulerImplTest extends EasyMockTest {
     scheduler = injector.getInstance(TaskScheduler.class);
     eventSink = PubsubTestUtil.startPubsub(injector);
 
-    ScheduledTask builder = TASK_A.newBuilder();
-    ScheduledTask taskA = ScheduledTask.build(builder.setStatus(PENDING));
-    builder.getAssignedTask().setTaskId("b");
-    ScheduledTask taskB = ScheduledTask.build(builder.setStatus(THROTTLED));
+    ScheduledTask taskA = TASK_A.withStatus(PENDING);
+    ScheduledTask taskB = TASK_A.withStatus(THROTTLED).withAssignedTask(at -> at.withTaskId("b"));
 
     memStorage.write((NoResult.Quiet)
         store -> store.getUnsafeTaskStore().saveTasks(ImmutableSet.of(taskA, taskB)));

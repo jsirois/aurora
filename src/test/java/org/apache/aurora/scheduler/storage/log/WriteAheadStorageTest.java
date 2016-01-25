@@ -87,11 +87,10 @@ public class WriteAheadStorageTest extends EasyMockTest {
   @Test
   public void testPruneHistory() {
     Set<JobUpdateKey> pruned = ImmutableSet.of(
-        JobUpdateKey.build(new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), "a")),
-        JobUpdateKey.build(
-            new JobUpdateKey(JobKeys.from("role", "env", "job").newBuilder(), "b")));
+        JobUpdateKey.create(JobKeys.from("role", "env", "job"), "a"),
+        JobUpdateKey.create(JobKeys.from("role", "env", "job"), "b"));
     expect(jobUpdateStore.pruneHistory(1, 1)).andReturn(pruned);
-    expectOp(Op.pruneJobUpdateHistory(new PruneJobUpdateHistory(1, 1)));
+    expectOp(Op.pruneJobUpdateHistory(PruneJobUpdateHistory.create(1, 1)));
 
     control.replay();
 
@@ -124,16 +123,14 @@ public class WriteAheadStorageTest extends EasyMockTest {
 
   @Test
   public void testSaveHostAttributes() {
-    HostAttributes attributes = HostAttributes.build(
-        new HostAttributes()
-            .setHost("a")
-            .setMode(MaintenanceMode.DRAINING)
-            .setAttributes(ImmutableSet.of(
-                new Attribute().setName("b").setValues(ImmutableSet.of("1", "2")))));
+    HostAttributes attributes = HostAttributes.builder()
+        .setHost("a")
+        .setMode(MaintenanceMode.DRAINING)
+        .setAttributes(Attribute.create("b", ImmutableSet.of("1", "2")))
+        .build();
 
     expect(attributeStore.saveHostAttributes(attributes)).andReturn(true);
-    expectOp(Op.saveHostAttributes(
-        new SaveHostAttributes().setHostAttributes(attributes.newBuilder())));
+    expectOp(Op.saveHostAttributes(SaveHostAttributes.create(attributes)));
     eventSink.post(new PubsubEvent.HostAttributesChanged(attributes));
 
     expect(attributeStore.saveHostAttributes(attributes)).andReturn(false);

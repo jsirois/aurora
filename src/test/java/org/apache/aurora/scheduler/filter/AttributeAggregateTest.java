@@ -139,9 +139,10 @@ public class AttributeAggregateTest extends EasyMockTest {
 
   private IExpectationSetters<?> expectGetAttributes(String host, Attribute... attributes) {
     return expect(attributeStore.getHostAttributes(host)).andReturn(Optional.of(
-        HostAttributes.build(new HostAttributes()
+        HostAttributes.builder()
             .setHost(host)
-            .setAttributes(ImmutableSet.copyOf(attributes)))));
+            .setAttributes(attributes)
+            .build()));
   }
 
   private void assertAggregate(
@@ -154,15 +155,18 @@ public class AttributeAggregateTest extends EasyMockTest {
   }
 
   private static ScheduledTask task(String id, String host) {
-    return ScheduledTask.build(new ScheduledTask().setAssignedTask(
-        new AssignedTask()
+    return ScheduledTask.builder().setAssignedTask(
+        AssignedTask.builder()
             .setTaskId(id)
-            .setSlaveHost(host)));
+            .setSlaveHost(host)
+            .build())
+        .build();
   }
 
   private Attribute attribute(String name, String... values) {
-    return new Attribute()
+    return Attribute.builder()
         .setName(name)
-        .setValues(ImmutableSet.copyOf(values));
+        .setValues(values)
+        .build();
   }
 }

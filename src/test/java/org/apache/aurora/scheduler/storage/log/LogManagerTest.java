@@ -122,7 +122,7 @@ public class LogManagerTest extends EasyMockTest {
   @Test
   public void testStreamManagerReadFromUnknownSome() throws CodingException {
     LogEntry transaction1 = createLogEntry(
-        Op.removeJob(new RemoveJob(JobKeys.from("role", "env", "job").newBuilder())));
+        Op.removeJob(RemoveJob.create(JobKeys.from("role", "env", "job"))));
     Entry entry1 = createMock(Entry.class);
     expect(entry1.contents()).andReturn(encode(transaction1));
     expect(stream.readAll()).andReturn(Iterators.singletonIterator(entry1));
@@ -179,7 +179,7 @@ public class LogManagerTest extends EasyMockTest {
 
     StreamTransaction streamTransaction = createNoMessagesStreamManager().startTransaction();
     streamTransaction.commit();
-    streamTransaction.add(Op.saveFrameworkId(new SaveFrameworkId("don't allow this")));
+    streamTransaction.add(Op.saveFrameworkId(SaveFrameworkId.create("don't allow this")));
   }
 
   private static class LogEntryMatcher implements IArgumentMatcher {
@@ -229,7 +229,7 @@ public class LogManagerTest extends EasyMockTest {
     RemoveTasks removeTasks3 = createRemoveTasks("4", "5");
 
     RemoveTasks coalescedRemoves =
-        new RemoveTasks(ImmutableSet.copyOf(Iterables.concat(removeTasks2.getTaskIds(),
+        RemoveTasks.create(ImmutableSet.copyOf(Iterables.concat(removeTasks2.getTaskIds(),
             removeTasks3.getTaskIds())));
 
     expectAppend(position1,
@@ -271,8 +271,8 @@ public class LogManagerTest extends EasyMockTest {
 
   @Test
   public void testTransactionOps() throws CodingException {
-    Op saveFrameworkId = Op.saveFrameworkId(new SaveFrameworkId("jake"));
-    Op deleteJob = Op.removeJob(new RemoveJob(JobKeys.from("role", "env", "name").newBuilder()));
+    Op saveFrameworkId = Op.saveFrameworkId(SaveFrameworkId.create("jake"));
+    Op deleteJob = Op.removeJob(RemoveJob.create(JobKeys.from("role", "env", "name")));
     expectTransaction(position1, saveFrameworkId, deleteJob);
 
     StreamManager streamManager = createNoMessagesStreamManager();
@@ -307,7 +307,7 @@ public class LogManagerTest extends EasyMockTest {
     int chunkLength = chunkSize.getValue();
     int chunkCount = (int) Math.ceil(entry.length / (double) chunkSize.getValue());
 
-    Frame header = Frame.header(new FrameHeader(chunkCount,
+    Frame header = Frame.header(FrameHeader.create(chunkCount,
         ByteBuffer.wrap(MessageDigest.getInstance("MD5").digest(entry))));
 
     List<Frame> chunks = Lists.newArrayList();
@@ -315,7 +315,7 @@ public class LogManagerTest extends EasyMockTest {
       int offset = i * chunkLength;
       ByteBuffer data =
           ByteBuffer.wrap(entry, offset, Math.min(chunkLength, entry.length - offset));
-      chunks.add(Frame.chunk(new FrameChunk(data)));
+      chunks.add(Frame.chunk(FrameChunk.create(data)));
     }
 
     return new Message(chunkSize, header, chunks);
@@ -323,7 +323,7 @@ public class LogManagerTest extends EasyMockTest {
 
   @Test
   public void testTransactionFrames() throws Exception {
-    Op saveFrameworkId = Op.saveFrameworkId(new SaveFrameworkId("jake"));
+    Op saveFrameworkId = Op.saveFrameworkId(SaveFrameworkId.create("jake"));
 
     Message message = frame(createLogEntry(saveFrameworkId));
     expectFrames(position1, message);
@@ -342,8 +342,8 @@ public class LogManagerTest extends EasyMockTest {
   public void testConcurrentWrites() throws Exception {
     control.replay(); // No easymock expectations used here
 
-    Op op1 = Op.removeJob(new RemoveJob(JobKeys.from("r1", "env", "name").newBuilder()));
-    final Op op2 = Op.removeJob(new RemoveJob(JobKeys.from("r2", "env", "name").newBuilder()));
+    Op op1 = Op.removeJob(RemoveJob.create(JobKeys.from("r1", "env", "name")));
+    Op op2 = Op.removeJob(RemoveJob.create(JobKeys.from("r2", "env", "name")));
 
     LogEntry transaction1 = createLogEntry(op1);
     LogEntry transaction2 = createLogEntry(op2);
@@ -427,9 +427,9 @@ public class LogManagerTest extends EasyMockTest {
   @Test
   public void testStreamManagerReadFrames() throws Exception {
     LogEntry transaction1 = createLogEntry(
-        Op.removeJob(new RemoveJob(JobKeys.from("r1", "env", "name").newBuilder())));
+        Op.removeJob(RemoveJob.create(JobKeys.from("r1", "env", "name"))));
     LogEntry transaction2 = createLogEntry(
-        Op.removeJob(new RemoveJob(JobKeys.from("r2", "env", "name").newBuilder())));
+        Op.removeJob(RemoveJob.create(JobKeys.from("r2", "env", "name"))));
 
     Message message = frame(transaction1);
 
@@ -510,23 +510,28 @@ public class LogManagerTest extends EasyMockTest {
   }
 
   private Snapshot createSnapshot() {
-    return new Snapshot()
+    return Snapshot.builder()
         .setTimestamp(1L)
-        .setHostAttributes(ImmutableSet.of(new HostAttributes("host",
-            ImmutableSet.of(new Attribute("hostname", ImmutableSet.of("abc"))))))
-        .setTasks(ImmutableSet.of(
-            new ScheduledTask().setStatus(ScheduleStatus.RUNNING)
-                .setAssignedTask(new AssignedTask().setTaskId("task_id")
-                    .setTask(new TaskConfig().setJobName("job_name")))));
+        .setHostAttributes(HostAttributes.create("host",
+            ImmutableSet.of(Attribute.create("hostname", ImmutableSet.of("abc")))))
+        .setTasks(ScheduledTask.builder()
+            .setStatus(ScheduleStatus.RUNNING)
+            .setAssignedTask(AssignedTask.builder()
+                .setTaskId("task_id")
+                .setTask(TaskConfig.builder().setJobName("job_name").build()).build())
+            .build())
+        .build();
   }
 
   private SaveTasks createSaveTasks(String... taskIds) {
-    return new SaveTasks(ImmutableSet.copyOf(Iterables.transform(ImmutableList.copyOf(taskIds),
-        taskId -> new ScheduledTask().setAssignedTask(new AssignedTask().setTaskId(taskId)))));
+    return SaveTasks.create(ImmutableSet.copyOf(Iterables.transform(ImmutableList.copyOf(taskIds),
+        taskId -> ScheduledTask.builder()
+            .setAssignedTask(AssignedTask.builder().setTaskId(taskId).build())
+            .build())));
   }
 
   private RemoveTasks createRemoveTasks(String... taskIds) {
-    return new RemoveTasks(ImmutableSet.copyOf(taskIds));
+    return RemoveTasks.create(ImmutableSet.copyOf(taskIds));
   }
 
   private void expectFrames(Position position, Message message) throws CodingException {
@@ -543,7 +548,7 @@ public class LogManagerTest extends EasyMockTest {
 
   private LogEntry createLogEntry(Op... ops) {
     return LogEntry.transaction(
-        new Transaction(ImmutableList.copyOf(ops), Constants.CURRENT_SCHEMA_VERSION));
+        Transaction.create(ImmutableList.copyOf(ops), Constants.CURRENT_SCHEMA_VERSION));
   }
 
   private void expectAppend(Position position, LogEntry logEntry) throws CodingException {

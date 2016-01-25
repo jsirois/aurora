@@ -78,16 +78,18 @@ public class TaskAssignerImplTest extends EasyMockTest {
               Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
       .build();
   private static final HostOffer OFFER =
-      new HostOffer(MESOS_OFFER, HostAttributes.build(new HostAttributes()));
+      new HostOffer(MESOS_OFFER, HostAttributes.builder().build());
   private static final String PORT_NAME = "http";
-  private static final ScheduledTask TASK = ScheduledTask.build(
-      new ScheduledTask()
-          .setAssignedTask(new AssignedTask()
-              .setTaskId("taskId")
-              .setTask(new TaskConfig()
-                  .setJob(new JobKey("r", "e", "n"))
-                  .setExecutorConfig(new ExecutorConfig().setData("opaque data"))
-                  .setRequestedPorts(ImmutableSet.of(PORT_NAME)))));
+  private static final ScheduledTask TASK = ScheduledTask.builder()
+      .setAssignedTask(AssignedTask.builder()
+          .setTaskId("taskId")
+          .setTask(TaskConfig.builder()
+              .setJob(JobKey.create("r", "e", "n"))
+              .setExecutorConfig(ExecutorConfig.builder().setData("opaque data").build())
+              .setRequestedPorts(PORT_NAME)
+              .build())
+          .build())
+      .build();
   private static final TaskGroupKey GROUP_KEY = TaskGroupKey.from(TASK.getAssignedTask().getTask());
   private static final TaskInfo TASK_INFO = TaskInfo.newBuilder()
       .setName("taskName")
@@ -226,7 +228,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
         TaskGroupKey.from(TASK.getAssignedTask().getTask()),
         Tasks.id(TASK),
         ImmutableMap.of(SLAVE_ID, TaskGroupKey.from(
-            TaskConfig.build(new TaskConfig().setJob(new JobKey("other", "e", "n")))))));
+            TaskConfig.builder().setJob(JobKey.create("other", "e", "n")).build()))));
   }
 
   @Test
@@ -246,7 +248,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
                 .setRanges(
                     Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
             .build(),
-        HostAttributes.build(new HostAttributes()));
+        HostAttributes.builder().build());
 
     expect(offerManager.getOffers(GROUP_KEY)).andReturn(ImmutableSet.of(offer, OFFER));
     expect(tierManager.getTier(TASK.getAssignedTask().getTask())).andReturn(DEFAULT);
@@ -287,7 +289,7 @@ public class TaskAssignerImplTest extends EasyMockTest {
                 .setRanges(
                     Ranges.newBuilder().addRange(Range.newBuilder().setBegin(PORT).setEnd(PORT))))
             .build(),
-        HostAttributes.build(new HostAttributes()));
+        HostAttributes.builder().build());
 
     expect(offerManager.getOffers(GROUP_KEY)).andReturn(ImmutableSet.of(mismatched, OFFER));
     expect(tierManager.getTier(TASK.getAssignedTask().getTask())).andReturn(DEFAULT).times(2);

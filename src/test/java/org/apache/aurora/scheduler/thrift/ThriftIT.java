@@ -46,14 +46,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.apache.aurora.gen.ResponseCode.OK;
+import static org.junit.Assert.assertEquals;
 
 public class ThriftIT extends EasyMockTest {
 
   private static final String USER = "someuser";
-  private static final ResourceAggregate QUOTA =
-      ResourceAggregate.build(new ResourceAggregate(1, 1, 1));
+  private static final ResourceAggregate QUOTA = ResourceAggregate.create(1, 1, 1);
 
-  private AuroraAdmin.Iface thrift;
+  private AuroraAdmin.Sync thrift;
   private StorageTestUtil storageTestUtil;
   private QuotaManager quotaManager;
 
@@ -91,7 +91,7 @@ public class ThriftIT extends EasyMockTest {
             bind(NonVolatileStorage.class).toInstance(storageTestUtil.storage);
             bindMock(StorageBackup.class);
             bind(QuotaManager.class).toInstance(quotaManager);
-            bind(ServerInfo.class).toInstance(ServerInfo.build(new ServerInfo()));
+            bind(ServerInfo.class).toInstance(ServerInfo.builder().build());
             bindMock(CronPredictor.class);
           }
 
@@ -101,7 +101,7 @@ public class ThriftIT extends EasyMockTest {
           }
         }
     );
-    thrift = injector.getInstance(AnnotatedAuroraAdmin.class);
+    thrift = injector.getInstance(AuroraAdmin.Sync.class);
   }
 
   @Test
@@ -114,8 +114,6 @@ public class ThriftIT extends EasyMockTest {
 
     control.replay();
 
-    assertEquals(
-        OK,
-        thrift.setQuota(USER, QUOTA.newBuilder()).getResponseCode());
+    assertEquals(OK, thrift.setQuota(USER, QUOTA).getResponseCode());
   }
 }

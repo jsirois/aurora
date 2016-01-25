@@ -40,6 +40,7 @@ import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.TaskIdGenerator;
 import org.apache.aurora.scheduler.base.Query;
@@ -94,14 +95,15 @@ public class StateManagerImpl implements StateManager {
     this.rescheduleCalculator = requireNonNull(rescheduleCalculator);
   }
 
-  private ScheduledTask createTask(int instanceId, TaskConfig template) {
-    AssignedTask assigned = new AssignedTask()
+  private ScheduledTask.Builder createTaskBuilder(int instanceId, TaskConfig template) {
+    AssignedTask assigned = AssignedTask.builder()
         .setTaskId(taskIdGenerator.generate(template, instanceId))
         .setInstanceId(instanceId)
-        .setTask(template.newBuilder());
-    return ScheduledTask.build(new ScheduledTask()
+        .setTask(template)
+        .build();
+    return ScheduledTask.builder()
         .setStatus(INIT)
-        .setAssignedTask(assigned));
+        .setAssignedTask(assigned);
   }
 
   @Override
@@ -116,7 +118,7 @@ public class StateManagerImpl implements StateManager {
 
     // Done outside the write transaction to minimize the work done inside a transaction.
     Set<ScheduledTask> scheduledTasks = FluentIterable.from(instanceIds)
-        .transform(instanceId -> createTask(instanceId, task)).toSet();
+        .transform(instanceId -> createTaskBuilder(instanceId, task).build()).toSet();
 
     Iterable<ScheduledTask> existingTasks = storeProvider.getTaskStore().fetchTasks(
         Query.jobScoped(task.getJob()).active());
@@ -288,7 +290,7 @@ public class StateManagerImpl implements StateManager {
               upToDateTask.isPresent(),
               "Operation expected task " + taskId + " to be present.");
 
-          Optional<IScheduledTask> mutated = taskStore.mutateTask(taskId, task1 -> {
+          Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId, task1 -> {
             ScheduledTask mutableTask = task1.newBuilder();
             mutableTask.setStatus(targetState.get());
             mutableTask.addToTaskEvents(new TaskEvent()
@@ -319,12 +321,12 @@ public class StateManagerImpl implements StateManager {
             auditMessage = "Rescheduled";
           }
 
-          ScheduledTask newTask = ScheduledTask.build(createTask(
+          ScheduledTask newTask = createTaskBuilder(
               upToDateTask.get().getAssignedTask().getInstanceId(),
               upToDateTask.get().getAssignedTask().getTask())
-              .newBuilder()
               .setFailureCount(upToDateTask.get().getFailureCount())
-              .setAncestorId(taskId));
+              .setAncestorId(taskId)
+              .build();
           taskStore.saveTasks(ImmutableSet.of(newTask));
           updateTaskAndExternalState(
               taskStore,

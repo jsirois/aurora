@@ -18,6 +18,9 @@ import java.util.Set;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.ValueConstraint;
+
 /**
  * Utility class that matches attributes to constraints.
  */

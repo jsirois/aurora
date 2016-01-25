@@ -22,7 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.gen.Lock;
-import org.apache.aurora.gen.LockKey._Fields;
+import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.LockStore;
 import org.apache.aurora.scheduler.storage.Storage;
@@ -62,11 +62,12 @@ public class LockManagerImpl implements LockManager {
             existingLock.get().getUser()));
       }
 
-      Lock lock = Lock.build(new Lock()
-          .setKey(lockKey.newBuilder())
+      Lock lock = Lock.builder()
+          .setKey(lockKey)
           .setToken(tokenGenerator.createNew().toString())
           .setTimestampMs(clock.nowMillis())
-          .setUser(user));
+          .setUser(user)
+          .build();
 
       lockStore.saveLock(lock);
       return lock;
@@ -112,7 +113,7 @@ public class LockManagerImpl implements LockManager {
   }
 
   private static String formatLockKey(LockKey lockKey) {
-    return lockKey.getSetField() == _Fields.JOB
+    return lockKey.getSetField() == LockKey.Fields.JOB
         ? JobKeys.canonicalString(lockKey.getJob())
         : "Unknown lock key type: " + lockKey.getSetField();
   }

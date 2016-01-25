@@ -18,6 +18,14 @@ import java.util.Set;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 
 /**

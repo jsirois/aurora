@@ -18,13 +18,17 @@ import java.util.Set;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.scheduler.storage.AttributeStore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import static org.apache.aurora.common.base.MorePreconditions.checkNotBlank;
 import static org.apache.aurora.common.inject.TimedInterceptor.Timed;
 
 /**
@@ -48,7 +52,6 @@ class DbAttributeStore implements AttributeStore.Mutable {
   @Override
   public boolean saveHostAttributes(HostAttributes hostAttributes) {
     checkNotBlank(hostAttributes.getHost());
-    checkArgument(hostAttributes.isSetAttributes());
     checkArgument(hostAttributes.isSetMode());
 
     if (Iterables.any(hostAttributes.getAttributes(), EMPTY_VALUES)) {
@@ -82,12 +85,12 @@ class DbAttributeStore implements AttributeStore.Mutable {
   @Timed("attribute_store_fetch_one")
   @Override
   public Optional<HostAttributes> getHostAttributes(String host) {
-    return Optional.fromNullable(mapper.select(host)).transform(HostAttributes::build);
+    return Optional.fromNullable(mapper.select(host));
   }
 
   @Timed("attribute_store_fetch_all")
   @Override
   public Set<HostAttributes> getHostAttributes() {
-    return HostAttributes.setFromBuilders(mapper.selectAll());
+    return ImmutableSet.copyOf(mapper.selectAll());
   }
 }

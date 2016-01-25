@@ -17,6 +17,8 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
+import org.apache.aurora.gen.ResourceAggregate;
+
 import static java.util.Objects.requireNonNull;
 
 /**

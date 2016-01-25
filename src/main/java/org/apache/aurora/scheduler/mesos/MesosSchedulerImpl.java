@@ -29,6 +29,7 @@ import com.google.common.base.Preconditions;
 import org.apache.aurora.GuiceUtils.AllowUnchecked;
 import org.apache.aurora.common.application.Lifecycle;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.TaskStatusHandler;
 import org.apache.aurora.scheduler.base.SchedulerException;

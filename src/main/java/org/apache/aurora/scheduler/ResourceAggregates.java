@@ -22,20 +22,11 @@ import org.apache.aurora.gen.ResourceAggregate;
  */
 public final class ResourceAggregates {
 
-  public static final ResourceAggregate EMPTY =
-      ResourceAggregate.build(new ResourceAggregate(0, 0, 0));
-
-  public static final ResourceAggregate SMALL =
-      ResourceAggregate.build(new ResourceAggregate(1.0, 1024, 4096));
-
-  public static final ResourceAggregate MEDIUM =
-      ResourceAggregate.build(new ResourceAggregate(4.0, 8192, 16384));
-
-  public static final ResourceAggregate LARGE =
-      ResourceAggregate.build(new ResourceAggregate(8.0, 16384, 32768));
-
-  public static final ResourceAggregate XLARGE =
-      ResourceAggregate.build(new ResourceAggregate(16.0, 32768, 65536));
+  public static final ResourceAggregate EMPTY = ResourceAggregate.create(0, 0, 0);
+  public static final ResourceAggregate SMALL = ResourceAggregate.create(1.0, 1024, 4096);
+  public static final ResourceAggregate MEDIUM = ResourceAggregate.create(4.0, 8192, 16384);
+  public static final ResourceAggregate LARGE = ResourceAggregate.create(8.0, 16384, 32768);
+  public static final ResourceAggregate XLARGE = ResourceAggregate.create(16.0, 32768, 65536);
 
   private ResourceAggregates() {
     // Utility class.
@@ -45,10 +36,11 @@ public final class ResourceAggregates {
    * a * m.
    */
   public static ResourceAggregate scale(ResourceAggregate a, int m) {
-    return ResourceAggregate.build(new ResourceAggregate()
+    return ResourceAggregate.builder()
         .setNumCpus(a.getNumCpus() * m)
         .setRamMb(a.getRamMb() * m)
-        .setDiskMb(a.getDiskMb() * m));
+        .setDiskMb(a.getDiskMb() * m)
+        .build();
   }
 
   /**

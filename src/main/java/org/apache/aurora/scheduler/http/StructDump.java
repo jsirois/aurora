@@ -24,11 +24,11 @@ import javax.ws.rs.core.Response.Status;
 
 import com.google.common.base.Optional;
 
-import org.apache.aurora.common.thrift.Util;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.Work.Quiet;
-import org.apache.thrift.TBase;
+import org.apache.aurora.thrift.ThriftEntity;
 
 import static java.util.Objects.requireNonNull;
 
@@ -72,7 +72,7 @@ public class StructDump extends JerseyTemplateServlet {
     return dumpEntity(
         "Task " + taskId,
         storeProvider ->
-            storeProvider.getTaskStore().fetchTask(taskId).transform(IScheduledTask::newBuilder));
+            storeProvider.getTaskStore().fetchTask(taskId).transform(ScheduledTask::newBuilder));
   }
 
   /**
@@ -90,16 +90,18 @@ public class StructDump extends JerseyTemplateServlet {
 
     final JobKey jobKey = JobKeys.from(role, environment, job);
     return dumpEntity("Cron job " + JobKeys.canonicalString(jobKey),
-        storeProvider -> storeProvider.getCronJobStore().fetchJob(jobKey)
-            .transform(JobConfiguration::newBuilder));
+        storeProvider -> storeProvider.getCronJobStore().fetchJob(jobKey));
   }
 
-  private Response dumpEntity(final String id, final Quiet<Optional<? extends TBase<?, ?>>> work) {
+  private Response dumpEntity(
+      final String id,
+      final Quiet<Optional<? extends ThriftEntity<?>>> work) {
+
     return fillTemplate(template -> {
       template.setAttribute("id", id);
-      Optional<? extends TBase<?, ?>> struct = storage.read(work);
-      if (struct.isPresent()) {
-        template.setAttribute("structPretty", Util.prettyPrint(struct.get()));
+      Optional<? extends ThriftEntity<?>> entity = storage.read(work);
+      if (entity.isPresent()) {
+        template.setAttribute("structPretty", Util.prettyPrint(entity.get()));
         template.setAttribute("exception", null);
       } else {
         template.setAttribute("exception", "Entity not found");

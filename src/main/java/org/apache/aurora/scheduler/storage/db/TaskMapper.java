@@ -20,6 +20,8 @@ import javax.annotation.Nullable;
 
 import org.apache.aurora.common.collections.Pair;
 import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.storage.db.views.DbScheduledTask;
 import org.apache.ibatis.annotations.Param;
@@ -65,7 +67,7 @@ interface TaskMapper {
 
   /**
    * Inserts the task events association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.ScheduledTask}.
+   * {@link org.apache.aurora.gen.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param events Events to insert.
@@ -76,7 +78,7 @@ interface TaskMapper {
 
   /**
    * Inserts the assigned ports association within an
-   * {@link org.apache.aurora.scheduler.storage.entities.ScheduledTask}.
+   * {@link org.apache.aurora.gen.ScheduledTask}.
    *
    * @param taskRowId Task row ID.
    * @param ports Assigned ports to insert.

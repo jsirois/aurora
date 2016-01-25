@@ -23,13 +23,10 @@ public final class DbJobUpdate {
   private DbJobUpdate() {
   }
 
-  JobUpdate toThrift() {
-    return new JobUpdate()
+  public JobUpdate toThrift() {
+    return JobUpdate.builder()
         .setSummary(summary)
-        .setInstructions(instructions.toThrift());
-  }
-
-  public JobUpdate toImmutable() {
-    return JobUpdate.build(toThrift());
+        .setInstructions(instructions.toThrift())
+        .build();
   }
 }

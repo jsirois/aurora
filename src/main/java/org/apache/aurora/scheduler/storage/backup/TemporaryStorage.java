@@ -20,6 +20,7 @@ import com.google.common.collect.FluentIterable;
 
 import org.apache.aurora.common.util.BuildInfo;
 import org.apache.aurora.common.util.testing.FakeClock;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.storage.Snapshot;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;

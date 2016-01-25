@@ -27,9 +27,11 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.eventbus.Subscribe;
 
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.HostStatus;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent.EventSubscriber;
@@ -188,7 +190,7 @@ public interface MaintenanceController {
         HostAttributes::getHost;
 
     private static final Function<HostAttributes, HostStatus> ATTRS_TO_STATUS =
-        attributes -> new HostStatus().setHost(attributes.getHost()).setMode(attributes.getMode());
+        attributes -> HostStatus.create(attributes.getHost(), attributes.getMode());
 
     private static final Function<IHostStatus, MaintenanceMode> GET_MODE = IHostStatus::getMode;
 
@@ -231,7 +233,7 @@ public interface MaintenanceController {
         if (toSave.isPresent()) {
           store.saveHostAttributes(toSave.get());
           LOG.info("Updated host attributes: " + toSave.get());
-          statuses.add(IHostStatus.build(new HostStatus().setHost(host).setMode(mode)));
+          statuses.add(HostStatus.build(new HostStatus().setHost(host).setMode(mode)));
         }
       }
       return statuses.build();

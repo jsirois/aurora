@@ -28,17 +28,14 @@ public final class DbJobUpdateInstructions {
   private DbJobUpdateInstructions() {
   }
 
-  JobUpdateInstructions toThrift() {
-    return new JobUpdateInstructions()
+  public JobUpdateInstructions toThrift() {
+    return JobUpdateInstructions.builder()
         .setInitialState(
             FluentIterable.from(initialState)
                 .transform(DbInstanceTaskConfig::toThrift)
                 .toSet())
         .setDesiredState(desiredState == null ? null : desiredState.toThrift())
-        .setSettings(settings);
-  }
-
-  public JobUpdateInstructions toImmutable() {
-    return JobUpdateInstructions.build(toThrift());
+        .setSettings(settings)
+        .build();
   }
 }

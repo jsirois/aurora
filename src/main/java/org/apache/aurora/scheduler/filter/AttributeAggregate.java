@@ -22,6 +22,9 @@ import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Multiset;
 
 import org.apache.aurora.common.collections.Pair;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.AttributeStore;

@@ -23,6 +23,8 @@ import org.apache.aurora.common.stats.StatsProvider;
 import org.apache.aurora.common.util.Clock;
 import org.apache.aurora.common.util.testing.FakeClock;
 import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.testing.FakeStatsProvider;
@@ -33,11 +35,10 @@ import static org.junit.Assert.assertEquals;
 
 public class RowGarbageCollectorTest {
 
-  private static final JobKey JOB_A = JobKey.build(new JobKey("roleA", "envA", "jobA"));
-  private static final JobKey JOB_B = JobKey.build(new JobKey("roleB", "envB", "jobB"));
+  private static final JobKey JOB_A = JobKey.create("roleA", "envA", "jobA");
+  private static final JobKey JOB_B = JobKey.create("roleB", "envB", "jobB");
   private static final ScheduledTask TASK_A2 = TaskTestUtil.makeTask("task_a2", JOB_A);
-  private static final TaskConfig CONFIG_A =
-      TaskConfig.build(TASK_A2.getAssignedTask().getTask().newBuilder().setRamMb(124246));
+  private static final TaskConfig CONFIG_A = TASK_A2.getAssignedTask().getTask().withRamMb(124246);
   private static final TaskConfig CONFIG_B = TaskTestUtil.makeConfig(JOB_B);
 
   private JobKeyMapper jobKeyMapper;
@@ -93,12 +94,12 @@ public class RowGarbageCollectorTest {
     taskConfigMapper.insert(CONFIG_B, new InsertResult());
     rowGc.runOneIteration();
     // Only job A and config A2 are still referenced, other rows are deleted.
-    assertEquals(ImmutableList.of(JOB_A.newBuilder()), jobKeyMapper.selectAll());
+    assertEquals(ImmutableList.of(JOB_A), jobKeyMapper.selectAll());
     // Note: Using the ramMb as a sentinel value, since relations in the TaskConfig are not
     // populated, therefore full object equivalence cannot easily be used.
     assertEquals(
         TASK_A2.getAssignedTask().getTask().getRamMb(),
-        Iterables.getOnlyElement(taskConfigMapper.selectConfigsByJob(JOB_A)).toImmutable()
+        Iterables.getOnlyElement(taskConfigMapper.selectConfigsByJob(JOB_A)).toThrift()
             .getRamMb());
     assertEquals(ImmutableList.of(), taskConfigMapper.selectConfigsByJob(JOB_B));
   }

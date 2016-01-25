@@ -15,6 +15,7 @@ package org.apache.aurora.scheduler.spi;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.JobKey;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.authz.permission.WildcardPermission;
 

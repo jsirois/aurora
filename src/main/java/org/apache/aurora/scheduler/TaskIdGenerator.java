@@ -19,6 +19,7 @@ import java.util.UUID;
 import javax.inject.Inject;
 
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.TaskConfig;
 
 /**
  * A function that generates universally-unique (not guaranteed, but highly confident) task IDs.

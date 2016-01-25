@@ -18,6 +18,8 @@ import java.util.Set;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.scheduler.base.Conversions;
 import org.apache.aurora.scheduler.storage.Storage.StoreProvider;
@@ -104,11 +106,7 @@ public interface AttributeStore {
         MaintenanceMode mode) {
 
       Optional<HostAttributes> stored = store.getHostAttributes(host);
-      if (stored.isPresent()) {
-        return Optional.of(HostAttributes.build(stored.get().newBuilder().setMode(mode)));
-      } else {
-        return Optional.absent();
-      }
+      return stored.transform(ha -> ha.withMode(mode));
     }
 
     /**
@@ -123,7 +121,7 @@ public interface AttributeStore {
       MaintenanceMode mode = store.getHostAttributes(fromOffer.getHost())
           .transform(HostAttributes::getMode)
           .or(MaintenanceMode.NONE);
-      return HostAttributes.build(fromOffer.newBuilder().setMode(mode));
+      return fromOffer.withMode(mode);
     }
   }
 }

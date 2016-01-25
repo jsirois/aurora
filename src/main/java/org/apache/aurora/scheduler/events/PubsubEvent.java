@@ -19,7 +19,9 @@ import java.util.Set;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.TaskGroupKey;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;

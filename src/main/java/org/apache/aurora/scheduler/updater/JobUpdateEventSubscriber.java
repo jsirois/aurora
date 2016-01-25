@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.inject.Inject;
 
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.InstanceKeys;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.events.PubsubEvent;

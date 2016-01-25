@@ -17,6 +17,8 @@ import java.util.Map;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.ResourceAggregate;
+
 /**
  * Point of storage for quota records.
  */

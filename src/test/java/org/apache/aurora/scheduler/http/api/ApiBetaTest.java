@@ -44,7 +44,6 @@ import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
 

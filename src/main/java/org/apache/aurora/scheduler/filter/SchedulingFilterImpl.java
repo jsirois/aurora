@@ -27,6 +27,9 @@ import com.google.inject.Inject;
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Data;
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
 import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.ResourceSlot;
@@ -117,7 +120,7 @@ public class SchedulingFilterImpl implements SchedulingFilter {
   }
 
   private static boolean isValueConstraint(Constraint constraint) {
-    return constraint.getConstraint().getSetField() == TaskConstraint._Fields.VALUE;
+    return constraint.getConstraint().getSetField() == TaskConstraint.Fields.VALUE;
   }
 
   private static final Ordering<Constraint> VALUES_FIRST = Ordering.from(

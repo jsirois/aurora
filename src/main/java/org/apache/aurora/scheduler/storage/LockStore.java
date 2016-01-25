@@ -16,6 +16,9 @@ package org.apache.aurora.scheduler.storage;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+
 /**
  * Stores all lock-related data and defines methods for saving, deleting and fetching locks.
  */

@@ -15,14 +15,16 @@ package org.apache.aurora.scheduler.cron;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.JobKey;
+
 /**
  * An execution manager that executes work on a cron schedule.
  */
 public interface CronScheduler {
   /**
-   * Gets the cron schedule associated with a scheduling key.
+   * Gets the cron schedule associated with a job key.
    *
-   * @param key Key previously returned from {@link #schedule(CrontabEntry, Runnable)}.
+   * @param key The key of the cron job to find the schedule for.
    * @return The task's cron schedule, if a matching task was found.
    */
   Optional<CrontabEntry> getSchedule(JobKey key);

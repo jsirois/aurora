@@ -53,8 +53,8 @@ public interface StreamManager {
   void truncateBefore(Log.Position position);
 
   /**
-   * Starts a transaction that can be used to commit a series of {@link Op}s to the log stream
-   * atomically.
+   * Starts a transaction that can be used to commit a series of
+   * {@link org.apache.aurora.gen.storage.Op}s to the log stream atomically.
    *
    * @return StreamTransaction A transaction manager to handle batching up commits to the
    *    underlying stream.

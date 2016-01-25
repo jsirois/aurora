@@ -29,14 +29,14 @@ public final class DbJobConfiguration {
   private DbJobConfiguration() {
   }
 
-  public JobConfiguration toImmutable() {
-    return JobConfiguration.build(
-        new JobConfiguration()
+  public JobConfiguration toThrift() {
+    return JobConfiguration.builder()
         .setKey(key)
         .setOwner(owner)
         .setCronSchedule(cronSchedule)
         .setCronCollisionPolicy(cronCollisionPolicy)
         .setTaskConfig(taskConfig.toThrift())
-        .setInstanceCount(instanceCount));
+        .setInstanceCount(instanceCount)
+        .build();
   }
 }

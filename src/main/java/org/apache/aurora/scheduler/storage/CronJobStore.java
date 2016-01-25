@@ -15,6 +15,9 @@ package org.apache.aurora.scheduler.storage;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+
 /**
  * Stores cron job configuration data.
  */

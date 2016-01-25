@@ -29,13 +29,13 @@ public final class DbScheduledTask {
   private DbScheduledTask() {
   }
 
-  public ScheduledTask toImmutable() {
-    return ScheduledTask.build(
-        new ScheduledTask()
-            .setAssignedTask(assignedTask.toThrift())
-            .setStatus(status)
-            .setFailureCount(failureCount)
-            .setTaskEvents(taskEvents)
-            .setAncestorId(ancestorId));
+  public ScheduledTask toThrift() {
+    return ScheduledTask.builder()
+        .setAssignedTask(assignedTask.toThrift())
+        .setStatus(status)
+        .setFailureCount(failureCount)
+        .setTaskEvents(taskEvents)
+        .setAncestorId(ancestorId)
+        .build();
   }
 }

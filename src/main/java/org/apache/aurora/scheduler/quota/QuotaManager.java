@@ -29,8 +29,18 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.RangeSet;
 
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateQuery;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.ResourceAggregates;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
@@ -48,6 +58,7 @@ import static com.google.common.base.Predicates.compose;
 import static com.google.common.base.Predicates.equalTo;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.base.Predicates.not;
+import static com.google.common.base.Predicates.or;
 
 import static org.apache.aurora.scheduler.ResourceAggregates.EMPTY;
 import static org.apache.aurora.scheduler.quota.QuotaCheckResult.Result.SUFFICIENT_QUOTA;
@@ -387,16 +398,18 @@ public interface QuotaManager {
 
     @VisibleForTesting
     static JobUpdateQuery updateQuery(String role) {
-      return JobUpdateQuery.build(new JobUpdateQuery()
+      return JobUpdateQuery.builder()
           .setRole(role)
-          .setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES));
+          .setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES)
+          .build();
     }
 
     private static final Function<TaskConfig, ResourceAggregate> CONFIG_RESOURCES =
-        config -> ResourceAggregate.build(new ResourceAggregate()
+        config -> ResourceAggregate.builder()
             .setNumCpus(config.getNumCpus())
             .setRamMb(config.getRamMb())
-            .setDiskMb(config.getDiskMb()));
+            .setDiskMb(config.getDiskMb())
+            .build();
 
     private static final Function<InstanceTaskConfig, ResourceAggregate> INSTANCE_RESOURCES =
         config -> scale(config.getTask(), getUpdateInstanceCount(config.getInstances()));
@@ -444,26 +457,29 @@ public interface QuotaManager {
     private static ResourceAggregate addAll(Iterable<ResourceAggregate> aggregates) {
       ResourceAggregate total = EMPTY;
       for (ResourceAggregate aggregate : aggregates) {
-        total = ResourceAggregate.build(new ResourceAggregate()
+        total = ResourceAggregate.builder()
             .setNumCpus(total.getNumCpus() + aggregate.getNumCpus())
             .setRamMb(total.getRamMb() + aggregate.getRamMb())
-            .setDiskMb(total.getDiskMb() + aggregate.getDiskMb()));
+            .setDiskMb(total.getDiskMb() + aggregate.getDiskMb())
+            .build();
       }
       return total;
     }
 
     private static ResourceAggregate subtract(ResourceAggregate a, ResourceAggregate b) {
-      return ResourceAggregate.build(new ResourceAggregate()
+      return ResourceAggregate.builder()
           .setNumCpus(a.getNumCpus() - b.getNumCpus())
           .setRamMb(a.getRamMb() - b.getRamMb())
-          .setDiskMb(a.getDiskMb() - b.getDiskMb()));
+          .setDiskMb(a.getDiskMb() - b.getDiskMb())
+          .build();
     }
 
     private static ResourceAggregate max(ResourceAggregate a, ResourceAggregate b) {
-      return ResourceAggregate.build(new ResourceAggregate()
+      return ResourceAggregate.builder()
           .setNumCpus(Math.max(a.getNumCpus(), b.getNumCpus()))
           .setRamMb(Math.max(a.getRamMb(), b.getRamMb()))
-          .setDiskMb(Math.max(a.getDiskMb(), b.getDiskMb())));
+          .setDiskMb(Math.max(a.getDiskMb(), b.getDiskMb()))
+          .build();
     }
 
     private static ResourceAggregate scale(TaskConfig taskConfig, int instanceCount) {

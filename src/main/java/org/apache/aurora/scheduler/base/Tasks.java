@@ -29,9 +29,13 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Ordering;
 
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.Constants;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.TaskEvent;
 
 /**
  * Utility class providing convenience functions relating to tasks.
@@ -104,11 +108,6 @@ public final class Tasks {
     return TERMINAL_STATES.contains(status);
   }
 
-  public static String id(ScheduledTask task) {
-    return task.getAssignedTask().getTaskId();
-  }
-
-  // TODO(William Farner: Remove this once the code base is switched to ScheduledTask.
   public static String id(ScheduledTask task) {
     return task.getAssignedTask().getTaskId();
   }

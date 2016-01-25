@@ -27,6 +27,7 @@ import com.google.common.collect.FluentIterable;
 
 import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.scheduler.HostOffer;
 import org.apache.aurora.scheduler.Resources;
 import org.apache.aurora.scheduler.TierInfo;

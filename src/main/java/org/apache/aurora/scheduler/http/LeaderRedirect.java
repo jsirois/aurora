@@ -92,7 +92,7 @@ public class LeaderRedirect {
 
     if (leadingScheduler.isSetServiceEndpoint()) {
       Endpoint leaderHttp = leadingScheduler.getServiceEndpoint();
-      if (leaderHttp != null && leaderHttp.isSetHost() && leaderHttp.isSetPort()) {
+      if (leaderHttp.isSetHost()) {
         return Optional.of(HostAndPort.fromParts(leaderHttp.getHost(), leaderHttp.getPort()));
       }
     }

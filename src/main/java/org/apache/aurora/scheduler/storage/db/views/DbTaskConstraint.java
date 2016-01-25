@@ -31,7 +31,7 @@ public final class DbTaskConstraint {
   }
 
   @Nullable
-  TaskConstraint toThrift() {
+  public TaskConstraint toThrift() {
     // Using the isSet shim to work around a well-intentioned PMD rule that prefers positive
     // branching (would trip if we did value != null directly here.
     if (isSet(value)) {

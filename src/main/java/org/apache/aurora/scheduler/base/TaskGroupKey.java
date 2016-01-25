@@ -15,6 +15,8 @@ package org.apache.aurora.scheduler.base;
 
 import java.util.Objects;
 
+import org.apache.aurora.gen.TaskConfig;
+
 import static java.util.Objects.requireNonNull;
 
 /**

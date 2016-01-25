@@ -17,6 +17,8 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
+import org.apache.aurora.gen.HostAttributes;
+
 import static java.util.Objects.requireNonNull;
 
 import static org.apache.mesos.Protos.Offer;

@@ -22,6 +22,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.TaskQuery;
 
@@ -77,10 +78,11 @@ public final class JobKeys {
   public static JobKey from(String role, String environment, String name)
       throws IllegalArgumentException {
 
-    JobKey job = JobKey.build(new JobKey()
+    JobKey job = JobKey.builder()
         .setRole(role)
         .setEnvironment(environment)
-        .setName(name));
+        .setName(name)
+        .build();
     return assertValid(job);
   }
 
@@ -130,10 +132,7 @@ public final class JobKeys {
             taskQuery.getEnvironment(),
             taskQuery.getJobName()));
       }
-
-      if (taskQuery.isSetJobKeys()) {
-        builder.addAll(JobKey.setFromBuilders(taskQuery.getJobKeys()));
-      }
+      builder.addAll(taskQuery.getJobKeys());
       return Optional.of(assertValid(builder.build()));
     } else {
       return Optional.absent();

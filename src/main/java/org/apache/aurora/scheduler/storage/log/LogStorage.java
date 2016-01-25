@@ -192,8 +192,8 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   private final SlidingStats writerWaitStats =
       new SlidingStats("log_storage_write_lock_wait", "ns");
 
-  private final Map<LogEntry._Fields, Closure<LogEntry>> logEntryReplayActions;
-  private final Map<Op._Fields, Closure<Op>> transactionReplayActions;
+  private final Map<LogEntry.Fields, Closure<LogEntry>> logEntryReplayActions;
+  private final Map<Op.Fields, Closure<Op>> transactionReplayActions;
 
   @Inject
   LogStorage(
@@ -291,96 +291,90 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   @VisibleForTesting
-  final Map<LogEntry._Fields, Closure<LogEntry>> buildLogEntryReplayActions() {
-    return ImmutableMap.<LogEntry._Fields, Closure<LogEntry>>builder()
-        .put(LogEntry._Fields.SNAPSHOT, logEntry -> {
+  final Map<LogEntry.Fields, Closure<LogEntry>> buildLogEntryReplayActions() {
+    return ImmutableMap.<LogEntry.Fields, Closure<LogEntry>>builder()
+        .put(LogEntry.Fields.SNAPSHOT, logEntry -> {
           Snapshot snapshot = logEntry.getSnapshot();
           LOG.info("Applying snapshot taken on " + new Date(snapshot.getTimestamp()));
           snapshotStore.applySnapshot(snapshot);
         })
-        .put(LogEntry._Fields.TRANSACTION, logEntry -> write((NoResult.Quiet) unused -> {
+        .put(LogEntry.Fields.TRANSACTION, logEntry -> write((NoResult.Quiet) unused -> {
           for (Op op : logEntry.getTransaction().getOps()) {
             replayOp(op);
           }
         }))
-        .put(LogEntry._Fields.NOOP, item -> {
+        .put(LogEntry.Fields.NOOP, item -> {
           // Nothing to do here
         })
         .build();
   }
 
   @VisibleForTesting
-  final Map<Op._Fields, Closure<Op>> buildTransactionReplayActions() {
-    return ImmutableMap.<Op._Fields, Closure<Op>>builder()
+  final Map<Op.Fields, Closure<Op>> buildTransactionReplayActions() {
+    return ImmutableMap.<Op.Fields, Closure<Op>>builder()
         .put(
-            Op._Fields.SAVE_FRAMEWORK_ID,
+            Op.Fields.SAVE_FRAMEWORK_ID,
             op -> writeBehindSchedulerStore.saveFrameworkId(op.getSaveFrameworkId().getId()))
-        .put(Op._Fields.SAVE_CRON_JOB, op -> {
+        .put(Op.Fields.SAVE_CRON_JOB, op -> {
           SaveCronJob cronJob = op.getSaveCronJob();
-          writeBehindJobStore.saveAcceptedJob(
-              JobConfiguration.build(cronJob.getJobConfig()));
+          writeBehindJobStore.saveAcceptedJob(cronJob.getJobConfig());
         })
         .put(
-            Op._Fields.REMOVE_JOB,
-            op -> writeBehindJobStore.removeJob(JobKey.build(op.getRemoveJob().getJobKey())))
+            Op.Fields.REMOVE_JOB,
+            op -> writeBehindJobStore.removeJob(op.getRemoveJob().getJobKey()))
         .put(
-            Op._Fields.SAVE_TASKS,
-            op -> writeBehindTaskStore.saveTasks(
-            ScheduledTask.setFromBuilders(op.getSaveTasks().getTasks())))
-        .put(Op._Fields.REWRITE_TASK, op -> {
+            Op.Fields.SAVE_TASKS,
+            op -> writeBehindTaskStore.saveTasks(op.getSaveTasks().getTasks()))
+        .put(Op.Fields.REWRITE_TASK, op -> {
           RewriteTask rewriteTask = op.getRewriteTask();
-          writeBehindTaskStore.unsafeModifyInPlace(
-              rewriteTask.getTaskId(),
-              TaskConfig.build(rewriteTask.getTask()));
+          writeBehindTaskStore.unsafeModifyInPlace(rewriteTask.getTaskId(), rewriteTask.getTask());
         })
         .put(
-            Op._Fields.REMOVE_TASKS,
+            Op.Fields.REMOVE_TASKS,
             op -> writeBehindTaskStore.deleteTasks(op.getRemoveTasks().getTaskIds()))
-        .put(Op._Fields.SAVE_QUOTA, op -> {
+        .put(Op.Fields.SAVE_QUOTA, op -> {
           SaveQuota saveQuota = op.getSaveQuota();
-          writeBehindQuotaStore.saveQuota(
-              saveQuota.getRole(),
-              ResourceAggregate.build(saveQuota.getQuota()));
+          writeBehindQuotaStore.saveQuota(saveQuota.getRole(), saveQuota.getQuota());
         })
         .put(
-            Op._Fields.REMOVE_QUOTA,
+            Op.Fields.REMOVE_QUOTA,
             op -> writeBehindQuotaStore.removeQuota(op.getRemoveQuota().getRole()))
-        .put(Op._Fields.SAVE_HOST_ATTRIBUTES, op -> {
+        .put(Op.Fields.SAVE_HOST_ATTRIBUTES, op -> {
           HostAttributes attributes = op.getSaveHostAttributes().getHostAttributes();
           // Prior to commit 5cf760b, the store would persist maintenance mode changes for
           // unknown hosts.  5cf760b began rejecting these, but the replicated log may still
           // contain entries with a null slave ID.
           if (attributes.isSetSlaveId()) {
-            writeBehindAttributeStore.saveHostAttributes(HostAttributes.build(attributes));
+            writeBehindAttributeStore.saveHostAttributes(attributes);
           } else {
             LOG.info("Dropping host attributes with no slave ID: " + attributes);
           }
         })
         .put(
-            Op._Fields.SAVE_LOCK,
-            op -> writeBehindLockStore.saveLock(Lock.build(op.getSaveLock().getLock())))
+            Op.Fields.SAVE_LOCK,
+            op -> writeBehindLockStore.saveLock(op.getSaveLock().getLock()))
         .put(
-            Op._Fields.REMOVE_LOCK,
-            op -> writeBehindLockStore.removeLock(LockKey.build(op.getRemoveLock().getLockKey())))
-        .put(Op._Fields.SAVE_JOB_UPDATE, op -> {
+            Op.Fields.REMOVE_LOCK,
+            op -> writeBehindLockStore.removeLock(op.getRemoveLock().getLockKey()))
+        .put(Op.Fields.SAVE_JOB_UPDATE, op -> {
           JobUpdate update = op.getSaveJobUpdate().getJobUpdate();
           writeBehindJobUpdateStore.saveJobUpdate(
-              JobUpdate.build(update),
+              update,
               Optional.fromNullable(op.getSaveJobUpdate().getLockToken()));
         })
-        .put(Op._Fields.SAVE_JOB_UPDATE_EVENT, op -> {
+        .put(Op.Fields.SAVE_JOB_UPDATE_EVENT, op -> {
           SaveJobUpdateEvent event = op.getSaveJobUpdateEvent();
           writeBehindJobUpdateStore.saveJobUpdateEvent(
-              JobUpdateKey.build(event.getKey()),
-              JobUpdateEvent.build(op.getSaveJobUpdateEvent().getEvent()));
+              event.getKey(),
+              op.getSaveJobUpdateEvent().getEvent());
         })
-        .put(Op._Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, op -> {
+        .put(Op.Fields.SAVE_JOB_INSTANCE_UPDATE_EVENT, op -> {
           SaveJobInstanceUpdateEvent event = op.getSaveJobInstanceUpdateEvent();
           writeBehindJobUpdateStore.saveJobInstanceUpdateEvent(
-              JobUpdateKey.build(event.getKey()),
-              JobInstanceUpdateEvent.build(op.getSaveJobInstanceUpdateEvent().getEvent()));
+              event.getKey(),
+              op.getSaveJobInstanceUpdateEvent().getEvent());
         })
-        .put(Op._Fields.PRUNE_JOB_UPDATE_HISTORY, op -> writeBehindJobUpdateStore.pruneHistory(
+        .put(Op.Fields.PRUNE_JOB_UPDATE_HISTORY, op -> writeBehindJobUpdateStore.pruneHistory(
             op.getPruneJobUpdateHistory().getPerJobRetainCount(),
             op.getPruneJobUpdateHistory().getHistoryPruneThresholdMs())).build();
   }
@@ -436,7 +430,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   private void replay(final LogEntry logEntry) {
-    LogEntry._Fields entryField = logEntry.getSetField();
+    LogEntry.Fields entryField = logEntry.getSetField();
     if (!logEntryReplayActions.containsKey(entryField)) {
       throw new IllegalStateException("Unknown log entry type: " + entryField);
     }
@@ -445,7 +439,7 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
   }
 
   private void replayOp(Op op) {
-    Op._Fields opField = op.getSetField();
+    Op.Fields opField = op.getSetField();
     if (!transactionReplayActions.containsKey(opField)) {
       throw new IllegalStateException("Unknown transaction op: " + opField);
     }
@@ -483,11 +477,11 @@ public class LogStorage implements NonVolatileStorage, DistributedSnapshotStore 
       Snapshot snapshot = snapshotStore.createSnapshot();
       persist(snapshot);
       LOG.info("Snapshot complete."
-          + " host attrs: " + snapshot.getHostAttributesSize()
-          + ", cron jobs: " + snapshot.getCronJobsSize()
-          + ", locks: " + snapshot.getLocksSize()
-          + ", quota confs: " + snapshot.getQuotaConfigurationsSize()
-          + ", tasks: " + snapshot.getTasksSize());
+          + " host attrs: " + snapshot.getHostAttributes().size()
+          + ", cron jobs: " + snapshot.getCronJobs().size()
+          + ", locks: " + snapshot.getLocks().size()
+          + ", quota confs: " + snapshot.getQuotaConfigurations().size()
+          + ", tasks: " + snapshot.getTasks().size());
     });
   }
 

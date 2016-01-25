@@ -24,6 +24,10 @@ import com.google.protobuf.ByteString;
 
 import org.apache.aurora.Protobufs;
 import org.apache.aurora.codec.ThriftBinaryCodec;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.DockerContainer;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.AcceptedOffer;
 import org.apache.aurora.scheduler.ResourceSlot;
 import org.apache.aurora.scheduler.Resources;
@@ -102,7 +106,7 @@ public interface MesosTaskFactory {
 
       byte[] taskInBytes;
       try {
-        taskInBytes = ThriftBinaryCodec.encode(task.newBuilder());
+        taskInBytes = ThriftBinaryCodec.encode(task);
       } catch (ThriftBinaryCodec.CodingException e) {
         LOG.error("Unable to serialize task.", e);
         throw new SchedulerException("Internal error.", e);
@@ -110,16 +114,13 @@ public interface MesosTaskFactory {
 
       TaskConfig config = task.getTask();
       AcceptedOffer acceptedOffer;
-      // TODO(wfarner): Re-evaluate if/why we need to continue handling unset assignedPorts field.
       try {
         acceptedOffer = AcceptedOffer.create(
             offer,
             ResourceSlot.from(config),
             executorSettings.getExecutorOverhead(),
-            task.isSetAssignedPorts()
-                ? ImmutableSet.copyOf(task.getAssignedPorts().values())
-                : ImmutableSet.of(),
-            tierManager.getTier(task.getTask()));
+            ImmutableSet.copyOf(task.getAssignedPorts().values()),
+            tierManager.getTier(config));
       } catch (Resources.InsufficientResourcesException e) {
         throw new SchedulerException(e);
       }

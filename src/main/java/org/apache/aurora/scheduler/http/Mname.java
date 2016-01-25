@@ -33,10 +33,11 @@ import javax.ws.rs.core.UriInfo;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.storage.Storage;
@@ -216,8 +217,7 @@ public class Mname {
 
   @VisibleForTesting
   static Optional<Integer> getRedirectPort(AssignedTask task) {
-    Map<String, Integer> ports = task.isSetAssignedPorts()
-        ? task.getAssignedPorts() : ImmutableMap.of();
+    Map<String, Integer> ports = task.getAssignedPorts();
     for (String httpPortName : HTTP_PORT_NAMES) {
       Integer port = ports.get(httpPortName);
       if (port != null) {

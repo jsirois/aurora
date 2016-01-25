@@ -88,13 +88,12 @@ import static com.google.common.base.Preconditions.checkState;
 class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   @VisibleForTesting
   static final FieldGetter<TaskQuery, JobKey> QUERY_TO_JOB_KEY =
-      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class, JobKey.class) {
+      new AbstractFieldGetter<TaskQuery, JobKey>(TaskQuery.class) {
         @Override
         public Optional<JobKey> apply(TaskQuery input) {
           Optional<Set<JobKey>> targetJobs = JobKeys.from(Query.arbitrary(input));
           if (targetJobs.isPresent() && targetJobs.get().size() == 1) {
-            return Optional.of(Iterables.getOnlyElement(targetJobs.get()))
-                .transform(JobKey::newBuilder);
+            return Optional.of(Iterables.getOnlyElement(targetJobs.get()));
           } else {
             return Optional.absent();
           }
@@ -114,28 +113,28 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   private static final FieldGetter<JobUpdateRequest, TaskConfig> UPDATE_REQUEST_GETTER =
       new ThriftFieldGetter<>(
           JobUpdateRequest.class,
-          JobUpdateRequest._Fields.TASK_CONFIG,
+          JobUpdateRequest.Fields.TASK_CONFIG,
           TaskConfig.class);
 
   private static final FieldGetter<TaskConfig, JobKey> TASK_CONFIG_GETTER =
-      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(TaskConfig.class, TaskConfig.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobConfiguration, JobKey> JOB_CONFIGURATION_GETTER =
-      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration._Fields.KEY, JobKey.class);
+      new ThriftFieldGetter<>(JobConfiguration.class, JobConfiguration.Fields.KEY, JobKey.class);
 
   private static final FieldGetter<Lock, LockKey> LOCK_GETTER =
-      new ThriftFieldGetter<>(Lock.class, Lock._Fields.KEY, LockKey.class);
+      new ThriftFieldGetter<>(Lock.class, Lock.Fields.KEY, LockKey.class);
 
   private static final FieldGetter<LockKey, JobKey> LOCK_KEY_GETTER =
-      new ThriftFieldGetter<>(LockKey.class, LockKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(LockKey.class, LockKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<JobUpdateKey, JobKey> JOB_UPDATE_KEY_GETTER =
-      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey._Fields.JOB, JobKey.class);
+      new ThriftFieldGetter<>(JobUpdateKey.class, JobUpdateKey.Fields.JOB, JobKey.class);
 
   private static final FieldGetter<AddInstancesConfig, JobKey> ADD_INSTANCES_CONFIG_GETTER =
       new ThriftFieldGetter<>(
           AddInstancesConfig.class,
-          AddInstancesConfig._Fields.KEY,
+          AddInstancesConfig.Fields.KEY,
           JobKey.class);
 
   @SuppressWarnings("unchecked")
@@ -328,25 +327,20 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
     Optional<JobKey> jobKey = authorizingParamGetters
         .getUnchecked(invocation.getMethod())
-        .apply(invocation.getArguments())
-        .transform(JobKey::build);
+        .apply(invocation.getArguments());
     if (jobKey.isPresent() && JobKeys.isValid(jobKey.get())) {
       Permission targetPermission = makeTargetPermission(method.getName(), jobKey.get());
       if (subject.isPermitted(targetPermission)) {
         return invocation.proceed();
       } else {
         authorizationFailures.incrementAndGet();
-        return Responses.addMessage(
-            Responses.empty(),
+        return Responses.create(
             ResponseCode.AUTH_FAILED,
             "Subject " + subject + " is not permitted to " + targetPermission + ".");
       }
     } else {
       badRequests.incrementAndGet();
-      return Responses.addMessage(
-          Responses.empty(),
-          ResponseCode.INVALID_REQUEST,
-          "Missing or invalid job key from request.");
+      return Responses.invalidRequest("Missing or invalid job key from request.");
     }
   }
 

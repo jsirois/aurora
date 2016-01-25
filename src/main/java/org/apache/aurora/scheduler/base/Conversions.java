@@ -98,7 +98,7 @@ public final class Conversions {
 
   private static final AttributeConverter ATTRIBUTE_CONVERTER = entry -> {
     // Convert values and filter any that were ignored.
-    return new Attribute(
+    return Attribute.create(
         entry.getKey(),
         FluentIterable.from(entry.getValue())
             .transform(VALUE_CONVERTER)
@@ -117,12 +117,13 @@ public final class Conversions {
     Multimap<String, Protos.Attribute> valuesByName =
         Multimaps.index(offer.getAttributesList(), ATTRIBUTE_NAME);
 
-    return HostAttributes.build(new HostAttributes(
-        offer.getHostname(),
-        FluentIterable.from(valuesByName.asMap().entrySet())
+    return HostAttributes.builder()
+        .setHost(offer.getHostname())
+        .setAttributes(FluentIterable.from(valuesByName.asMap().entrySet())
             .transform(ATTRIBUTE_CONVERTER)
             .toSet())
-        .setSlaveId(offer.getSlaveId().getValue()));
+        .setSlaveId(offer.getSlaveId().getValue())
+        .build();
   }
 
   /**

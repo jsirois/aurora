@@ -216,8 +216,9 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
         .setShard(0)
         .build();
     byte[] data = ServerSets.serializeServiceInstance(instance1, codec);
-    // TODO(John Sirois): XXX thriftGen
-//    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertTrue(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
     ServiceInstance instance2 = ServiceInstance.create(
@@ -225,8 +226,9 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
         ImmutableMap.of("http-admin1", Endpoint.create("foo", 8080)),
         Status.ALIVE);
     data = ServerSets.serializeServiceInstance(instance2, codec);
-    // TODO(John Sirois): XXX thriftGen
-//    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
 
     ServiceInstance instance3 = ServiceInstance.create(
@@ -234,8 +236,9 @@ public class ServerSetImplTest extends BaseZooKeeperTest {
         ImmutableMap.<String, Endpoint>of(),
         Status.ALIVE);
     data = ServerSets.serializeServiceInstance(instance3, codec);
-    // TODO(John Sirois): XXX thriftGen
-//    assertTrue(ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().isSetPort());
+    assertEquals(
+        1000,
+        ServerSets.deserializeServiceInstance(data, codec).getServiceEndpoint().getPort());
     assertFalse(ServerSets.deserializeServiceInstance(data, codec).isSetShard());
   }
 

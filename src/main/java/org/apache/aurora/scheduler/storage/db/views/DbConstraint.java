@@ -22,9 +22,10 @@ public final class DbConstraint {
   private DbConstraint() {
   }
 
-  Constraint toThrift() {
-    return new Constraint()
+  public Constraint toThrift() {
+    return Constraint.builder()
         .setName(name)
-        .setConstraint(constraint.toThrift());
+        .setConstraint(constraint.toThrift())
+        .build();
   }
 }

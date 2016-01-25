@@ -47,6 +47,7 @@ import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.StatsProvider;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.JobKeys;
@@ -193,9 +194,7 @@ class MemTaskStore implements TaskStore.Mutable {
         for (SecondaryIndex<?> index : secondaryIndices) {
           index.remove(removed.storedTask);
         }
-        configInterner.removeAssociation(
-            removed.storedTask.getAssignedTask().getTask().newBuilder(),
-            id);
+        configInterner.removeAssociation(removed.storedTask.getAssignedTask().getTask(), id);
       }
     }
   }
@@ -232,9 +231,9 @@ class MemTaskStore implements TaskStore.Mutable {
     if (stored == null) {
       return false;
     } else {
-      ScheduledTask updated = stored.storedTask.newBuilder();
-      updated.getAssignedTask().setTask(taskConfiguration.newBuilder());
-      tasks.put(taskId, toTask.apply(ScheduledTask.build(updated)));
+      ScheduledTask updated =
+          stored.storedTask.withAssignedTask(at -> at.withTask(taskConfiguration));
+      tasks.put(taskId, toTask.apply(updated));
       return true;
     }
   }
@@ -260,10 +259,7 @@ class MemTaskStore implements TaskStore.Mutable {
   private FluentIterable<IScheduledTask> matches(Query.Builder query) {
     // Apply the query against the working set.
     Optional<? extends Iterable<Task>> from = Optional.absent();
-    if (query.get().isSetTaskIds()) {
-      taskQueriesById.incrementAndGet();
-      from = Optional.of(fromIdIndex(query.get().getTaskIds()));
-    } else {
+    if (query.get().getTaskIds().isEmpty()) {
       for (SecondaryIndex<?> index : secondaryIndices) {
         Optional<Iterable<String>> indexMatch = index.getMatches(query);
         if (indexMatch.isPresent()) {
@@ -280,6 +276,9 @@ class MemTaskStore implements TaskStore.Mutable {
         taskQueriesAll.incrementAndGet();
         from = Optional.of(tasks.values());
       }
+    } else {
+      taskQueriesById.incrementAndGet();
+      from = Optional.of(fromIdIndex(query.get().getTaskIds()));
     }
 
     return FluentIterable.from(from.get())
@@ -296,15 +295,11 @@ class MemTaskStore implements TaskStore.Mutable {
     private final ScheduledTask storedTask;
 
     Task(ScheduledTask storedTask, Interner<TaskConfig, String> interner) {
-      interner.removeAssociation(
-          storedTask.getAssignedTask().getTask().newBuilder(),
-          Tasks.id(storedTask));
+      interner.removeAssociation(storedTask.getAssignedTask().getTask(), Tasks.id(storedTask));
       TaskConfig canonical = interner.addAssociation(
-          storedTask.getAssignedTask().getTask().newBuilder(),
+          storedTask.getAssignedTask().getTask(),
           Tasks.id(storedTask));
-      ScheduledTask builder = storedTask.newBuilder();
-      builder.getAssignedTask().setTask(canonical);
-      this.storedTask = ScheduledTask.build(builder);
+      this.storedTask = storedTask.withAssignedTask(at -> at.withTask(canonical));
     }
 
     @Override

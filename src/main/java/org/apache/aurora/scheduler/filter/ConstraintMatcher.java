@@ -22,6 +22,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.TaskConstraint;
 import org.apache.aurora.scheduler.base.SchedulerException;
 import org.apache.aurora.scheduler.filter.SchedulingFilter.Veto;
 
@@ -57,7 +59,7 @@ final class ConstraintMatcher {
       Set<String> attributeValues = ImmutableSet.copyOf(
           Iterables.concat(Iterables.transform(sameNameAttributes, GET_VALUES)));
       attribute =
-          Optional.of(Attribute.build(new Attribute(constraint.getName(), attributeValues)));
+          Optional.of(Attribute.create(constraint.getName(), attributeValues));
     }
 
     TaskConstraint taskConstraint = constraint.getConstraint();

@@ -29,6 +29,8 @@ import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.stats.SlidingStats;
 import org.apache.aurora.common.util.BackoffStrategy;
+import org.apache.aurora.gen.AssignedTask;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.scheduler.async.AsyncModule.AsyncExecutor;
 import org.apache.aurora.scheduler.async.DelayExecutor;
 import org.apache.aurora.scheduler.base.TaskGroupKey;
@@ -44,8 +46,7 @@ import static org.apache.aurora.gen.ScheduleStatus.PENDING;
 /**
  * A collection of task groups, where a task group is a collection of tasks that are known to be
  * equal in the way they schedule. This is expected to be tasks associated with the same job key,
- * who also have {@code equal()} {@link org.apache.aurora.scheduler.storage.entities.TaskConfig}
- * values.
+ * who also have {@code equal()} {@link org.apache.aurora.gen.TaskConfig} values.
  * <p>
  * This is used to prevent redundant work in trying to schedule tasks as well as to provide
  * nearly-equal responsiveness when scheduling across jobs.  In other words, a 1000 instance job

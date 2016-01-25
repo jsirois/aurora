@@ -32,7 +32,9 @@ import org.apache.aurora.common.inject.TimedInterceptor.Timed;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Query.Builder;
 import org.apache.aurora.scheduler.base.Tasks;
@@ -109,7 +111,7 @@ class DbTaskStore implements TaskStore.Mutable {
   @Timed("db_storage_get_job_keys")
   @Override
   public ImmutableSet<JobKey> getJobKeys() {
-    return JobKey.setFromBuilders(taskMapper.selectJobKeys());
+    return ImmutableSet.copyOf(taskMapper.selectJobKeys());
   }
 
   @Timed("db_storage_save_tasks")
@@ -195,9 +197,8 @@ class DbTaskStore implements TaskStore.Mutable {
     Optional<ScheduledTask> task = fetchTask(taskId);
     if (task.isPresent()) {
       deleteTasks(ImmutableSet.of(taskId));
-      ScheduledTask builder = task.get().newBuilder();
-      builder.getAssignedTask().setTask(taskConfiguration.newBuilder());
-      saveTasks(ImmutableSet.of(ScheduledTask.build(builder)));
+      ScheduledTask modified = task.get().withAssignedTask(at -> at.withTask(taskConfiguration));
+      saveTasks(ImmutableSet.of(modified));
       return true;
     }
     return false;
@@ -206,7 +207,7 @@ class DbTaskStore implements TaskStore.Mutable {
   private FluentIterable<ScheduledTask> matches(Query.Builder query) {
     Iterable<DbScheduledTask> results;
     Predicate<ScheduledTask> filter;
-    if (query.get().getTaskIdsSize() == 1) {
+    if (query.get().getTaskIds().size() == 1) {
       // Optimize queries that are scoped to a single task, as the dynamic SQL used for arbitrary
       // queries comes with a performance penalty.
       results = Optional.fromNullable(
@@ -220,7 +221,7 @@ class DbTaskStore implements TaskStore.Mutable {
     }
 
     return FluentIterable.from(results)
-        .transform(DbScheduledTask::toImmutable)
+        .transform(DbScheduledTask::toThrift)
         .filter(filter);
   }
 }

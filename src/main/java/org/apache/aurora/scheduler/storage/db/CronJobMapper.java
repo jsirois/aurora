@@ -17,6 +17,8 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.storage.db.views.DbJobConfiguration;
 import org.apache.ibatis.annotations.Param;
 

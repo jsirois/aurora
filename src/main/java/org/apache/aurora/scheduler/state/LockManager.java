@@ -15,6 +15,9 @@ package org.apache.aurora.scheduler.state;
 
 import java.util.Optional;
 
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+
 /**
  * Defines all {@link Lock} primitives like: acquire, release, validate.
  */

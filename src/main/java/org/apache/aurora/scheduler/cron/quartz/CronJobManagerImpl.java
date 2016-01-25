@@ -24,6 +24,8 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.aurora.gen.CronCollisionPolicy;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.CronJobManager;
@@ -190,7 +192,7 @@ class CronJobManagerImpl implements CronJobManager {
     // for debugging.
     ImmutableMap.Builder<JobKey, CrontabEntry> scheduledJobs = ImmutableMap.builder();
     try {
-      for (JobKey jobKey : scheduler.getJobKeys(GroupMatcher.anyGroup())) {
+      for (org.quartz.JobKey jobKey : scheduler.getJobKeys(GroupMatcher.anyGroup())) {
         // The quartz API allows jobs to have multiple triggers. We don't use that feature but
         // we're defensive here since this function is used for debugging.
         Optional<CronTrigger> trigger = FluentIterable.from(scheduler.getTriggersOfJob(jobKey))

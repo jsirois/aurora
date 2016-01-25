@@ -21,6 +21,7 @@ import javax.inject.Inject;
 import com.google.common.util.concurrent.AbstractIdleService;
 
 import org.apache.aurora.common.stats.Stats;
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager;
 import org.apache.aurora.scheduler.cron.CronException;
 import org.apache.aurora.scheduler.cron.SanitizedCronJob;

@@ -35,7 +35,6 @@ import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
 import org.apache.shiro.subject.Subject;
 import org.apache.thrift.TException;
@@ -46,7 +45,6 @@ import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingPara
 import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingParamInterceptor.SHIRO_AUTHORIZATION_FAILURES;
 import static org.apache.aurora.scheduler.http.api.security.ShiroAuthorizingParamInterceptor.SHIRO_BAD_REQUESTS;
 import static org.easymock.EasyMock.expect;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 

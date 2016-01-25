@@ -18,6 +18,7 @@ import java.util.Objects;
 import com.google.common.base.Preconditions;
 
 import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.JobKey;
 
 /**
  * Utility function for {@link InstanceKey instance keys}.
@@ -37,7 +38,7 @@ public final class InstanceKeys {
   public static InstanceKey from(JobKey job, int instanceId) {
     Objects.requireNonNull(job);
     Preconditions.checkArgument(instanceId >= 0);
-    return InstanceKey.build(new InstanceKey(job.newBuilder(), instanceId));
+    return InstanceKey.create(job, instanceId);
   }
 
   /**

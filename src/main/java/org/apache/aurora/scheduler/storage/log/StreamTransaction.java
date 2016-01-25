@@ -13,7 +13,7 @@
  */
 package org.apache.aurora.scheduler.storage.log;
 
-import org.apache.aurora.codec.ThriftBinaryCodec;
+import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.storage.Op;
 import org.apache.aurora.scheduler.log.Log;
 
@@ -29,7 +29,7 @@ interface StreamTransaction {
    * @return The position of the log entry committed in this transaction, if any.
    * @throws CodingException If there was a problem encoding a log entry for commit.
    */
-  Log.Position commit() throws ThriftBinaryCodec.CodingException;
+  Log.Position commit() throws CodingException;
 
   /**
    * Adds a local storage operation to this transaction.

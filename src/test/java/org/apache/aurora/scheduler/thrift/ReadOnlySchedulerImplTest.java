@@ -53,7 +53,6 @@ import org.apache.aurora.gen.PopulateJobResult;
 import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ReadOnlyScheduler;
 import org.apache.aurora.gen.Response;
-import org.apache.aurora.gen.ResponseDetail;
 import org.apache.aurora.gen.Result;
 import org.apache.aurora.gen.RoleSummary;
 import org.apache.aurora.gen.RoleSummaryResult;
@@ -835,9 +834,7 @@ public class ReadOnlySchedulerImplTest extends EasyMockTest {
 
     JobUpdateRequest request = new JobUpdateRequest().setTaskConfig(defaultTask(false));
 
-    Response expected = Responses.empty()
-        .setResponseCode(INVALID_REQUEST)
-        .setDetails(ImmutableList.of(new ResponseDetail(NO_CRON)));
+    Response expected = Responses.invalidRequest(NO_CRON);
 
     assertEquals(expected, thrift.getJobUpdateDiff(request));
   }

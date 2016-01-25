@@ -32,6 +32,9 @@ import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.BackoffStrategy;
 import org.apache.aurora.common.util.Random;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
+import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.slf4j.Logger;
@@ -83,7 +86,7 @@ public interface RescheduleCalculator {
     private final Predicate<ScheduledTask> flapped = new Predicate<ScheduledTask>() {
       @Override
       public boolean apply(ScheduledTask task) {
-        if (!task.isSetTaskEvents()) {
+        if (task.getTaskEvents().isEmpty()) {
           return false;
         }
 

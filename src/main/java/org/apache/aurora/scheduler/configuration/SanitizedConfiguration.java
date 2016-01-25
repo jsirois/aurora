@@ -21,6 +21,7 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 
+import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.scheduler.configuration.ConfigurationManager.TaskDescriptionException;
 
 /**
@@ -33,7 +34,7 @@ public final class SanitizedConfiguration {
 
   /**
    * Constructs a SanitizedConfiguration object and populates the set of instance IDs for
-   * the provided {@link org.apache.aurora.scheduler.storage.entities.TaskConfig}.
+   * the provided {@link JobConfiguration}.
    *
    * @param sanitized A sanitized configuration.
    */

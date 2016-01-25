@@ -25,7 +25,17 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.aurora.common.base.MorePreconditions;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateDetails;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateInstructions;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateStatus;
+import org.apache.aurora.gen.JobUpdateSummary;
+import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.storage.StoredJobUpdateDetails;
 import org.apache.aurora.scheduler.stats.CachedCounters;
 import org.apache.aurora.scheduler.storage.JobUpdateStore;
@@ -78,7 +88,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
     JobUpdateKey key = update.getSummary().getKey();
     jobKeyMapper.merge(key.getJob());
-    detailsMapper.insert(update.newBuilder());
+    detailsMapper.insert(update);
 
     if (lockToken.isPresent()) {
       detailsMapper.insertLockToken(key, lockToken.get());
@@ -89,7 +99,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
         update.getInstructions().getSettings().getUpdateOnlyTheseInstances();
 
     if (!instanceOverrides.isEmpty()) {
-      detailsMapper.insertInstanceOverrides(key, Range.toBuildersSet(instanceOverrides));
+      detailsMapper.insertInstanceOverrides(key, instanceOverrides);
     }
 
     // Insert desired state task config and instance mappings.
@@ -103,7 +113,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
       detailsMapper.insertDesiredInstances(
           key,
-          Range.toBuildersSet(MorePreconditions.checkNotBlank(desired.getInstances())));
+          MorePreconditions.checkNotBlank(desired.getInstances()));
     }
 
     // Insert initial state task configs and instance mappings.
@@ -118,7 +128,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
 
         detailsMapper.insertTaskConfigInstances(
             result.getId(),
-            Range.toBuildersSet(MorePreconditions.checkNotBlank(config.getInstances())));
+            MorePreconditions.checkNotBlank(config.getInstances()));
       }
     }
   }
@@ -132,13 +142,13 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Override
   public void saveJobUpdateEvent(JobUpdateKey key, JobUpdateEvent event) {
     stats.get(statName(event.getStatus())).incrementAndGet();
-    jobEventMapper.insert(key, event.newBuilder());
+    jobEventMapper.insert(key, event);
   }
 
   @Timed("job_update_store_save_instance_event")
   @Override
   public void saveJobInstanceUpdateEvent(JobUpdateKey key, JobInstanceUpdateEvent event) {
-    instanceEventMapper.insert(key, event.newBuilder());
+    instanceEventMapper.insert(key, event);
   }
 
   @Timed("job_update_store_delete_all")
@@ -147,8 +157,7 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
     detailsMapper.truncate();
   }
 
-  private static final Function<PruneVictim, JobUpdateKey> GET_UPDATE_KEY =
-      victim -> JobUpdateKey.build(victim.getUpdate());
+  private static final Function<PruneVictim, JobUpdateKey> GET_UPDATE_KEY = PruneVictim::getUpdate;
 
   @Timed("job_update_store_prune_history")
   @Override
@@ -176,17 +185,16 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Timed("job_update_store_fetch_summaries")
   @Override
   public List<JobUpdateSummary> fetchJobUpdateSummaries(JobUpdateQuery query) {
-    return JobUpdateSummary.listFromBuilders(detailsMapper.selectSummaries(query.newBuilder()));
+    return detailsMapper.selectSummaries(query);
   }
 
   @Timed("job_update_store_fetch_details_list")
   @Override
   public List<JobUpdateDetails> fetchJobUpdateDetails(JobUpdateQuery query) {
     return FluentIterable
-        .from(detailsMapper.selectDetailsList(query.newBuilder()))
+        .from(detailsMapper.selectDetailsList(query))
         .transform(DbStoredJobUpdateDetails::toThrift)
         .transform(StoredJobUpdateDetails::getDetails)
-        .transform(JobUpdateDetails::build)
         .toList();
   }
 
@@ -195,22 +203,21 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   public Optional<JobUpdateDetails> fetchJobUpdateDetails(final JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectDetails(key))
         .transform(DbStoredJobUpdateDetails::toThrift)
-        .transform(StoredJobUpdateDetails::getDetails)
-        .transform(JobUpdateDetails::build);
+        .transform(StoredJobUpdateDetails::getDetails);
   }
 
   @Timed("job_update_store_fetch_update")
   @Override
   public Optional<JobUpdate> fetchJobUpdate(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectUpdate(key))
-        .transform(DbJobUpdate::toImmutable);
+        .transform(DbJobUpdate::toThrift);
   }
 
   @Timed("job_update_store_fetch_instructions")
   @Override
   public Optional<JobUpdateInstructions> fetchJobUpdateInstructions(JobUpdateKey key) {
     return Optional.fromNullable(detailsMapper.selectInstructions(key))
-        .transform(DbJobUpdateInstructions::toImmutable);
+        .transform(DbJobUpdateInstructions::toThrift);
   }
 
   @Timed("job_update_store_fetch_all_details")
@@ -233,7 +240,6 @@ public class DbJobUpdateStore implements JobUpdateStore.Mutable {
   @Timed("job_update_store_fetch_instance_events")
   @Override
   public List<JobInstanceUpdateEvent> fetchInstanceEvents(JobUpdateKey key, int instanceId) {
-    return JobInstanceUpdateEvent.listFromBuilders(
-        detailsMapper.selectInstanceUpdateEvents(key, instanceId));
+    return detailsMapper.selectInstanceUpdateEvents(key, instanceId);
   }
 }

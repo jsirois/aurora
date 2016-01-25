@@ -20,6 +20,18 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.aurora.gen.HostAttributes;
+import org.apache.aurora.gen.JobConfiguration;
+import org.apache.aurora.gen.JobInstanceUpdateEvent;
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateKey;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.ResourceAggregate;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.storage.Op;
 import org.apache.aurora.gen.storage.PruneJobUpdateHistory;
 import org.apache.aurora.gen.storage.RemoveJob;
@@ -144,7 +156,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void saveFrameworkId(final String frameworkId) {
     requireNonNull(frameworkId);
 
-    write(Op.saveFrameworkId(new SaveFrameworkId(frameworkId)));
+    write(Op.saveFrameworkId(SaveFrameworkId.create(frameworkId)));
     schedulerStore.saveFrameworkId(frameworkId);
   }
 
@@ -155,7 +167,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
 
     boolean mutated = taskStore.unsafeModifyInPlace(taskId, taskConfiguration);
     if (mutated) {
-      write(Op.rewriteTask(new RewriteTask(taskId, taskConfiguration.newBuilder())));
+      write(Op.rewriteTask(RewriteTask.create(taskId, taskConfiguration)));
     }
     return mutated;
   }
@@ -164,7 +176,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void deleteTasks(final Set<String> taskIds) {
     requireNonNull(taskIds);
 
-    write(Op.removeTasks(new RemoveTasks(taskIds)));
+    write(Op.removeTasks(RemoveTasks.create(taskIds)));
     taskStore.deleteTasks(taskIds);
   }
 
@@ -172,14 +184,14 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void saveTasks(final Set<ScheduledTask> newTasks) {
     requireNonNull(newTasks);
 
-    write(Op.saveTasks(new SaveTasks(ScheduledTask.toBuildersSet(newTasks))));
+    write(Op.saveTasks(SaveTasks.create(newTasks)));
     taskStore.saveTasks(newTasks);
   }
 
   @Override
   public Optional<ScheduledTask> mutateTask(
       String taskId,
-      Function<ScheduledTask, IScheduledTask> mutator) {
+      Function<ScheduledTask, ScheduledTask> mutator) {
 
     Optional<ScheduledTask> mutated = taskStore.mutateTask(taskId, mutator);
     log.debug("Storing updated task to log: {}={}", taskId, mutated.get().getStatus());
@@ -193,7 +205,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
     requireNonNull(role);
     requireNonNull(quota);
 
-    write(Op.saveQuota(new SaveQuota(role, quota.newBuilder())));
+    write(Op.saveQuota(SaveQuota.create(role, quota)));
     quotaStore.saveQuota(role, quota);
   }
 
@@ -203,7 +215,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
 
     boolean changed = attributeStore.saveHostAttributes(attrs);
     if (changed) {
-      write(Op.saveHostAttributes(new SaveHostAttributes(attrs.newBuilder())));
+      write(Op.saveHostAttributes(SaveHostAttributes.create(attrs)));
       eventSink.post(new PubsubEvent.HostAttributesChanged(attrs));
     }
     return changed;
@@ -213,7 +225,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void removeJob(final JobKey jobKey) {
     requireNonNull(jobKey);
 
-    write(Op.removeJob(new RemoveJob().setJobKey(jobKey.newBuilder())));
+    write(Op.removeJob(RemoveJob.create(jobKey)));
     jobStore.removeJob(jobKey);
   }
 
@@ -221,7 +233,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void saveAcceptedJob(final JobConfiguration jobConfig) {
     requireNonNull(jobConfig);
 
-    write(Op.saveCronJob(new SaveCronJob(jobConfig.newBuilder())));
+    write(Op.saveCronJob(SaveCronJob.create(jobConfig)));
     jobStore.saveAcceptedJob(jobConfig);
   }
 
@@ -229,7 +241,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void removeQuota(final String role) {
     requireNonNull(role);
 
-    write(Op.removeQuota(new RemoveQuota(role)));
+    write(Op.removeQuota(RemoveQuota.create(role)));
     quotaStore.removeQuota(role);
   }
 
@@ -237,7 +249,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void saveLock(final Lock lock) {
     requireNonNull(lock);
 
-    write(Op.saveLock(new SaveLock(lock.newBuilder())));
+    write(Op.saveLock(SaveLock.create(lock)));
     lockStore.saveLock(lock);
   }
 
@@ -245,7 +257,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void removeLock(final LockKey lockKey) {
     requireNonNull(lockKey);
 
-    write(Op.removeLock(new RemoveLock(lockKey.newBuilder())));
+    write(Op.removeLock(RemoveLock.create(lockKey)));
     lockStore.removeLock(lockKey);
   }
 
@@ -253,7 +265,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
   public void saveJobUpdate(JobUpdate update, Optional<String> lockToken) {
     requireNonNull(update);
 
-    write(Op.saveJobUpdate(new SaveJobUpdate(update.newBuilder(), lockToken.orNull())));
+    write(Op.saveJobUpdate(SaveJobUpdate.create(update, lockToken.orNull())));
     jobUpdateStore.saveJobUpdate(update, lockToken);
   }
 
@@ -262,7 +274,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
     requireNonNull(key);
     requireNonNull(event);
 
-    write(Op.saveJobUpdateEvent(new SaveJobUpdateEvent(event.newBuilder(), key.newBuilder())));
+    write(Op.saveJobUpdateEvent(SaveJobUpdateEvent.create(event, key)));
     jobUpdateStore.saveJobUpdateEvent(key, event);
   }
 
@@ -271,8 +283,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
     requireNonNull(key);
     requireNonNull(event);
 
-    write(Op.saveJobInstanceUpdateEvent(
-        new SaveJobInstanceUpdateEvent(event.newBuilder(), key.newBuilder())));
+    write(Op.saveJobInstanceUpdateEvent(SaveJobInstanceUpdateEvent.create(event, key)));
     jobUpdateStore.saveJobInstanceUpdateEvent(key, event);
   }
 
@@ -289,7 +300,7 @@ class WriteAheadStorage extends WriteAheadStorageForwarder implements
       // restart. By generating an out of band pruning during log replay the consistency is
       // achieved sooner without potentially exposing pruned but not yet persisted data.
       write(Op.pruneJobUpdateHistory(
-          new PruneJobUpdateHistory(perJobRetainCount, historyPruneThresholdMs)));
+          PruneJobUpdateHistory.create(perJobRetainCount, historyPruneThresholdMs)));
     }
     return prunedUpdates;
   }

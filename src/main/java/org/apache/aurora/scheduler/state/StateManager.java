@@ -18,7 +18,9 @@ import java.util.Set;
 
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.AssignedTask;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.mesos.Protos.SlaveID;
 
 import static org.apache.aurora.scheduler.storage.Storage.MutableStoreProvider;

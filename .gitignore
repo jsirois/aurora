@@ -20,6 +20,7 @@
 /build/
 /buildSrc/build/
 /buildSrc/dist/
+/buildSrc/out/
 /buildSrc/thriftGen/build/
 /buildSrc/thriftGen/dist/
 /buildSrc/thriftGen/out/

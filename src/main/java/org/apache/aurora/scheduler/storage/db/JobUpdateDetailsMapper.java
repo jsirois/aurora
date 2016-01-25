@@ -20,6 +20,7 @@ import javax.annotation.Nullable;
 
 import org.apache.aurora.gen.JobInstanceUpdateEvent;
 import org.apache.aurora.gen.JobUpdate;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.gen.JobUpdateQuery;
 import org.apache.aurora.gen.JobUpdateSummary;
 import org.apache.aurora.gen.Range;
@@ -47,7 +48,7 @@ interface JobUpdateDetailsMapper {
    *
    * @param key Unique update identifier.
    * @param lockToken Unique lock identifier, resulting from
-   *        {@link org.apache.aurora.scheduler.storage.entities.Lock#getToken()}.
+   *        {@link org.apache.aurora.gen.Lock#getToken()}.
    */
   void insertLockToken(@Param("key") JobUpdateKey key, @Param("lockToken") String lockToken);
 

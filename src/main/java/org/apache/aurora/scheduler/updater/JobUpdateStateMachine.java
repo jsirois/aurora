@@ -96,8 +96,8 @@ final class JobUpdateStateMachine {
           ROLL_FORWARD_AWAITING_PULSE, ROLL_FORWARD_PAUSED,
           ROLL_BACK_AWAITING_PULSE, ROLL_BACK_PAUSED);
 
-  static final JobUpdateQuery ACTIVE_QUERY = JobUpdateQuery.build(
-      new JobUpdateQuery().setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES));
+  static final JobUpdateQuery ACTIVE_QUERY =
+      JobUpdateQuery.builder().setUpdateStatuses(Updates.ACTIVE_JOB_UPDATE_STATES).build();
 
   static final Set<JobUpdateStatus> AUTO_RESUME_STATES =
       Sets.immutableEnumSet(ACTIVE_TO_PAUSED_STATES.keySet());

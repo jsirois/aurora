@@ -119,15 +119,11 @@ final class Fixtures {
   }
 
   static Response response(ResponseCode code, Optional<Result> result, String... messages) {
-    Response response = Responses.empty()
+    return Response.builder()
         .setResponseCode(code)
-        .setResult(result.orNull());
-    if (messages.length > 0) {
-      response.setDetails(FluentIterable.from(Arrays.asList(messages)).transform(MESSAGE_TO_DETAIL)
-          .toList());
-    }
-
-    return response;
+        .setResult(result.orNull())
+        .setDetails(FluentIterable.from(Arrays.asList(messages)).transform(ResponseDetail::create))
+        .build();
   }
 
   static Response okResponse(Result result) {

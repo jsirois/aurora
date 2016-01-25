@@ -19,6 +19,9 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 
+import org.apache.aurora.gen.JobKey;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskQuery;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
@@ -137,22 +140,21 @@ public interface TaskStore {
           return false;
         }
 
-        if (query.getJobKeysSize() > 0
-            && !query.getJobKeys().contains(config.getJob().newBuilder())) {
+        if (!query.getJobKeys().isEmpty() && !query.getJobKeys().contains(config.getJob())) {
           return false;
         }
         if (query.getTaskIds() != null && !query.getTaskIds().contains(Tasks.id(task))) {
           return false;
         }
 
-        if (query.getStatusesSize() > 0 && !query.getStatuses().contains(task.getStatus())) {
+        if (!query.getStatuses().isEmpty() && !query.getStatuses().contains(task.getStatus())) {
           return false;
         }
-        if (query.getSlaveHostsSize() > 0
+        if (!query.getSlaveHosts().isEmpty()
             && !query.getSlaveHosts().contains(task.getAssignedTask().getSlaveHost())) {
           return false;
         }
-        if (query.getInstanceIdsSize() > 0
+        if (!query.getInstanceIds().isEmpty()
             && !query.getInstanceIds().contains(task.getAssignedTask().getInstanceId())) {
           return false;
         }

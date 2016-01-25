@@ -15,6 +15,8 @@ package org.apache.aurora.scheduler.storage.db;
 
 import com.google.inject.Inject;
 
+import org.apache.aurora.gen.LockKey;
+
 import static java.util.Objects.requireNonNull;
 
 /**

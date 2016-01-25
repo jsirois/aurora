@@ -44,7 +44,6 @@ import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
 import org.apache.aurora.scheduler.http.H2ConsoleModule;
 import org.apache.aurora.scheduler.http.api.ApiModule;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;

@@ -20,6 +20,10 @@ import javax.inject.Inject;
 
 import com.google.common.collect.Maps;
 
+import org.apache.aurora.gen.Constraint;
+import org.apache.aurora.gen.DockerContainer;
+import org.apache.aurora.gen.TaskConfig;
+import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.storage.db.views.DbTaskConfig;
 import org.apache.aurora.scheduler.storage.db.views.Pairs;
 
@@ -41,7 +45,7 @@ class TaskConfigManager {
     Map<TaskConfig, DbTaskConfig> rowsByConfig =
         Maps.uniqueIndex(
             configMapper.selectConfigsByJob(config.getJob()),
-            DbTaskConfig::toImmutable);
+            DbTaskConfig::toThrift);
 
     return Optional.ofNullable(rowsByConfig.get(config)).map(DbTaskConfig::getRowId);
   }

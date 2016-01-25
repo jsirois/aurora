@@ -20,6 +20,7 @@ import com.google.inject.matcher.Matcher;
 import com.google.inject.matcher.Matchers;
 
 import org.aopalliance.intercept.MethodInterceptor;
+import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 
@@ -29,7 +30,7 @@ import org.apache.aurora.scheduler.thrift.auth.DecoratedThrift;
 public class AopModule extends AbstractModule {
 
   private static final Matcher<? super Class<?>> THRIFT_IFACE_MATCHER =
-      Matchers.subclassesOf(AnnotatedAuroraAdmin.class)
+      Matchers.subclassesOf(AuroraAdmin.Sync.class)
           .and(Matchers.annotatedWith(DecoratedThrift.class));
 
   @Override

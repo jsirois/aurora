@@ -15,29 +15,16 @@ package org.apache.aurora.scheduler.http.api.security;
 
 import com.google.common.base.Optional;
 
-import org.apache.thrift.TBase;
-
 final class FieldGetters {
   private FieldGetters() {
     // Utility class.
   }
 
-  public static <P extends TBase<P, ?>, C extends TBase<C, ?>, G extends TBase<G, ?>>
+  public static <P, C, G>
       FieldGetter<P, G> compose(final FieldGetter<P, C> parent, final FieldGetter<C, G> child) {
 
-    return new FieldGetter<P, G>() {
-      @Override
-      public Class<P> getStructClass() {
-        return parent.getStructClass();
-      }
-
-      @Override
-      public Class<G> getValueClass() {
-        return child.getValueClass();
-      }
-
-      @Override
-      public Optional<G> apply(P input) {
+    return new FieldGetter.AbstractFieldGetter<P, G>(parent.getStructClass()) {
+      @Override public Optional<G> apply(P input) {
         Optional<C> parentValue = parent.apply(input);
         if (parentValue.isPresent()) {
           return child.apply(parentValue.get());

@@ -13,26 +13,28 @@
  */
 package org.apache.aurora.scheduler.configuration;
 
-import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Nullable;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 
+import org.apache.aurora.gen.Constraint;
 import org.apache.aurora.gen.Container;
 import org.apache.aurora.gen.DockerParameter;
+import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobConfiguration;
 import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.gen.TaskConfig.Fields;
 import org.apache.aurora.gen.TaskConstraint;
+import org.apache.aurora.gen.ValueConstraint;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.base.UserProvidedStrings;
 
@@ -86,7 +88,7 @@ public class ConfigurationManager {
     }
   }
 
-  private static final Iterable<RequiredFieldValidator<?>> REQUIREDFields_VALIDATORS =
+  private static final Iterable<RequiredFieldValidator<?>> REQUIRED_FIELDS_VALIDATORS =
       ImmutableList.of(
           new RequiredFieldValidator<>(Fields.NUM_CPUS, new GreaterThan(0.0, "num_cpus")),
           new RequiredFieldValidator<>(Fields.RAM_MB, new GreaterThan(0.0, "ram_mb")),
@@ -167,8 +169,6 @@ public class ConfigurationManager {
       throw new TaskDescriptionException("Instance count must be positive.");
     }
 
-    JobConfiguration builder = job.newBuilder();
-
     if (!JobKeys.isValid(job.getKey())) {
       throw new TaskDescriptionException("Job key " + job.getKey() + " is invalid.");
     }
@@ -181,16 +181,15 @@ public class ConfigurationManager {
       }
     }
 
-    builder.setTaskConfig(
-        validateAndPopulate(TaskConfig.build(builder.getTaskConfig())).newBuilder());
+    TaskConfig validatedTaskConfig = validateAndPopulate(job.getTaskConfig());
 
     // Only one of [service=true, cron_schedule] may be set.
-    if (!Strings.isNullOrEmpty(job.getCronSchedule()) && builder.getTaskConfig().isIsService()) {
+    if (!Strings.isNullOrEmpty(job.getCronSchedule()) && validatedTaskConfig.isIsService()) {
       throw new TaskDescriptionException(
-          "A service task may not be run on a cron schedule: " + builder);
+          "A service task may not be run on a cron schedule: " + job);
     }
 
-    return JobConfiguration.build(builder);
+    return job.withTaskConfig(validatedTaskConfig);
   }
 
   /**
@@ -204,13 +203,7 @@ public class ConfigurationManager {
    * @throws TaskDescriptionException If the task is invalid.
    */
   public TaskConfig validateAndPopulate(TaskConfig config) throws TaskDescriptionException {
-    TaskConfig builder = config.newBuilder();
-
-    if (!builder.isSetRequestedPorts()) {
-      builder.setRequestedPorts(ImmutableSet.of());
-    }
-
-    maybeFillLinks(builder);
+    TaskConfig.Builder builder = maybeFillLinks(config);
 
     if (!UserProvidedStrings.isGoodIdentifier(config.getJobName())) {
       throw new TaskDescriptionException(
@@ -244,16 +237,16 @@ public class ConfigurationManager {
       builder.setJob(JobKeys.from(
           config.getOwner().getRole(),
           config.getEnvironment(),
-          config.getJobName()).newBuilder());
+          config.getJobName()));
     }
 
-    if (!builder.isSetExecutorConfig()) {
+    if (!config.isSetExecutorConfig()) {
       throw new TaskDescriptionException("Configuration may not be null");
     }
 
     // Maximize the usefulness of any thrown error message by checking required fields first.
-    for (RequiredFieldValidator<?> validator : REQUIREDFields_VALIDATORS) {
-      validator.validate(builder);
+    for (RequiredFieldValidator<?> validator : REQUIRED_FIELDS_VALIDATORS) {
+      validator.validate(config);
     }
 
     Constraint constraint = getDedicatedConstraint(config);
@@ -275,39 +268,34 @@ public class ConfigurationManager {
       }
     }
 
-    Optional<Container.Fields> containerType;
-    if (config.isSetContainer()) {
-      Container containerConfig = config.getContainer();
-      containerType = Optional.of(containerConfig.getSetField());
-      if (containerConfig.isSetDocker()) {
-        if (!containerConfig.getDocker().isSetImage()) {
-          throw new TaskDescriptionException("A container must specify an image.");
-        }
-        if (!containerConfig.getDocker().isSetParameters()
-            || containerConfig.getDocker().getParameters().isEmpty()) {
-          for (Map.Entry<String, String> e : this.defaultDockerParameters.entries()) {
-            builder.getContainer().getDocker().addToParameters(
-                new DockerParameter(e.getKey(), e.getValue()));
-          }
-        } else {
-          if (!allowDockerParameters) {
-            throw new TaskDescriptionException("Docker parameters not allowed.");
-          }
+    // Default to mesos container type if unset.
+    Container.Fields containerType = Container.Fields.MESOS;
+    Container containerConfig = config.getContainer();
+    containerType = containerConfig.getSetField();
+    if (containerConfig.isSetDocker()) {
+      if (!containerConfig.getDocker().isSetImage()) {
+        throw new TaskDescriptionException("A container must specify an image.");
+      }
+      if (containerConfig.getDocker().getParameters().isEmpty()) {
+        builder.setContainer(
+            Container.docker(
+                containerConfig.getDocker()
+                    .withParameters(
+                        FluentIterable.from(defaultDockerParameters.entries())
+                            .transform(e -> DockerParameter.create(e.getKey(), e.getValue()))
+                            .toList())));
+      } else {
+        if (!allowDockerParameters) {
+          throw new TaskDescriptionException("Docker parameters not allowed.");
         }
       }
-    } else {
-      // Default to mesos container type if unset.
-      containerType = Optional.of(Container.Fields.MESOS);
     }
-    if (!containerType.isPresent()) {
-      throw new TaskDescriptionException("A job must have a container type.");
-    }
-    if (!allowedContainerTypes.contains(containerType.get())) {
+    if (!allowedContainerTypes.contains(containerType)) {
       throw new TaskDescriptionException(
-          "The container type " + containerType.get().toString() + " is not allowed");
+          "The container type " + containerType.toString() + " is not allowed");
     }
 
-    return TaskConfig.build(builder);
+    return builder.build();
   }
 
   /**
@@ -320,8 +308,9 @@ public class ConfigurationManager {
     return constraint -> constraint.getName().equals(name);
   }
 
-  private static void maybeFillLinks(TaskConfig task) {
-    if (task.getTaskLinksSize() == 0) {
+  private static TaskConfig.Builder maybeFillLinks(TaskConfig task) {
+    TaskConfig.Builder builder = task.toBuilder();
+    if (task.getTaskLinks().isEmpty()) {
       ImmutableMap.Builder<String, String> links = ImmutableMap.builder();
       if (task.getRequestedPorts().contains("health")) {
         links.put("health", "http://%host%:%port:health%");
@@ -329,8 +318,9 @@ public class ConfigurationManager {
       if (task.getRequestedPorts().contains("http")) {
         links.put("http", "http://%host%:%port:http%");
       }
-      task.setTaskLinks(links.build());
+      builder.setTaskLinks(links.build());
     }
+    return builder;
   }
 
   /**

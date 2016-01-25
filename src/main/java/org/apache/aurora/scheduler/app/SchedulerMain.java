@@ -167,10 +167,10 @@ public class SchedulerMain {
           @Override
           protected void configure() {
             bind(ServerInfo.class).toInstance(
-                ServerInfo.build(
-                    new ServerInfo()
-                        .setClusterName(CLUSTER_NAME.get())
-                        .setStatsUrlPrefix(STATS_URL_PREFIX.get())));
+                ServerInfo.builder()
+                    .setClusterName(CLUSTER_NAME.get())
+                    .setStatsUrlPrefix(STATS_URL_PREFIX.get())
+                    .build());
           }
         });
 

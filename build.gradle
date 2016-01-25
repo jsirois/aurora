@@ -114,6 +114,9 @@ For more details, please see https://issues.apache.org/jira/browse/AURORA-1169
       // TODO(John Sirois): XXX thriftGen cleanup & centralize a swiftRev
       force "com.facebook.swift:swift-codec:0.17.0"
       force "com.facebook.swift:swift-annotations:0.17.0"
+      force "com.google.inject:guice:${guiceRev}"
+      force "com.google.inject.extensions:guice-multibindings:${guiceRev}"
+      force "io.netty:netty:3.10.5.Final"
 
       force "com.google.code.findbugs:annotations:3.0.0"
       force "com.google.code.gson:gson:${gsonRev}"
@@ -380,6 +383,11 @@ dependencies {
   compile 'org.mybatis:mybatis-guice:3.7'
   compile 'org.quartz-scheduler:quartz:2.2.2'
   compile "uno.perk:forward:1.0.0"
+
+  compile "com.facebook.nifty:nifty-core:0.17.0"
+  compile "com.facebook.swift:swift-codec:0.17.0"
+  compile "com.facebook.swift:swift-service:0.17.0"
+  compile "com.google.auto.value:auto-value:1.1"
 
   testCompile "com.sun.jersey:jersey-client:${jerseyRev}"
   testCompile "junit:junit:${junitRev}"

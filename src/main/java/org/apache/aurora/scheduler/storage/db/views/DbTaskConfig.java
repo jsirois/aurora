@@ -56,8 +56,8 @@ public final class DbTaskConfig {
     return rowId;
   }
 
-  TaskConfig toThrift() {
-    return new TaskConfig()
+  public TaskConfig toThrift() {
+    return TaskConfig.builder()
         .setJob(job)
         .setOwner(owner)
         .setEnvironment(environment)
@@ -79,10 +79,7 @@ public final class DbTaskConfig {
         .setExecutorConfig(executorConfig)
         .setMetadata(ImmutableSet.copyOf(metadata))
         .setContainer(
-            container == null ? Container.mesos(new MesosContainer()) : container.toThrift());
-  }
-
-  public TaskConfig toImmutable() {
-    return TaskConfig.build(toThrift());
+            container == null ? Container.mesos(MesosContainer.create()) : container.toThrift())
+        .build();
   }
 }

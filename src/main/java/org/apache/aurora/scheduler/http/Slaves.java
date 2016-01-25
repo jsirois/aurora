@@ -26,10 +26,15 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
 
+import org.apache.aurora.gen.Attribute;
+import org.apache.aurora.gen.HostAttributes;
 import org.apache.aurora.gen.MaintenanceMode;
+import org.apache.aurora.gen.ServerInfo;
 import org.apache.aurora.scheduler.storage.Storage;
 
 import static java.util.Objects.requireNonNull;
+
+import static org.apache.aurora.common.base.MorePreconditions.checkNotBlank;
 
 /**
  * HTTP interface to serve as a HUD for the mesos slaves tracked in the scheduler.

@@ -23,9 +23,9 @@ public final class DbContainer {
   private DbContainer() {
   }
 
-  Container toThrift() {
+  public Container toThrift() {
     if (docker == null) {
-      return Container.mesos(new MesosContainer());
+      return Container.mesos(MesosContainer.create());
     } else {
       return Container.docker(docker);
     }

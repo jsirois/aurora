@@ -13,9 +13,6 @@
  */
 package org.apache.aurora.scheduler.thrift;
 
-import com.google.common.collect.Lists;
-
-import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.gen.ResponseCode;
 import org.apache.aurora.gen.ResponseDetail;
@@ -35,85 +32,87 @@ public final class Responses {
   }
 
   /**
-   * Creates a new empty response.
-   *
-   * @return An empty response message.
-   */
-  public static Response empty() {
-    return new Response().setDetails(Lists.newArrayList());
-  }
-
-  /**
-   * Adds a human-friendly message to a response, usually to indicate a problem or deprecation
-   * encountered while handling the request.
-   *
-   * @param response Response to augment.
-   * @param message Message to include in the response.
-   * @return {@code response} with {@code message} included.
-   */
-  public static Response addMessage(Response response, String message) {
-    return appendMessage(response, MorePreconditions.checkNotBlank(message));
-  }
-
-  /**
-   * Identical to {@link #addMessage(Response, String)} that also applies a response code.
-   *
-   * @param response Response to augment.
-   * @param code Response code to include.
-   * @param message Message to include in the response.
-   * @return {@code response} with {@code message} included.
-   * @see {@link #addMessage(Response, String)}
-   */
-  public static Response addMessage(Response response, ResponseCode code, String message) {
-    return addMessage(response.setResponseCode(code), message);
-  }
-
-  /**
-   * Identical to {@link #addMessage(Response, String)} that also applies a response code and
-   * extracts a message from the provided {@link Throwable}.
-   *
-   * @param response Response to augment.
-   * @param code Response code to include.
-   * @param throwable {@link Throwable} to extract message from.
-   * @return {@link #addMessage(Response, String)}
-   */
-  public static Response addMessage(Response response, ResponseCode code, Throwable throwable) {
-    return appendMessage(response.setResponseCode(code), throwable.getMessage());
-  }
-
-  private static Response appendMessage(Response response, String message) {
-    response.addToDetails(new ResponseDetail(message));
-    return response;
-  }
-
-  /**
-   * Creates an ERROR response that has a single associated error message.
+   * Creates an {@link ResponseCode#ERROR} response that has a single associated error message.
    *
    * @param message The error message.
-   * @return A response with an ERROR code set containing the message indicated.
+   * @return A response with an {@code ERROR} code set containing the message indicated.
    */
   public static Response error(String message) {
-    return addMessage(empty(), ERROR, message);
+    return create(ERROR, message);
   }
 
   /**
-   * Creates an OK response that has no result entity.
+   * Creates an {@link ResponseCode#ERROR} response that has a single associated error message
+   * formed from the given error's message.
    *
-   * @return Ok response with an empty result.
+   * @param error The error that occurred.
+   * @return A response with an {@code ERROR} code set containing the message indicated.
    */
-  public static Response ok()  {
-    return empty().setResponseCode(OK);
+  public static Response error(Throwable error) {
+    return error(error.getMessage());
   }
 
-  static Response invalidRequest(String message) {
-    return addMessage(empty(), INVALID_REQUEST, message);
+  /**
+   * Creates a response with the given error code that has a single associated error message formed
+   * from the given error's message.
+   *
+   * @param code The response error code.
+   * @param error The error that occurred.
+   * @return A response with an {@code ERROR} code set containing the message indicated.
+   */
+  public static Response error(ResponseCode code, Throwable error) {
+    return create(code, error.getMessage());
+  }
+
+  private static Response withDetail(Response.Builder builder, String message) {
+    return builder.setDetails(ResponseDetail.create(message)).build();
+  }
+
+  /**
+   * Creates a response with the given code an a single associated detail message.
+   *
+   * @param code The response code.
+   * @param message The detail message.
+   * @return A response with the given code set containing the detail message indicated.
+   */
+  public static Response create(ResponseCode code, String message) {
+    return withDetail(responseBuilder(code), message);
+  }
+
+  private static Response.Builder responseBuilder(ResponseCode code) {
+    return Response.builder().setResponseCode(code);
+  }
+
+  private static Response.Builder okBuilder() {
+    return responseBuilder(OK);
+  }
+
+  /**
+   * Creates an {@link ResponseCode#OK} response that has no result entity or associated detail
+   * messages.
+   *
+   * @return A response with an {@code OK} code set.
+   */
+  public static Response ok()  {
+    return okBuilder().build();
   }
 
   static Response ok(Result result) {
-    return ok().setResult(result);
+    return okBuilder().setResult(result).build();
   }
 
-  static Response error(ResponseCode code, Throwable error) {
-    return addMessage(empty(), code, error);
+  static Response ok(String message) {
+    return withDetail(okBuilder(), message);
+  }
+
+  /**
+   * Creates an {@link ResponseCode#INVALID_REQUEST} response that has a single associated error
+   * message.
+   *
+   * @param message TThe error message.
+   * @return A response with an {@code INVALID_REQUEST} code set containing the message indicated.
+   */
+  public static Response invalidRequest(String message) {
+    return create(INVALID_REQUEST, message);
   }
 }

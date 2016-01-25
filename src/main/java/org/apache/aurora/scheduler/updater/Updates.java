@@ -19,7 +19,9 @@ import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Sets;
 
 import org.apache.aurora.gen.Constants;
+import org.apache.aurora.gen.InstanceTaskConfig;
 import org.apache.aurora.gen.JobUpdateStatus;
+import org.apache.aurora.gen.Range;
 
 /**
  * Utility functions for job updates.
@@ -46,7 +48,7 @@ public final class Updates {
     ImmutableRangeSet.Builder<Integer> builder = ImmutableRangeSet.builder();
     for (InstanceTaskConfig config : configs) {
       for (Range range : config.getInstances()) {
-        builder.add(Range.closed(range.getFirst(), range.getLast()));
+        builder.add(com.google.common.collect.Range.closed(range.getFirst(), range.getLast()));
       }
     }
 

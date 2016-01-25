@@ -13,20 +13,29 @@
  */
 package org.apache.aurora.scheduler.http.api;
 
-import javax.inject.Singleton;
+import java.io.IOException;
 
+import javax.inject.Singleton;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.facebook.swift.service.ThriftEventHandler;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Provides;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 
+import org.apache.aurora.codec.ThriftBinaryCodec;
+import org.apache.aurora.codec.ThriftServiceProcessor.ServiceDescriptor;
 import org.apache.aurora.common.args.Arg;
 import org.apache.aurora.common.args.CmdLine;
 import org.apache.aurora.gen.AuroraAdmin;
 import org.apache.aurora.scheduler.http.CorsFilter;
 import org.apache.aurora.scheduler.http.JettyServerModule;
 import org.apache.aurora.scheduler.http.LeaderRedirectFilter;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
+import org.apache.aurora.scheduler.http.api.security.UnauthenticatedError;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TJSONProtocol;
 import org.apache.thrift.server.TServlet;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -69,8 +78,42 @@ public class ApiModule extends ServletModule {
 
   @Provides
   @Singleton
-  TServlet provideApiThriftServlet(AnnotatedAuroraAdmin schedulerThriftInterface) {
-    return new TServlet(
-        new AuroraAdmin.Processor<>(schedulerThriftInterface), new TJSONProtocol.Factory());
+  TServlet provideApiThriftServlet(AuroraAdmin.Sync schedulerThriftInterface) {
+    ServiceDescriptor serviceDescriptor =
+        ServiceDescriptor.create(schedulerThriftInterface, AuroraAdmin.Sync.class);
+
+    ThriftEventHandler propagateUnauthenticatedError = new ThriftEventHandler() {
+      @Override
+      public void preWriteException(Object context, String methodName, Throwable t) {
+        // We need to abort standard thrift error handling here (which marshals exceptions into the
+        // response payload) and raise an Exception that can be bubbled up to the Shiro
+        // authentication Servlet filter layer.  With Swift/Netty/Futures pipeline, this can only be
+        // done via an Error; thus the UnauthenticatedError is re-thrown here to reach the TServlet
+        // Servlet layer just a few lines below.
+        if (t instanceof UnauthenticatedError) {
+          throw (UnauthenticatedError) t;
+        }
+        super.preWriteException(context, methodName, t);
+      }
+    };
+
+    TProcessor processor =
+        ThriftBinaryCodec.processorFor(propagateUnauthenticatedError, serviceDescriptor);
+
+    return new TServlet(processor, new TJSONProtocol.Factory()) {
+      @Override
+      protected void doPost(HttpServletRequest request, HttpServletResponse response)
+          throws ServletException, IOException {
+
+        // NB: All TServlet handling routes through doPost.
+        try {
+          super.doPost(request, response);
+        } catch (UnauthenticatedError e) {
+          // This throws a special exception type up through the Servlet filter layer that will
+          // signal the Shiro BasicHttpAuthenticationFilter to send a 401 with a challenge.
+          throw e.authenticationChallenge();
+        }
+      }
+    };
   }
 }

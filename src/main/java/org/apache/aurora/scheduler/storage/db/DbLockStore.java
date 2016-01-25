@@ -20,6 +20,8 @@ import java.util.function.Function;
 import com.google.inject.Inject;
 
 import org.apache.aurora.GuavaUtils;
+import org.apache.aurora.gen.Lock;
+import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.storage.LockStore;
 import org.apache.aurora.scheduler.storage.db.views.LockRow;
 
@@ -45,13 +47,13 @@ class DbLockStore implements LockStore.Mutable {
   @Override
   public void saveLock(Lock lock) {
     lockKeyMapper.insert(lock.getKey());
-    mapper.insert(lock.newBuilder());
+    mapper.insert(lock);
   }
 
   @Timed("lock_store_remove_lock")
   @Override
   public void removeLock(LockKey lockKey) {
-    mapper.delete(lockKey.newBuilder());
+    mapper.delete(lockKey);
   }
 
   @Timed("lock_store_delete_locks")
@@ -69,11 +71,11 @@ class DbLockStore implements LockStore.Mutable {
   @Timed("lock_store_fetch_lock")
   @Override
   public Optional<Lock> fetchLock(LockKey lockKey) {
-    return Optional.ofNullable(mapper.select(lockKey.newBuilder())).map(TO_ROW);
+    return Optional.ofNullable(mapper.select(lockKey)).map(TO_ROW);
   }
 
   /**
    * LockRow converter to satisfy the Lock interface.
    */
-  private static final Function<LockRow, Lock> TO_ROW = input -> Lock.build(input.getLock());
+  private static final Function<LockRow, Lock> TO_ROW = LockRow::getLock;
 }

@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.AbstractIdleService;
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
 import org.apache.aurora.common.util.Clock;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.aurora.scheduler.storage.Storage;
 import org.apache.aurora.scheduler.storage.Storage.MutateWork.NoResult;
 import org.slf4j.Logger;

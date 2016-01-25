@@ -19,8 +19,14 @@ import com.google.common.collect.Iterables;
 
 import org.apache.aurora.common.quantity.Amount;
 import org.apache.aurora.common.quantity.Time;
+import org.apache.aurora.gen.InstanceKey;
+import org.apache.aurora.gen.InstanceTaskConfig;
+import org.apache.aurora.gen.JobUpdateInstructions;
 import org.apache.aurora.gen.JobUpdateStatus;
+import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.base.Tasks;
 import org.apache.aurora.scheduler.state.StateManager;
@@ -61,7 +67,8 @@ interface InstanceActionHandler {
       } else {
         for (InstanceTaskConfig config : instructions.getInitialState()) {
           for (Range range : config.getInstances()) {
-            if (Range.closed(range.getFirst(), range.getLast()).contains(instanceId)) {
+            if (com.google.common.collect.Range.closed(range.getFirst(), range.getLast())
+                .contains(instanceId)) {
               return config.getTask();
             }
           }

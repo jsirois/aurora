@@ -16,6 +16,8 @@ package org.apache.aurora.scheduler.quota;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 
+import org.apache.aurora.gen.ResourceAggregate;
+
 import static java.util.Objects.requireNonNull;
 
 /**

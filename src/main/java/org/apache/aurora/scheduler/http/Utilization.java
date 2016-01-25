@@ -36,6 +36,8 @@ import com.google.common.collect.FluentIterable;
 import org.apache.aurora.common.base.MorePreconditions;
 import org.apache.aurora.common.util.templating.StringTemplateHelper;
 import org.apache.aurora.common.util.templating.StringTemplateHelper.TemplateException;
+import org.apache.aurora.gen.ServerInfo;
+import org.apache.aurora.gen.TaskConfig;
 import org.apache.aurora.scheduler.base.Query;
 import org.apache.aurora.scheduler.stats.ResourceCounter;
 import org.apache.aurora.scheduler.stats.ResourceCounter.GlobalMetric;

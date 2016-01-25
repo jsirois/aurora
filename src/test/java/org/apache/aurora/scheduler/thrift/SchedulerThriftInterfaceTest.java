@@ -62,7 +62,6 @@ import org.apache.aurora.gen.Range;
 import org.apache.aurora.gen.ReadOnlyScheduler;
 import org.apache.aurora.gen.ResourceAggregate;
 import org.apache.aurora.gen.Response;
-import org.apache.aurora.gen.ResponseDetail;
 import org.apache.aurora.gen.Result;
 import org.apache.aurora.gen.RewriteConfigsRequest;
 import org.apache.aurora.gen.ScheduleStatus;
@@ -1276,9 +1275,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
   }
 
   private static Response invalidResponse(String message) {
-    return Responses.empty()
-        .setResponseCode(INVALID_REQUEST)
-        .setDetails(ImmutableList.of(new ResponseDetail(message)));
+    return Responses.invalidRequest(message);
   }
 
   @Test
@@ -2021,9 +2018,7 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
 
   @Test
   public void testGetJobUpdateSummaries() throws Exception {
-    Response updateSummary = Responses.empty()
-        .setResponseCode(OK)
-        .setDetails(ImmutableList.of(new ResponseDetail("summary")));
+    Response updateSummary = Responses.ok("summary");
 
     expect(readOnlyScheduler.getJobUpdateSummaries(
         anyObject(JobUpdateQuery.class))).andReturn(updateSummary);

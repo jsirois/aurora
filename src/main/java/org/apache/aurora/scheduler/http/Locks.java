@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 
+import org.apache.aurora.gen.Lock;
 import org.apache.aurora.gen.LockKey;
 import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.state.LockManager;
@@ -56,7 +57,7 @@ public class Locks {
   }
 
   private static final Function<Lock, String> TO_LOCK_KEY =
-      lock -> lock.getKey().getSetField() == LockKey._Fields.JOB
+      lock -> lock.getKey().getSetField() == LockKey.Fields.JOB
           ? JobKeys.canonicalString(lock.getKey().getJob())
           : "Unknown lock key type: " + lock.getKey().getSetField();
 

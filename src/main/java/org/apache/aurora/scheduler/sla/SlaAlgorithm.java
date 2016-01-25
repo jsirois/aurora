@@ -32,7 +32,10 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 
 import org.apache.aurora.common.collections.Pair;
+import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.ScheduleStatus;
+import org.apache.aurora.gen.ScheduledTask;
+import org.apache.aurora.gen.TaskEvent;
 import org.apache.aurora.scheduler.base.Tasks;
 
 import static java.util.Objects.requireNonNull;

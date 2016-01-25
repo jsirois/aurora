@@ -22,7 +22,6 @@ import com.sun.jersey.api.client.ClientResponse;
 
 import org.apache.aurora.gen.Response;
 import org.apache.aurora.scheduler.http.AbstractJettyTest;
-import org.apache.aurora.scheduler.thrift.aop.AnnotatedAuroraAdmin;
 import org.junit.Before;
 import org.junit.Test;
 

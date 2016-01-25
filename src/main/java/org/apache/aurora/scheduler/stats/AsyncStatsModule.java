@@ -171,10 +171,11 @@ public class AsyncStatsModule extends AbstractModule {
     }
 
     private static ResourceAggregate fromSlot(ResourceSlot slot) {
-      return ResourceAggregate.build(new ResourceAggregate()
+      return ResourceAggregate.builder()
           .setNumCpus(slot.getNumCpus())
           .setRamMb(slot.getRam().as(Data.MB))
-          .setDiskMb(slot.getDisk().as(Data.MB)));
+          .setDiskMb(slot.getDisk().as(Data.MB))
+          .build();
     }
   }
 }

@@ -14,6 +14,7 @@
 package org.apache.aurora.scheduler.storage.db;
 
 import org.apache.aurora.gen.JobUpdateEvent;
+import org.apache.aurora.gen.JobUpdateKey;
 import org.apache.ibatis.annotations.Param;
 
 /**

@@ -15,6 +15,8 @@ package org.apache.aurora.scheduler.cron;
 
 import java.util.Map;
 
+import org.apache.aurora.gen.JobKey;
+
 /**
  * Manages the persistence and scheduling of jobs that should be run periodically on a cron
  * schedule.

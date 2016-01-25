@@ -66,7 +66,10 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicHttpRequest;
+import org.apache.http.protocol.BasicHttpContext;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.realm.text.IniRealm;
 import org.apache.thrift.TException;
@@ -213,11 +216,12 @@ public class HttpSecurityIT extends AbstractJettyTest {
   }
 
   private AuroraAdmin.Sync getAuthenticatedClient(Credentials credentials) throws Exception {
-    return getClient(channel -> {
-      Header authenticate =
-          BasicScheme.authenticate(credentials, Charsets.UTF_8.displayName(), /* proxy */ false);
-      channel.setHeaders(ImmutableMap.of(authenticate.getName(), authenticate.getValue()));
-    });
+    BasicScheme basicScheme = new BasicScheme(Charsets.UTF_8);
+    BasicHttpRequest dummyRequest = new BasicHttpRequest("POST", "https://fake");
+    BasicHttpContext dummyContext = new BasicHttpContext();
+    Header authenticate = basicScheme.authenticate(credentials, dummyRequest, dummyContext);
+    return getClient(channel ->
+      channel.setHeaders(ImmutableMap.of(authenticate.getName(), authenticate.getValue())));
   }
 
   private IExpectationSetters<Object> expectShiroAfterAuthFilter()
@@ -237,16 +241,13 @@ public class HttpSecurityIT extends AbstractJettyTest {
 
   @Test
   public void testReadOnlyScheduler() throws Exception {
-    expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(3);
-    expectShiroAfterAuthFilter().times(3);
+    expect(auroraAdmin.getRoleSummary()).andReturn(OK).times(2);
+    expectShiroAfterAuthFilter().times(2);
 
     replayAndStart();
 
     assertEquals(OK, getUnauthenticatedClient().getRoleSummary());
     assertEquals(OK, getAuthenticatedClient(ROOT).getRoleSummary());
-    // Incorrect works because the server doesn't challenge for credentials to execute read-only
-    // methods.
-    assertEquals(OK, getAuthenticatedClient(INCORRECT).getRoleSummary());
   }
 
   private void assertKillTasksFails(AuroraAdmin.Sync client) throws TException {
@@ -375,12 +376,13 @@ public class HttpSecurityIT extends AbstractJettyTest {
   }
 
   private HttpResponse callH2Console(Credentials credentials) throws Exception {
-    DefaultHttpClient defaultHttpClient = new DefaultHttpClient();
-
     CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(AuthScope.ANY, credentials);
-    defaultHttpClient.setCredentialsProvider(credentialsProvider);
-    return defaultHttpClient.execute(new HttpPost(formatUrl(H2_PATH + "/")));
+    try (CloseableHttpClient defaultHttpClient =
+        HttpClientBuilder.create().setDefaultCredentialsProvider(credentialsProvider).build()) {
+
+      return defaultHttpClient.execute(new HttpPost(formatUrl(H2_PATH + "/")));
+    }
   }
 
   @Test

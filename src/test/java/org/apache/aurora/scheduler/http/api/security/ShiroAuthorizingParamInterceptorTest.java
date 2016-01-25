@@ -36,6 +36,7 @@ import org.apache.aurora.scheduler.base.JobKeys;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
 import org.apache.aurora.scheduler.thrift.aop.MockDecoratedThrift;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.shiro.subject.Subject;
 import org.apache.thrift.TException;
 import org.junit.Before;
@@ -96,7 +97,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
   public void testHandlesAllDecoratedParamTypes() {
     control.replay();
 
-    for (Method method : AuroraAdmin.Sync.class.getMethods()) {
+    for (Method method : AuroraAdmin.Sync.getThriftMethods().values()) {
       if (HttpSecurityModule.AURORA_SCHEDULER_MANAGER_SERVICE.matches(method)) {
         interceptor.getAuthorizingParamGetters().getUnchecked(method);
       }
@@ -242,7 +243,7 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
   }
 
   private interface NoResponse {
-    void test(@AuthorizingParam TaskQuery query);
+    void test(@ThriftAnnotation(name = "authorizing", value = "true") TaskQuery query);
   }
 
   private interface NoParams {
@@ -251,8 +252,8 @@ public class ShiroAuthorizingParamInterceptorTest extends EasyMockTest {
 
   private interface Params {
     Response test(
-        @AuthorizingParam TaskQuery query,
-        @AuthorizingParam JobKey job,
-        @AuthorizingParam JobUpdateRequest request);
+        @ThriftAnnotation(name = "authorizing", value = "true") TaskQuery query,
+        @ThriftAnnotation(name = "authorizing", value = "true") JobKey job,
+        @ThriftAnnotation(name = "authorizing", value = "true") JobUpdateRequest request);
   }
 }

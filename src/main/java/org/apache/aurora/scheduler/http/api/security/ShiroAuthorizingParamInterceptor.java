@@ -56,6 +56,8 @@ import org.apache.aurora.scheduler.http.api.security.FieldGetter.IdentityFieldGe
 import org.apache.aurora.scheduler.spi.Permissions;
 import org.apache.aurora.scheduler.spi.Permissions.Domain;
 import org.apache.aurora.scheduler.thrift.Responses;
+import org.apache.aurora.thrift.ImmutableThriftAnnotation;
+import org.apache.aurora.thrift.ThriftAnnotation;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.subject.Subject;
 
@@ -65,15 +67,17 @@ import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Interceptor that extracts and validates job keys from parameters annotated with
- * {@link org.apache.aurora.scheduler.http.api.security.AuthorizingParam} and performs permission
- * checks scoped to it.
+ * {@literal @Annotation(@Parameter(name = "authorizing", value = "authorizing"))} and performs
+ * permission checks scoped to it.
  *
  * <p>
  * For example, if intercepting a class that implements {@code A}:
  *
  * <pre>
  * public interface A {
- *   Response setInstances(@AuthorizingParam JobKey jobKey, int instances);
+ *   Response setInstances(
+ *       @Annotation(@Parameter(name = "authorizing", value = "true")) JobKey jobKey,
+ *       int instances);
  * }
  * </pre>
  *
@@ -152,10 +156,11 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
   private static final Map<Class<?>, Function<?, Optional<JobKey>>> FIELD_GETTERS_BY_TYPE =
       ImmutableMap.<Class<?>, Function<?, Optional<JobKey>>>builder()
-          .putAll(Maps.uniqueIndex(
-              FIELD_GETTERS,
-              (Function<FieldGetter<?, JobKey>, Class<?>>) FieldGetter::getStructClass))
+          .putAll(Maps.uniqueIndex(FIELD_GETTERS, FieldGetter::getStructClass))
           .build();
+
+  private static final ThriftAnnotation AUTHORIZING_PARAM =
+      ImmutableThriftAnnotation.of("authorizing", "true");
 
   @VisibleForTesting
   static final String SHIRO_AUTHORIZATION_FAILURES = "shiro_authorization_failures";
@@ -164,10 +169,8 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
   static final String SHIRO_BAD_REQUESTS = "shiro_bad_requests";
 
   /**
-   * Return each method in the inheritance hierarchy of method in the order described by
-   * {@link AuthorizingParam}.
-   *
-   * @see org.apache.aurora.scheduler.http.api.security.AuthorizingParam
+   * Return each method in the inheritance hierarchy of the given method in breadth-first order,
+   * superclass before interfaces.
    */
   private static Iterable<Method> getCandidateMethods(final Method method) {
     return () -> new AbstractSequentialIterator<Method>(method) {
@@ -205,7 +208,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
       ImmutableList.Builder<JobKeyGetter> jobKeyGetters = ImmutableList.builder();
       for (int i = 0; i < parameters.length; i++) {
         Parameter param = parameters[i];
-        if (param.isAnnotationPresent(AuthorizingParam.class)) {
+        if (AUTHORIZING_PARAM.equals(param.getAnnotation(ThriftAnnotation.class))) {
           Class<?> parameterType = param.getType();
           @SuppressWarnings("unchecked")
           Optional<Function<Object, Optional<JobKey>>> jobKeyGetter =
@@ -231,7 +234,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
 
     throw new UnsupportedOperationException(
         "No parameter annotated with "
-            + AuthorizingParam.class.getName()
+            + AUTHORIZING_PARAM
             + " found on method "
             + method.getName()
             + " of "
@@ -263,7 +266,7 @@ class ShiroAuthorizingParamInterceptor implements MethodInterceptor {
               if (Iterables.size(nonNullArgGetters) > 1) {
                 throw new IllegalStateException(
                     "Too many non-null arguments annotated with "
-                        + AuthorizingParam.class.getName()
+                        + AUTHORIZING_PARAM
                         + " passed to "
                         + method.getName()
                         + " of "

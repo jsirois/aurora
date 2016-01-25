@@ -118,7 +118,6 @@ public class QuotaManagerImplTest extends EasyMockTest {
     ScheduledTask ignoredProdTask = prodTask(pcRole, 20, 20, 20)
         .withAssignedTask(at -> at.withTask(t -> t.withJob(JobKey.create(pcRole, ENV, pcRole))));
 
-
     String npcRole = "npc-role";
     ScheduledTask ignoredNonProdTask = nonProdTask(npcRole, 20, 20, 20)
         .withAssignedTask(at -> at.withTask(t -> t.withJob(JobKey.create(npcRole, ENV, npcRole))));

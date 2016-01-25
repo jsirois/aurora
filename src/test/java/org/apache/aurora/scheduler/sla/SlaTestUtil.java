@@ -39,7 +39,8 @@ final class SlaTestUtil {
     return TaskTestUtil.makeTask("task_id", TaskTestUtil.JOB)
         .withStatus(Iterables.getLast(taskEvents).getStatus())
         .withTaskEvents(taskEvents)
-        .withAssignedTask(at -> at.withInstanceId(instanceId).withTask(t -> t.withProduction(isProd)));
+        .withAssignedTask(
+            at -> at.withInstanceId(instanceId).withTask(t -> t.withProduction(isProd)));
   }
 
   private static ImmutableList<TaskEvent> makeEvents(Map<Long, ScheduleStatus> events) {

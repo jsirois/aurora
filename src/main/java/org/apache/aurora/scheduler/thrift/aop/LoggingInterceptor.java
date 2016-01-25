@@ -43,7 +43,7 @@ class LoggingInterceptor implements MethodInterceptor {
       ImmutableMap.of(
           JobConfiguration.class,
           input -> {
-            JobConfiguration configuration = ((JobConfiguration) input);
+            JobConfiguration configuration = (JobConfiguration) input;
             if (configuration.isSetTaskConfig()) {
               configuration = configuration.withTaskConfig(tc -> tc.withExecutorConfig(
                   ExecutorConfig.create("BLANKED", "BLANKED")));

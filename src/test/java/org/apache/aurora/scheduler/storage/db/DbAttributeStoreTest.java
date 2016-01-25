@@ -40,7 +40,6 @@ public class DbAttributeStoreTest {
   private static final String SLAVE_A = "slaveA";
   private static final String SLAVE_B = "slaveB";
   private static final Attribute ATTR1 = Attribute.create("attr1", ImmutableSet.of("a", "b", "c"));
-  private static final Attribute ATTR2 = Attribute.create("attr2", ImmutableSet.of("d", "e", "f"));
   private static final Attribute ATTR3 = Attribute.create("attr3", ImmutableSet.of("a", "d", "g"));
   private static final HostAttributes HOST_A_ATTRS =
       HostAttributes.builder()

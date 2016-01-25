@@ -24,12 +24,12 @@ import org.apache.aurora.codec.ThriftBinaryCodec.CodingException;
 import org.apache.aurora.gen.Identity;
 import org.apache.aurora.gen.JobKey;
 import org.apache.aurora.gen.LockKey;
+import org.apache.aurora.gen.ScheduledTask;
 import org.apache.aurora.gen.storage.Op;
 import org.apache.aurora.gen.storage.RemoveJob;
+import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.apache.aurora.thrift.ThriftEntity;
 import org.apache.aurora.thrift.ThriftFields.NoFields;
-import org.apache.aurora.gen.ScheduledTask;
-import org.apache.aurora.scheduler.base.TaskTestUtil;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;

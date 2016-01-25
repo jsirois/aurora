@@ -43,7 +43,7 @@ final class Tasks {
    * Builds tasks for the specified configuration.
    */
   static final class Builder {
-    private JobKey.Builder jobKey = JobKey.create("jmh", "dev", "benchmark").toBuilder();
+    private JobKey.Builder jobKeyBuilder = JobKey.create("jmh", "dev", "benchmark").toBuilder();
     private int uuidStart = 0;
     private boolean isProduction = false;
     private double cpu = 6.0;
@@ -53,17 +53,17 @@ final class Tasks {
     private ImmutableSet.Builder<Constraint> constraints = ImmutableSet.builder();
 
     Builder setRole(String newRole) {
-      jobKey.setRole(newRole);
+      jobKeyBuilder.setRole(newRole);
       return this;
     }
 
     Builder setEnv(String env) {
-      jobKey.setEnvironment(env);
+      jobKeyBuilder.setEnvironment(env);
       return this;
     }
 
     Builder setJob(String job) {
-      jobKey.setName(job);
+      jobKeyBuilder.setName(job);
       return this;
     }
 
@@ -125,7 +125,7 @@ final class Tasks {
      * @return Set of tasks.
      */
     Set<ScheduledTask> build(int count) {
-      JobKey jobKey = this.jobKey.build();
+      JobKey jobKey = jobKeyBuilder.build();
       ImmutableSet.Builder<ScheduledTask> tasks = ImmutableSet.builder();
 
       for (int i = 0; i < count; i++) {

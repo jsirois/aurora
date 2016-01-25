@@ -67,26 +67,34 @@ public final class StorageEntityUtil {
     } else if (object instanceof ThriftStruct) {
       @SuppressWarnings("unchecked") // Trivially safe under erasure.
       ThriftStruct<ThriftFields> struct = (ThriftStruct<ThriftFields>) object;
-      for (ThriftFields field : struct.getFields()) {
-        if (!ignoredFields.contains(field)) {
-          String fullName = name + "." + field.getFieldName();
-          boolean mustBeSet = !ignoredFields.contains(field);
-          boolean isSet = struct.isSet(field);
-          if (mustBeSet) {
-            assertTrue(fullName + " is not set", isSet);
-          }
-          if (isSet) {
-            Object fieldValue = struct.getFieldValue(field);
-            if (Primitives.isWrapperType(field.getFieldType())) {
-              if (mustBeSet) {
-                assertNotEquals(
-                    "Primitive value must not be default: " + fullName,
-                    Defaults.defaultValue(Primitives.unwrap(fieldValue.getClass())),
-                    fieldValue);
-              }
-            } else {
-              assertFullyPopulated(fullName, fieldValue, ignoredFields);
+      assertStructFullyPopulated(name, ignoredFields, struct);
+    }
+  }
+
+  private static void assertStructFullyPopulated(
+      String name,
+      Set<ThriftFields> ignoredFields,
+      ThriftStruct<ThriftFields> struct) {
+
+    for (ThriftFields field : struct.getFields()) {
+      if (!ignoredFields.contains(field)) {
+        String fullName = name + "." + field.getFieldName();
+        boolean mustBeSet = !ignoredFields.contains(field);
+        boolean isSet = struct.isSet(field);
+        if (mustBeSet) {
+          assertTrue(fullName + " is not set", isSet);
+        }
+        if (isSet) {
+          Object fieldValue = struct.getFieldValue(field);
+          if (Primitives.isWrapperType(field.getFieldType())) {
+            if (mustBeSet) {
+              assertNotEquals(
+                  "Primitive value must not be default: " + fullName,
+                  Defaults.defaultValue(Primitives.unwrap(fieldValue.getClass())),
+                  fieldValue);
             }
+          } else {
+            assertFullyPopulated(fullName, fieldValue, ignoredFields);
           }
         }
       }

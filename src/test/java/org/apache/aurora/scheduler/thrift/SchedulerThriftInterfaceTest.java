@@ -1202,8 +1202,6 @@ public class SchedulerThriftInterfaceTest extends EasyMockTest {
     control.replay();
 
     // Validate key is populated during sanitizing.
-    JobConfiguration requestConfig = oldJob.withTaskConfig(tc -> tc.withJob((JobKey) null));
-
     RewriteConfigsRequest request = RewriteConfigsRequest.create(
         ImmutableList.of(ConfigRewrite.jobRewrite(JobConfigRewrite.create(oldJob, newJob))));
     assertOkResponse(thrift.rewriteConfigs(request));

@@ -43,7 +43,7 @@ public final class Jobs {
         case INIT:
         case PENDING:
         case THROTTLED:
-          pendingTaskCount ++;
+          pendingTaskCount++;
           break;
 
         case ASSIGNED:

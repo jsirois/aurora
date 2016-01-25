@@ -80,19 +80,19 @@ public class InstanceUpdaterTest {
     }
 
     private Result changeStatusAndEvaluate(ScheduleStatus status) {
-      ScheduledTask task = this.task.get();
-      ScheduledTask.Builder builder = task.toBuilder().setStatus(status);
-      if (task.getStatus() != status) {
+      ScheduledTask scheduledTask = task.get();
+      ScheduledTask.Builder builder = scheduledTask.toBuilder().setStatus(status);
+      if (scheduledTask.getStatus() != status) {
         // Only add a task event if this is a state change.
         builder.setTaskEvents(ImmutableList.<TaskEvent>builder()
-            .addAll(task.getTaskEvents())
+            .addAll(scheduledTask.getTaskEvents())
             .add(TaskEvent.create(clock.nowMillis(), status))
             .build());
       }
       builder.setStatus(status);
 
-      this.task = Optional.of(builder.build());
-      return updater.evaluate(this.task);
+      task = Optional.of(builder.build());
+      return updater.evaluate(task);
     }
 
     void evaluateCurrentState(Result expectedResult) {

@@ -242,7 +242,7 @@ class MemTaskStore implements TaskStore.Mutable {
   }
 
   private static Predicate<Task> queryFilter(Query.Builder query) {
-    return Predicates.compose(Util.queryFilter(query),canonicalTask -> canonicalTask.storedTask);
+    return Predicates.compose(Util.queryFilter(query), canonicalTask -> canonicalTask.storedTask);
   }
 
   private Iterable<Task> fromIdIndex(Iterable<String> taskIds) {

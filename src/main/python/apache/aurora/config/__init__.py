@@ -149,7 +149,8 @@ class AuroraConfig(object):
       if not has(job, required):
         raise cls.InvalidConfig(
           '%s required for job "%s"' % (required.capitalize(), job.name()))
-    if not has(job.task(), 'processes'):
+    if not has(job.task(), 'processes') and (
+          not(has(job, 'container')) or not(has(job.container(), 'docker'))):
       raise cls.InvalidConfig('Processes required for task on job "%s"' % job.name())
 
   @classmethod

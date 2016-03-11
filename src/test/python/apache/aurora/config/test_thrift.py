@@ -193,6 +193,11 @@ def test_metadata_in_config():
   assert pi.value == '1'
 
 
+def test_no_executor_needed():
+  job = convert_pystachio_to_thrift(HELLO_WORLD, needs_executor=False)
+  assert job.taskConfig.executorConfig is None
+
+
 def test_task_instance_from_job():
   instance = task_instance_from_job(
       Job(health_check_config=HealthCheckConfig(interval_secs=30)), 0, '')

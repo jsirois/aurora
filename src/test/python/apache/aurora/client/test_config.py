@@ -25,8 +25,11 @@ from apache.aurora.config.loader import AuroraConfigLoader
 from apache.aurora.config.schema.base import (
     MB,
     Announcer,
+    Container,
+    Docker,
     HealthCheckConfig,
     Job,
+    Process,
     Resources,
     Task,
     UpdateConfig
@@ -71,6 +74,8 @@ MESOS_CONFIG_WITHOUT_ANNOUNCE = MESOS_CONFIG_BASE % {
     'cmdline': 'echo {{thermos.ports[http]}}',
     'announce': ''
 }
+
+NOOP_PROCESS = Process(name="noop", cmdline="exit 0")
 
 
 def test_get_config_announces():
@@ -145,7 +150,7 @@ GOOD_ENV = ('prod', 'devel', 'test', 'staging', 'staging001', 'staging1', 'stagi
 def test_environment_names():
   base_job = Job(
       name='hello_world', role='john_doe', cluster='test-cluster',
-      task=Task(name='main', processes=[],
+      task=Task(name='main', processes=[NOOP_PROCESS],
                 resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   with pytest.raises(ValueError):
@@ -160,7 +165,7 @@ def test_environment_names():
 def test_dedicated_portmap():
   base_job = Job(
       name='hello_world', role='john_doe', cluster='test-cluster',
-      task=Task(name='main', processes=[],
+      task=Task(name='main', processes=[NOOP_PROCESS],
                 resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   config._validate_announce_configuration(AuroraConfig(base_job))
@@ -183,7 +188,7 @@ def test_dedicated_portmap():
 def test_update_config_passes_with_default_values():
   base_job = Job(
     name='hello_world', role='john_doe', cluster='test-cluster',
-    task=Task(name='main', processes=[],
+    task=Task(name='main', processes=[NOOP_PROCESS],
               resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   config._validate_update_config(AuroraConfig(base_job))
@@ -194,7 +199,7 @@ def test_update_config_passes_with_min_requirement_values():
     name='hello_world', role='john_doe', cluster='test-cluster',
     update_config=UpdateConfig(watch_secs=26),
     health_check_config=HealthCheckConfig(max_consecutive_failures=1),
-    task=Task(name='main', processes=[],
+    task=Task(name='main', processes=[NOOP_PROCESS],
               resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   config._validate_update_config(AuroraConfig(base_job))
@@ -204,7 +209,7 @@ def test_update_config_fails_insufficient_watch_secs_less_than_target():
   base_job = Job(
     name='hello_world', role='john_doe', cluster='test-cluster',
     update_config=UpdateConfig(watch_secs=10),
-    task=Task(name='main', processes=[],
+    task=Task(name='main', processes=[NOOP_PROCESS],
               resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   with pytest.raises(SystemExit):
@@ -216,8 +221,32 @@ def test_update_config_fails_insufficient_watch_secs_equal_to_target():
     name='hello_world', role='john_doe', cluster='test-cluster',
     update_config=UpdateConfig(watch_secs=25),
     health_check_config=HealthCheckConfig(max_consecutive_failures=1),
-    task=Task(name='main', processes=[],
+    task=Task(name='main', processes=[NOOP_PROCESS],
               resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   with pytest.raises(SystemExit):
     config._validate_update_config(AuroraConfig(base_job))
+
+
+def test_no_processes_no_docker():
+  base_job = Job(
+      name='hello_world', role='john_doe', cluster='test-cluster',
+      task=Task(name='main', processes=[],
+                resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
+
+  with pytest.raises(AuroraConfig.InvalidConfig):
+    AuroraConfig(base_job)
+
+
+def test_docker_executor():
+  base_job = Job(
+      name='hello_world', role='john_doe', cluster='test-cluster', environment='devel',
+      task=Task(name='main', processes=[],
+                resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)),
+      container=Container(docker=Docker(image='noop')))
+
+  # The job should validate since, although it has no processes it has a Docker container (
+  # presumably with an ENTRYPOINT), and as a result, it should have no executor config since the
+  # job's tasks will be run by Docker executors.
+  thrift_job = AuroraConfig(base_job).job()
+  assert thrift_job.taskConfig.executorConfig is None

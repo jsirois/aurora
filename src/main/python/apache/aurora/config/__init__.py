@@ -135,6 +135,21 @@ class AuroraConfig(object):
     return cls.apply_plugins(
         cls(cls.pick(env, name, bindings, select_cluster, select_role, select_env)), env)
 
+  @staticmethod
+  def _has_processes(job):
+    return len(list(job.task().processes())) > 0
+
+  @ staticmethod
+  def _uses_docker(job):
+    return job.container() is not Empty and job.container().docker() is not Empty
+
+  @classmethod
+  def _uses_docker_executor(cls, job):
+    # We support the special case of jobs with no processes when a Docker container is specified.
+    # In these cases, we assume the scheduler will launch the job using the Mesos Docker
+    # Containerizer; though this may fail if the scheduler is not permitted to allow this mode.
+    return cls._uses_docker(job) and not cls._has_processes(job)
+
   @classmethod
   def validate_job(cls, job):
     """
@@ -149,8 +164,9 @@ class AuroraConfig(object):
       if not has(job, required):
         raise cls.InvalidConfig(
           '%s required for job "%s"' % (required.capitalize(), job.name()))
-    if not has(job.task(), 'processes'):
-      raise cls.InvalidConfig('Processes required for task on job "%s"' % job.name())
+    if not cls._has_processes(job) and not cls._uses_docker(job):
+      raise cls.InvalidConfig(
+          'At least one Processes is required for task on job "%s"' % job.name())
 
   @classmethod
   def standard_bindings(cls, job):
@@ -174,9 +190,13 @@ class AuroraConfig(object):
     return Environment(mesos=MesosContext(dict((k, v) for k, v in context.items() if v)))
 
   def job(self):
+    # Currently we require and executor (thermos) be configured for all jobs except those that are
+    # executed directly using the Mesos Docker containerizer.
+    needs_executor = not self._uses_docker_executor(self._job)
+
     interpolated_job = self._job % self.context()
     try:
-      return convert_thrift(interpolated_job, self._metadata, self.ports())
+      return convert_thrift(interpolated_job, self._metadata, self.ports(), needs_executor)
     except InvalidThriftConfig as e:
       raise self.InvalidConfig(str(e))
 

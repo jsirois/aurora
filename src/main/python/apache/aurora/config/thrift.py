@@ -173,7 +173,7 @@ THERMOS_PORT_SCOPE_REF = Ref.from_address('thermos.ports')
 THERMOS_TASK_ID_REF = Ref.from_address('thermos.task_id')
 
 
-def convert(job, metadata=frozenset(), ports=frozenset()):
+def convert(job, metadata=frozenset(), ports=frozenset(), needs_executor=True):
   """Convert a Pystachio MesosJob to an Aurora Thrift JobConfiguration."""
 
   owner = Identity(user=getpass.getuser())
@@ -246,9 +246,10 @@ def convert(job, metadata=frozenset(), ports=frozenset()):
   if unbound:
     raise InvalidConfig('Config contains unbound variables: %s' % ' '.join(map(str, unbound)))
 
-  task.executorConfig = ExecutorConfig(
-      name=AURORA_EXECUTOR_NAME,
-      data=filter_aliased_fields(underlying).json_dumps())
+  if needs_executor:
+    task.executorConfig = ExecutorConfig(
+        name=AURORA_EXECUTOR_NAME,
+        data=filter_aliased_fields(underlying).json_dumps())
 
   return JobConfiguration(
       key=key,

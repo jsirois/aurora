@@ -231,8 +231,7 @@ def test_update_config_fails_insufficient_watch_secs_equal_to_target():
 def test_no_processes_no_docker():
   base_job = Job(
       name='hello_world', role='john_doe', cluster='test-cluster',
-      task=Task(name='main', processes=[],
-                resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
+      task=Task(name='main', resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)))
 
   with pytest.raises(AuroraConfig.InvalidConfig):
     AuroraConfig(base_job)
@@ -241,8 +240,7 @@ def test_no_processes_no_docker():
 def test_docker_executor():
   base_job = Job(
       name='hello_world', role='john_doe', cluster='test-cluster', environment='devel',
-      task=Task(name='main', processes=[],
-                resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)),
+      task=Task(name='main', resources=Resources(cpu=0.1, ram=64 * MB, disk=64 * MB)),
       container=Container(docker=Docker(image='noop')))
 
   # The job should validate since, although it has no processes it has a Docker container (

@@ -94,9 +94,9 @@ class Process(Struct):
 
 class Task(Struct):
   name = Default(String, '{{processes[0].name}}')
-  processes = List(Process)
 
   # optionals
+  processes = Default(List(Process), [])
   constraints = Default(List(Constraint), [])
   resources = Resources
   max_failures = Default(Integer, 1)        # maximum number of failed processes before task is failed.

@@ -166,7 +166,7 @@ class AuroraConfig(object):
           '%s required for job "%s"' % (required.capitalize(), job.name()))
     if not cls._has_processes(job) and not cls._uses_docker(job):
       raise cls.InvalidConfig(
-          'At least one Processes is required for task on job "%s"' % job.name())
+          'At least one Process is required for task on job "%s"' % job.name())
 
   @classmethod
   def standard_bindings(cls, job):

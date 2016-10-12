@@ -23,6 +23,7 @@ python_thrift_library(
   ],
   dependencies = [
     '3rdparty/python:thrift',
+    'build-support/thrift:prepare_binary',
   ],
 )
 
@@ -31,6 +32,7 @@ python_thrift_library(
   sources = TEST_DATA,
   dependencies = [
     '3rdparty/python:thrift',
+    'build-support/thrift:prepare_binary',
   ],
 )
 
@@ -40,6 +42,7 @@ python_thrift_library(
   dependencies = [
     '3rdparty/python:thrift',
     ':_api',
+    'build-support/thrift:prepare_binary',
   ],
 )
 

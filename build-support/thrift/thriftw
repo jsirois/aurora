@@ -65,7 +65,7 @@ function compatible_system_thrift() {
 }
 
 function run_pants() {
-  pushd "${HERE}/../.." &>/dev/null
+  pushd "${HERE}/../.." &> /dev/null
   ./pants --no-colors --no-lock "$@"
   popd &> /dev/null
 }
